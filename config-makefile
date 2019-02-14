@@ -1,0 +1,6 @@
+RESULT     := $(shell mkdir -p $(BUILD_DIR)  )
+
+all: $(BUILD_DIR)/arepoconfig.h 
+
+$(BUILD_DIR)/arepoconfig.h:  $(CONFIG) prepare-config.perl
+	$(PERL) prepare-config.perl $(CONFIG) $(BUILD_DIR)

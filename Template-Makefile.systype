@@ -1,0 +1,9 @@
+# Select Target Computer 
+#
+# Please copy this file to Makefile.systype and uncomment your
+# system. Don't commit changes to this file unless you add support for
+# a new system.
+
+#SYSTYPE="Darwin"
+
+#determine SYSTYPE#

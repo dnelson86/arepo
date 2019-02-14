@@ -1,0 +1,102 @@
+# extra compile-time options which are not in Template-Config
+# because they are not supposed to be activated need to be 
+# listed here to ensure that the check.py script does not 
+# raise an error due to these
+
+# headers
+ADD_BGGRID_H
+ALLVARS_H
+DOMAIN_H
+DTYPES_H
+FOF_H
+FORCETREE_H
+HAVE_H_VORONOI
+HDF5UTIL_H
+MESH_H
+MYIBARRIER_H
+PROTO_H
+RUNGE_KUTTA_FULL_UPDATE_H
+SUBFIND_H
+TIMER_H
+TIMESTEP_H
+VERSION_H
+_QD_DD_H
+_SYS_TREE_H_
+
+# defined in code internally
+BINS_PS
+EXACT_GRAVITY_REACTION
+FFTW
+GRAVCOSTLEVELS
+GRID
+GRIDX
+GRIDY
+GRIDZ
+HOST_MEMORY_REPORTING
+INLINE_FUNC
+MAXSCALARS
+MPI_MESSAGE_SIZELIMIT_IN_MB
+M_PI
+NO_GRAVITY_TYPE
+NO_SELFGRAVITY_TYPE
+NUMDIMS
+POWERSPEC_FOLDFAC
+RB_AUGMENT
+REFINEMENT
+TIMER_STRUCT
+UPDATE_GRADIENTS_FOR_OUTPUT
+USEDBITS
+USE_SUBCOMM_COMMUNICATOR
+VORONOI_BACKUP_RESTORE_FACE_AREAS
+__USE_GNU
+
+# operating system
+__linux__
+__OSX__
+
+# expert flags -- check in source code what they are doing before use
+CREATE_FULL_MESH
+DEBUG_ENABLE_FPU_EXCEPTIONS
+DISABLE_OPTIMIZE_DOMAIN_MAPPING
+DISABLE_SPATIAL_EXTRAPOLATION
+DISABLE_SPATIAL_RECONSTRUCTION
+DISABLE_TIME_EXTRAPOLATION
+DISABLE_VELOCITY_CSND_SLOPE_LIMITING
+NOCALLSOFSYSTEM
+NOTYPEPREFIX_FFTW
+NO_ID_UNIQUE_CHECK
+NO_RECONSTRUCTION_AT_STRONG_SHOCKS
+NUMPART_PER_TASK_LARGE
+OPTIMIZE_MEMORY_USAGE
+OVERRIDE_PEANOGRID_WARNING
+READ_LEGACY_ICS
+RESTART_DEBUG
+TOLERATE_WRITE_ERROR
+USE_AREPO_FOF_WITH_GADGET_FIX
+USE_INLINED_IBARRIER
+WALLCLOCK
+
+# expert flags -- alternative MPI communication routines in case of unstable MPI libraries -- check in source code what they are doing before use
+FIX_PATHSCALE_MPI_STATUS_IGNORE_BUG
+USE_MPIALLTOALLV_IN_DOMAINDECOMP
+MPI_HYPERCUBE_ALLGATHERV
+MPISENDRECV_CHECKSUM
+MYIBARRIER
+NO_ISEND_IRECV_IN_DOMAIN
+NO_MPI_IN_PLACE
+USE_DSDE
+
+# tests
+FORCETEST  #=0.001               # calculates for given fraction of particles direct summation forces to check accuracy of tree force
+FORCETEST_TESTFORCELAW  #=1      # this enables a special test to measure the effective force law of the code, can be set to 1 or 2
+GODUNOV_STATS
+
+# parameters in compile-time options which do not correspond to any ifdef in the code
+NFW_C
+NFW_Eps
+NFW_M200
+ISO_Eps
+ISO_M200
+ISO_R200
+HQ_C
+HQ_M200
