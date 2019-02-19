@@ -13,6 +13,7 @@ NUMBER_OF_TASKS=1
 TESTS=""
 ## available 1d test cases
 TESTS+="wave_1d "
+TESTS+="shocktube_1d "
 
 ## loop over all tests
 for TEST in $TESTS
