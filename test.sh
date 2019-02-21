@@ -17,6 +17,7 @@ TESTS+="wave_1d "
 TESTS+="shocktube_1d "
 
 ## available 2d examples
+TESTS+="gresho_2d "
 TESTS+="yee_2d "
 
 ## loop over all tests
