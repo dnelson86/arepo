@@ -9,11 +9,15 @@
 ## use NUMBER_OF_TASKS=1 for 1d test problems!
 NUMBER_OF_TASKS=1
 
-## choose your tests
+## choose your examples
 TESTS=""
-## available 1d test cases
+
+## available 1d examples
 TESTS+="wave_1d "
 TESTS+="shocktube_1d "
+
+## available 2d examples
+TESTS+="yee_2d "
 
 ## loop over all tests
 for TEST in $TESTS

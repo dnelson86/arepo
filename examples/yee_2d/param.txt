@@ -1,0 +1,95 @@
+%% ./examples/yee_2d/param.txt
+% parameter file for 2d Yee vortex problem
+
+InitCondFile                 ./run/examples/yee_2d/IC
+ICFormat                     3
+
+OutputDir                    ./run/examples/yee_2d/output/
+SnapshotFileBase             snap
+SnapFormat                   3
+NumFilesPerSnapshot          1
+NumFilesWrittenInParallel    1
+
+ResubmitOn                   0
+ResubmitCommand              my-scriptfile
+OutputListFilename           ol
+OutputListOn                 0
+
+CoolingOn                    0
+StarformationOn              0
+
+Omega0                       0.0
+OmegaBaryon                  0.0
+OmegaLambda                  0.0
+HubbleParam                  1.0
+
+BoxSize                      10.0
+PeriodicBoundariesOn         1
+ComovingIntegrationOn        0
+
+MaxMemSize                   2500
+
+TimeOfFirstSnapshot          0.0
+CpuTimeBetRestartFile        9000
+TimeLimitCPU                 90000
+
+TimeBetStatistics            0.5
+TimeBegin                    0.0
+TimeMax                      10.0
+TimeBetSnapshot              10.0
+
+UnitVelocity_in_cm_per_s     1.0
+UnitLength_in_cm             1.0
+UnitMass_in_g                1.0
+GravityConstantInternal      0.0
+
+ErrTolIntAccuracy            0.1
+ErrTolTheta                  0.1
+ErrTolForceAcc               0.1
+
+MaxSizeTimestep              1.0
+MinSizeTimestep              1e-5
+CourantFac                   0.3
+
+LimitUBelowThisDensity       0.0
+LimitUBelowCertainDensityToThisValue  0.0
+DesNumNgb                             64
+
+MultipleDomains                       2
+TopNodeFactor                         4
+ActivePartFracForNewDomainDecomp      0.01
+MaxNumNgbDeviation                    2
+
+TypeOfTimestepCriterion               0
+TypeOfOpeningCriterion                1
+GasSoftFactor                         0.01
+
+SofteningComovingType0                0.1
+SofteningComovingType1                0.1
+SofteningComovingType2                0.1
+SofteningComovingType3                0.1
+SofteningComovingType4                0.1
+SofteningComovingType5                0.1
+
+SofteningMaxPhysType0                0.1
+SofteningMaxPhysType1                0.1
+SofteningMaxPhysType2                0.1
+SofteningMaxPhysType3                0.1
+SofteningMaxPhysType4                0.1
+SofteningMaxPhysType5                0.1
+
+SofteningTypeOfPartType0             0
+SofteningTypeOfPartType1             0
+SofteningTypeOfPartType2             0
+SofteningTypeOfPartType3             0
+SofteningTypeOfPartType4             0
+SofteningTypeOfPartType5             0
+
+InitGasTemp                          0.0
+MinGasTemp                           0.0
+MinEgySpec                           0.0
+MinimumDensityOnStartUp              0.0
+
+CellShapingSpeed                     0.5
+CellMaxAngleFactor                   2.25 
+
