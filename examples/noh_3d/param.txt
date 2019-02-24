@@ -1,0 +1,95 @@
+%% examples/noh_3d/param.txt
+% parameter file for 3d Noh problem
+
+InitCondFile                          ./run/examples/noh_3d/IC
+ICFormat                              3
+
+OutputDir                             ./run/examples/noh_3d/output/
+SnapshotFileBase                      snap
+SnapFormat                            3
+NumFilesPerSnapshot                   1
+NumFilesWrittenInParallel             1
+
+ResubmitOn                            0
+ResubmitCommand                       my-scriptfile
+OutputListFilename                    ol
+OutputListOn                          0
+
+CoolingOn                             0
+StarformationOn                       0
+
+Omega0                                0.0
+OmegaBaryon                           0.0
+OmegaLambda                           0.0
+HubbleParam                           1.0
+
+BoxSize                               6.0
+PeriodicBoundariesOn                  1
+ComovingIntegrationOn                 0
+
+MaxMemSize                            2500
+
+TimeOfFirstSnapshot                   0.0
+CpuTimeBetRestartFile                 9000
+TimeLimitCPU                          90000
+
+TimeBetStatistics                     0.005
+TimeBegin                             0.0
+TimeMax                               2.0
+TimeBetSnapshot                       0.5
+
+UnitVelocity_in_cm_per_s              1.0
+UnitLength_in_cm                      1.0
+UnitMass_in_g                         1.0
+GravityConstantInternal               0.0
+
+ErrTolIntAccuracy                     0.1
+ErrTolTheta                           0.1
+ErrTolForceAcc                        0.1
+
+MaxSizeTimestep                       0.5
+MinSizeTimestep                       1e-5
+CourantFac                            0.3
+
+LimitUBelowThisDensity                0.0
+LimitUBelowCertainDensityToThisValue  0.0
+DesNumNgb                             64
+MaxNumNgbDeviation                    2
+
+MultipleDomains                       2
+TopNodeFactor                         4
+ActivePartFracForNewDomainDecomp      0.1
+
+TypeOfTimestepCriterion               0
+TypeOfOpeningCriterion                1
+GasSoftFactor                         0.01
+
+SofteningComovingType0                0.1
+SofteningComovingType1                0.1
+SofteningComovingType2                0.1
+SofteningComovingType3                0.1
+SofteningComovingType4                0.1
+SofteningComovingType5                0.1
+
+SofteningMaxPhysType0                 0.1
+SofteningMaxPhysType1                 0.1
+SofteningMaxPhysType2                 0.1
+SofteningMaxPhysType3                 0.1
+SofteningMaxPhysType4                 0.1
+SofteningMaxPhysType5                 0.1
+
+SofteningTypeOfPartType0              0
+SofteningTypeOfPartType1              1
+SofteningTypeOfPartType2              1
+SofteningTypeOfPartType3              1
+SofteningTypeOfPartType4              1
+SofteningTypeOfPartType5              1
+
+InitGasTemp                           0.0
+MinGasTemp                            0.0
+MinEgySpec                            0.0
+MinimumDensityOnStartUp               0.0
+
+CellShapingSpeed                      0.5
+CellMaxAngleFactor                    2.25 
+

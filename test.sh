@@ -21,6 +21,9 @@ TESTS+="gresho_2d "
 TESTS+="noh_2d "
 TESTS+="yee_2d "
 
+## available 3d examples
+TESTS+="noh_3d "
+
 ## loop over all tests
 for TEST in $TESTS
 do
