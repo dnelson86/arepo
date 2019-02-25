@@ -1,0 +1,82 @@
+
+Nmesh            128                        % This is the size of the FFT grid used to 
+                                            % compute the displacement field. One
+                                            % should have Nmesh >= Nsample.
+
+Nsample          128                        % sets the maximum k that the code uses,
+                                            % i.e. this effectively determines the
+                                            % Nyquist frequency that the code assumes,
+                                            % k_Nyquist = 2*PI/Box * Nsample/2
+                                            % Normally, one chooses Nsample such that
+                                            % Ntot =  Nsample^3, where Ntot is the
+                                            % total number of particles
+ 
+
+Box              50000.0                    % Periodic box size of simulation
+FileBase         ics                        % Base-filename of output files
+OutputDir        ../                        % Directory for output
+GlassFile        dummy_glass.dat            % File with unperturbed glass or
+                                            % Cartesian grid
+TileFac          4                          % Number of times the glass file is
+                                            % tiled in each dimension (must be
+                                            % an integer)
+
+
+Omega            0.3089                     % Total matter density  (at z=0)
+OmegaLambda      0.6911                     % Cosmological constant (at z=0)
+OmegaBaryon      0.0                        % Baryon density        (at z=0)
+HubbleParam      0.6774                     % Hubble paramater (may be used for power spec parameterization)
+Redshift         127                        % Starting redshift
+Sigma8           0.831                      % power spectrum normalization
+
+
+SphereMode       1                          % if "1" only modes with |k| < k_Nyquist are
+                                            % used (i.e. a sphere in k-space), otherwise modes with
+                                            % |k_x|,|k_y|,|k_z| < k_Nyquist are used
+                                            % (i.e. a cube in k-space)
+
+
+WhichSpectrum    1                          % "1" selects Eisenstein & Hu spectrum,
+                                            % "2" selects a tabulated power spectrum in
+                                            % the file 'FileWithInputSpectrum'
+                                            % otherwise, Efstathiou parametrization is used
+
+
+FileWithInputSpectrum   input_spectrum.txt  % filename of tabulated input
+                                            % spectrum (if used)
+InputSpectrum_UnitLength_in_cm  3.085678e24 % defines length unit of tabulated
+                                            % input spectrum in cm/h. 
+                                            % Note: This can be chosen different from UnitLength_in_cm
+
+ReNormalizeInputSpectrum   1                % if set to zero, the
+                                            % tabulated spectrum is
+                                            % assumed to be normalized
+                                            % already in its amplitude to
+                                            % the starting redshift,
+                                            % otherwise this is recomputed
+                                            % based on the specified sigma8
+
+
+ShapeGamma       0.21                       % only needed for Efstathiou power spectrum 
+PrimordialIndex  0.9645                     % may be used to tilt the primordial index, 
+                                            % primordial spectrum is k^PrimordialIndex
+
+
+Seed             123456                     %  seed for IC-generator
+
+
+NumFilesWrittenInParallel 1                 % limits the number of files that are
+                                            % written in parallel when outputting
+
+
+UnitLength_in_cm          3.085678e21       % defines length unit of output (in cm/h) 
+UnitMass_in_g             1.989e43          % defines mass unit of output (in g/cm)
+UnitVelocity_in_cm_per_s  1e5               % defines velocity unit of output (in cm/sec)
+
+
+
+
+
+
+
+

@@ -23,6 +23,7 @@ TESTS+="yee_2d "
 
 ## available 3d examples
 TESTS+="noh_3d "
+TESTS+="cosmo_box_gravity_only_3d "
 
 ## loop over all tests
 for TEST in $TESTS
