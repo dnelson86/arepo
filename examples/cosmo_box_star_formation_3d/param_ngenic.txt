@@ -10,13 +10,16 @@ Nsample          128                        % sets the maximum k that the code u
                                             % Normally, one chooses Nsample such that
                                             % Ntot =  Nsample^3, where Ntot is the
                                             % total number of particles
- 
 
-Box              50000.0                    % Periodic box size of simulation
+
+Box              7500.0                     % Periodic box size of simulation
+
 FileBase         ics                        % Base-filename of output files
 OutputDir        ../                        % Directory for output
+
 GlassFile        dummy_glass.dat            % File with unperturbed glass or
                                             % Cartesian grid
+
 TileFac          2                          % Number of times the glass file is
                                             % tiled in each dimension (must be
                                             % an integer)
@@ -28,6 +31,7 @@ OmegaBaryon      0.0                        % Baryon density        (at z=0)
 HubbleParam      0.6774                     % Hubble paramater (may be used for power spec parameterization)
 Redshift         127                        % Starting redshift
 Sigma8           0.831                      % power spectrum normalization
+
 
 
 SphereMode       1                          % if "1" only modes with |k| < k_Nyquist are
@@ -63,8 +67,6 @@ PrimordialIndex  0.9645                     % may be used to tilt the primordial
 
 
 Seed             123456                     %  seed for IC-generator
-
-
 NumFilesWrittenInParallel 1                 % limits the number of files that are
                                             % written in parallel when outputting
 
@@ -72,11 +74,3 @@ NumFilesWrittenInParallel 1                 % limits the number of files that ar
 UnitLength_in_cm          3.085678e21       % defines length unit of output (in cm/h) 
 UnitMass_in_g             1.989e43          % defines mass unit of output (in g/cm)
 UnitVelocity_in_cm_per_s  1e5               % defines velocity unit of output (in cm/sec)
-
-
-
-
-
-
-
-
