@@ -15,6 +15,7 @@ TESTS=""
 ## available 1d examples
 TESTS+="wave_1d "
 TESTS+="shocktube_1d "
+TESTS+="interacting_blastwaves_1d "
 
 ## available 2d examples
 TESTS+="gresho_2d "

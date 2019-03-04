@@ -1,0 +1,102 @@
+%% examples/interacting_blastwaves_1d/param.txt
+% parameter file for 1d interacting blast wave problem
+
+%% system options
+MaxMemSize                                2500
+CpuTimeBetRestartFile                     9000
+TimeLimitCPU                              90000
+
+%% initial conditions
+InitCondFile                              ./run/examples/interacting_blastwaves_1d/IC
+ICFormat                                  3
+
+%% output options
+OutputDir                                 ./run/examples/interacting_blastwaves_1d/output/
+SnapshotFileBase                          snap
+SnapFormat                                3
+NumFilesPerSnapshot                       1
+NumFilesWrittenInParallel                 1
+
+%% resubmit opitions
+ResubmitOn                                0
+ResubmitCommand                           my-scriptfile
+OutputListFilename                        ol
+OutputListOn                              0
+
+%% simulation mode
+CoolingOn                                 0
+StarformationOn                           0
+PeriodicBoundariesOn                      1
+ComovingIntegrationOn                     0
+
+%% Cosmological parameters
+Omega0                                    0.0
+OmegaBaryon                               0.0
+OmegaLambda                               0.0
+HubbleParam                               1.0
+
+%% Simulation parameters
+BoxSize                                   1.0
+TimeOfFirstSnapshot                       0.0
+TimeBetStatistics                         0.019
+TimeBegin                                 0.0
+TimeMax                                   0.038
+TimeBetSnapshot                           0.038
+
+%% Units
+UnitVelocity_in_cm_per_s                  1.0
+UnitLength_in_cm                          1.0
+UnitMass_in_g                             1.0
+GravityConstantInternal                   0.0
+
+%% settings for gravity
+ErrTolIntAccuracy                         0.1
+ErrTolTheta                               0.1
+ErrTolForceAcc                            0.1
+
+%% timestepping
+MaxSizeTimestep                           0.019
+MinSizeTimestep                           1e-10
+
+%% moving mesh
+CellShapingSpeed                          0.5
+CellMaxAngleFactor                        2.25 
+TypeOfTimestepCriterion                   0
+TypeOfOpeningCriterion                    1
+
+%% hydrodynamics
+CourantFac                                0.3
+LimitUBelowThisDensity                    0.0
+LimitUBelowCertainDensityToThisValue      0.0
+DesNumNgb                                 64
+MaxNumNgbDeviation                        2
+InitGasTemp                               0.0
+MinGasTemp                                0.0
+MinEgySpec                                0.0
+MinimumDensityOnStartUp                   0.0
+
+%% domain decomposition
+MultipleDomains                           2
+TopNodeFactor                             4
+ActivePartFracForNewDomainDecomp          0.01
+
+%% gravitational softening
+GasSoftFactor                             0.01
+SofteningComovingType0                    0.1
+SofteningComovingType1                    0.1
+SofteningComovingType2                    0.1
+SofteningComovingType3                    0.1
+SofteningComovingType4                    0.1
+SofteningComovingType5                    0.1
+SofteningMaxPhysType0                     0.1
+SofteningMaxPhysType1                     0.1
+SofteningMaxPhysType2                     0.1
+SofteningMaxPhysType3                     0.1
+SofteningMaxPhysType4                     0.1
+SofteningMaxPhysType5                     0.1
+SofteningTypeOfPartType0                  0
+SofteningTypeOfPartType1                  0
+SofteningTypeOfPartType2                  0
+SofteningTypeOfPartType3                  0
+SofteningTypeOfPartType4                  0
+SofteningTypeOfPartType5                  0
