@@ -16,6 +16,7 @@ TESTS=""
 TESTS+="wave_1d "
 TESTS+="shocktube_1d "
 TESTS+="interacting_blastwaves_1d "
+TESTS+="polytrope_1d_spherical "
 
 ## available 2d examples
 TESTS+="gresho_2d "

@@ -12,8 +12,8 @@ import matplotlib.pyplot as plt    ## needs to be active for plotting!
 
 from Riemann import *    ## Riemann-solver
 
-createFigures = True
-forceExitOnError=False  ## exits immediately when tolerance is exceeded
+createFigures = False
+forceExitOnError = False  ## exits immediately when tolerance is exceeded
 
 """ check functiions """
 def CheckL1Error(Pos, W, W_L, W_R, gamma, position_0, time):

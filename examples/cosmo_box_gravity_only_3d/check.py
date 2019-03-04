@@ -24,7 +24,7 @@ Redshifts = [1, 0]
 status = 0
 
 CompareAgainstReferenceRun = True ## comparison for small L50m32 box; deactivate this when comparing against self-created ICs
-createFigures = True
+createFigures = False
 
 for i_file, z in enumerate(Redshifts):
     """ try to read in snapshot """

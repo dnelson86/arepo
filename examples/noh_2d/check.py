@@ -10,7 +10,7 @@ import numpy as np    ## load numpy
 import h5py    ## load h5py; needed to read snapshots
 import matplotlib.pyplot as plt    ## plot stuff
 
-createFigures = True
+createFigures = False
 
 simulation_directory = str(sys.argv[1])
 print("examples/noh_2d/check.py: checking simulation output in directory " + simulation_directory) 
@@ -100,7 +100,7 @@ while True:
     L1_dens = np.average(abs_delta_dens, weights=CellVolume[i_compare] )
     
     L1_max = DeltaMaxAllowed * time
-    print("examples/Noh_2d/check snapshot %d: DEBUG: L1_dens = %g, DeltaMaxAllowed = %g!" % (i_file, L1_dens, L1_max) )
+    print("examples/Noh_2d/check snapshot %d:  L1_dens = %g, DeltaMaxAllowed = %g!" % (i_file, L1_dens, L1_max) )
     
     if L1_dens > L1_max:
         print("examples/Noh_2d/check: ERROR: snaphshot %d: L1_dens = %g, DeltaMaxAllowed = %g!" % (i_file, L1_dens, L1_max) )

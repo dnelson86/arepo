@@ -10,7 +10,7 @@ import numpy as np    ## load numpy
 import h5py    ## load h5py; needed to read snapshots
 import matplotlib.pyplot as plt    ## plot stuff
 
-createFigures = True
+createFigures = False
 
 simulation_directory = str(sys.argv[1])
 print("examples/noh_3d/check.py: checking simulation output in directory " + simulation_directory)
