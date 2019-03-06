@@ -1,0 +1,50 @@
+[setup]
+boxlength          = 100
+zstart             = 50
+levelmin           = 7
+levelmin_TF        = 6
+levelmax           = 7
+padding            = 8
+overlap            = 4
+ref_center         = 0.5, 0.5, 0.5
+ref_extent         = 1.0, 1.0, 1.0
+align_top          = no
+baryons            = no
+use_2LPT           = no
+use_LLA            = no
+periodic_TF        = yes
+
+[cosmology]
+Omega_m            = 0.3089
+Omega_L            = 0.6911
+w0                 = -1.0
+wa                 = 0.0
+Omega_b            = 0.0486
+H0                 = 67.74
+sigma_8            = 0.831
+nspec              = 0.9645
+transfer           = eisenstein
+
+[random]
+seed[7]            = 12345
+seed[8]            = 23456
+seed[9]            = 34567
+seed[10]           = 45678
+seed[11]           = 56789
+seed[12]           = 67890
+
+[output]
+#Gadget-2 (type=1: high-res particles, type=2: rest)
+format            = gadget2
+gadget_usekpc     = yes
+filename          = ../ics_parent
+gadget_coarsetype = 2
+
+[poisson]
+fft_fine          = yes
+accuracy          = 1e-5
+pre_smooth        = 3
+post_smooth       = 3
+smoother          = gs
+laplace_order     = 6
+grad_order        = 6
