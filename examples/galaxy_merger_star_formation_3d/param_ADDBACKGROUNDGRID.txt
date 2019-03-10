@@ -1,0 +1,100 @@
+%----  Relevant files
+InitCondFile                            run/examples/galaxy_merger_star_formation_3d/ICs_1_1_merger_30_15_45_0_rmin10_start320_lowres.dat
+OutputDir                               run/examples/galaxy_merger_star_formation_3d/output
+SnapshotFileBase                        snap
+OutputListFilename                      run/examples/galaxy_merger_star_formation_3d/output_list.txt
+
+%---- File formats
+ICFormat                                1
+SnapFormat                              3
+
+%---- CPU-time limits
+TimeLimitCPU                            93000
+CpuTimeBetRestartFile                   12000
+
+ResubmitOn                              0
+ResubmitCommand                         my-scriptfile
+
+%----- Memory alloction
+MaxMemSize                              2500
+
+%---- Caracteristics of run
+TimeBegin                               0.0
+TimeMax                                 1.0 % End of the simulation
+
+%---- Basic code options that set the type of simulation
+ComovingIntegrationOn                   0
+PeriodicBoundariesOn                    1
+CoolingOn                               0
+StarformationOn                         0
+
+%---- Cosmological parameters (Planck cosmology)
+Omega0                                  0.3089
+OmegaLambda                             0.6911
+OmegaBaryon                             0.0     %0.0486
+HubbleParam                             0.6774
+BoxSize                                 200.0
+
+%---- Output frequency and output parameters
+OutputListOn                            0
+TimeBetSnapshot                         0.0
+TimeOfFirstSnapshot                     0.0
+TimeBetStatistics                       0.01
+NumFilesPerSnapshot                     1
+NumFilesWrittenInParallel               1
+
+%---- Accuracy of time integration
+TypeOfTimestepCriterion                 0
+ErrTolIntAccuracy                       0.012
+CourantFac                              0.3
+MaxSizeTimestep                         0.05
+MinSizeTimestep                         2.0e-9
+
+
+%---- Treatment of empty space and temperature limits
+InitGasTemp                             244.8095
+MinGasTemp                              5.0
+MinimumDensityOnStartUp                 1.0e-20
+LimitUBelowThisDensity                  0.0
+LimitUBelowCertainDensityToThisValue    0.0
+MinEgySpec                              0.0
+
+%---- Tree algorithm, force accuracy, domain update frequency
+TypeOfOpeningCriterion                  1
+ErrTolTheta                             0.7
+ErrTolForceAcc                          0.0025
+MultipleDomains                         8
+TopNodeFactor                           2.5
+ActivePartFracForNewDomainDecomp        0.01
+ 
+%---- Initial density estimate
+DesNumNgb                               64
+MaxNumNgbDeviation                      4
+
+%---- System of units
+UnitLength_in_cm                        3.085678e21    %  1.0 kpc
+UnitMass_in_g                           1.989e43       %  1.0e10 solar masses
+UnitVelocity_in_cm_per_s                1e5            %  1 km/sec
+GravityConstantInternal                 0
+
+%---- Gravitational softening lengths
+SofteningComovingType0                  2.0
+SofteningComovingType1                  2.0
+
+SofteningMaxPhysType0                   2.0
+SofteningMaxPhysType1                   2.0
+
+GasSoftFactor                           2.5
+
+SofteningTypeOfPartType0                0
+SofteningTypeOfPartType1                1
+SofteningTypeOfPartType2                1
+SofteningTypeOfPartType3                1
+SofteningTypeOfPartType4                1
+SofteningTypeOfPartType5                1
+
+%----- Mesh regularization options
+CellShapingSpeed                        0.5
+CellMaxAngleFactor                      2.25
+
+GridSize                                16
