@@ -29,6 +29,7 @@ TESTS+="cosmo_box_gravity_only_3d "
 TESTS+="cosmo_box_star_formation_3d "
 #TESTS+="cosmo_zoom_gravity_only_3d "
 TESTS+="galaxy_merger_star_formation_3d "
+TESTS+="isolated_galaxy_collisionless_3d "
 
 ## loop over all tests
 for TEST in $TESTS
