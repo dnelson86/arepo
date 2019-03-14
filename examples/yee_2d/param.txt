@@ -1,10 +1,10 @@
 %% ./examples/yee_2d/param.txt
 % parameter file for 2d Yee vortex problem
 
-InitCondFile                          ./run/examples/yee_2d/IC
+InitCondFile                          IC
 ICFormat                              3
 
-OutputDir                             ./run/examples/yee_2d/output/
+OutputDir                             output
 SnapshotFileBase                      snap
 SnapFormat                            3
 NumFilesPerSnapshot                   1

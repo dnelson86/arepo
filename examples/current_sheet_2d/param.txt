@@ -1,5 +1,5 @@
-%% ./examples/polytrope_1d_spherical/param.txt
-% parameter file for 1d polytrope test problem
+%% examples/current_sheet_2d.txt
+% parameter file for 2d current sheet problem
 
 InitCondFile                          IC
 ICFormat                              3
@@ -23,7 +23,7 @@ OmegaBaryon                           0.0
 OmegaLambda                           0.0
 HubbleParam                           1.0
 
-BoxSize                               1.0
+BoxSize                               2.0
 PeriodicBoundariesOn                  1
 ComovingIntegrationOn                 0
 
@@ -33,35 +33,37 @@ TimeOfFirstSnapshot                   0.0
 CpuTimeBetRestartFile                 9000
 TimeLimitCPU                          90000
 
-TimeBetStatistics                     1.0
+TimeBetStatistics                     0.005
 TimeBegin                             0.0
-TimeMax                               1.0
-TimeBetSnapshot                       0.125
+TimeMax                               4.0
+TimeBetSnapshot                       0.5
 
 UnitVelocity_in_cm_per_s              1.0
 UnitLength_in_cm                      1.0
 UnitMass_in_g                         1.0
-GravityConstantInternal               1.0
+GravityConstantInternal               0.0
 
 ErrTolIntAccuracy                     0.1
 ErrTolTheta                           0.1
 ErrTolForceAcc                        0.1
 
-MaxSizeTimestep                       0.125
-MinSizeTimestep                       1e-10
+MaxSizeTimestep                       0.2
+MinSizeTimestep                       1e-5
 CourantFac                            0.3
 
 LimitUBelowThisDensity                0.0
 LimitUBelowCertainDensityToThisValue  0.0
 
-DesNumNgb                             32
-MaxNumNgbDeviation                    2
+DesNumNgb                             64
+
 MultipleDomains                       2
 TopNodeFactor                         4
 
-ActivePartFracForNewDomainDecomp      0.01
+ActivePartFracForNewDomainDecomp      0.5
 
-TypeOfTimestepCriterion               0
+MaxNumNgbDeviation                    2
+
+TypeOfTimestepCriterion               1
 TypeOfOpeningCriterion                1
 
 GasSoftFactor                         0.01
@@ -92,5 +94,5 @@ MinGasTemp                            0.0
 MinEgySpec                            0.0
 MinimumDensityOnStartUp               0.0
 
-CoreRadius                            0.1
-CoreMass                              4.12455e-3
+CellShapingSpeed                      0.5
+CellMaxAngleFactor                    2.25

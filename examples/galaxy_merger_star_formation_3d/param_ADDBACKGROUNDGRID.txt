@@ -1,8 +1,8 @@
 %----  Relevant files
-InitCondFile                            run/examples/galaxy_merger_star_formation_3d/ICs_1_1_merger_30_15_45_0_rmin10_start320_lowres.dat
-OutputDir                               run/examples/galaxy_merger_star_formation_3d/output
+InitCondFile                            ICs_1_1_merger_30_15_45_0_rmin10_start320_lowres.dat
+OutputDir                               output
 SnapshotFileBase                        snap
-OutputListFilename                      run/examples/galaxy_merger_star_formation_3d/output_list.txt
+OutputListFilename                      output_list.txt
 
 %---- File formats
 ICFormat                                1

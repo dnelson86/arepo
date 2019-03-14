@@ -72,5 +72,9 @@ data = np.array([outputTimes, ones]).T
 np.savetxt(simulation_directory+"/output_list.txt",data, fmt="%g %1.f" )
 
 
+""" copy treecool file to run directory """
+call(['cp', './data/TREECOOL_ep', simulation_directory+'/TREECOOL_ep'])
+
+
 """ normal exit """
 sys.exit(0) 

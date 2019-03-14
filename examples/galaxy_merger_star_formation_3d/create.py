@@ -9,6 +9,7 @@ created by Rainer Weinberger, last modified 09.03.2019
 
 """ load libraries """
 import sys    # system calls
+import os  # operating system calls
 import numpy as np    # scientific computing package
 import h5py    # hdf5 format
 from subprocess import call    # execute shell commands 
@@ -29,32 +30,25 @@ data = np.array([outputTimes, ones]).T
 np.savetxt(simulation_directory+"/output_list.txt",data, fmt="%g %1.f" )
 
 
+""" copy treecool file to run directory """
+call(['cp', './data/TREECOOL_ep', simulation_directory+'/TREECOOL_ep'])
+
+
 """ create backgroundgrid ICs from SPH ICs """
 ## compile Arepo with ADDBACKGROUNDGRID
-res = call(["make", "CONFIG=./examples/galaxy_merger_star_formation_3d/Config_ADDBACKGROUNDGRID.sh", \
-             "BUILD_DIR=./run/examples/galaxy_merger_star_formation_3d/build_ADDBACKGROUNDGRID", \
-            "EXEC=./run/examples/galaxy_merger_star_formation_3d/Arepo_ADDBACKGRUNDGRID"])
-if res != 0:
-    sys.exit( np.int(res) )
-    
-## copy ICs to run directory
-res = call(["cp", "./examples/galaxy_merger_star_formation_3d/ICs_1_1_merger_30_15_45_0_rmin10_start320_lowres.dat", \
-            "./run/examples/galaxy_merger_star_formation_3d/"])
+res = call(["make", "CONFIG="+simulation_directory+"/Config_ADDBACKGROUNDGRID.sh", \
+             "BUILD_DIR="+simulation_directory+"/build_ADDBACKGROUNDGRID", \
+            "EXEC="+simulation_directory+"/Arepo_ADDBACKGRUNDGRID"])
 if res != 0:
     sys.exit( np.int(res) )
 
 ## execute Arepo with ADDBACKGROUNDGRID
-res = call(["mpiexec", "-np", "1","./run/examples/galaxy_merger_star_formation_3d/Arepo_ADDBACKGRUNDGRID", "./examples/galaxy_merger_star_formation_3d/param_ADDBACKGROUNDGRID.txt"])
+cwd = os.getcwd()
+os.chdir(simulation_directory)
+res = call(["mpiexec", "-np", "1","./Arepo_ADDBACKGRUNDGRID", "./param_ADDBACKGROUNDGRID.txt"])
 if res != 0:
     sys.exit( np.int(res) )
-
-## clean up
-res = call(["make", "CONFIG=./examples/galaxy_merger_star_formation_3d/Config_ADDBACKGROUNDGRID.sh", "clean"])
-if res != 0:
-    sys.exit( np.int(res) )
-res = call(["rm", "./examples/galaxy_merger_star_formation_3d/param_ADDBACKGROUNDGRID.txt-usedvalues"])
-if res != 0:
-    sys.exit( np.int(res) )
+os.chdir(cwd)
 
 
 """ normal exit """

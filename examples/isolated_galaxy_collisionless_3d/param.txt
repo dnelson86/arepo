@@ -1,8 +1,8 @@
 %----  Relevant files
-InitCondFile                            run/examples/isolated_galaxy_collisionless_3d/snap_010
-OutputDir                               run/examples/isolated_galaxy_collisionless_3d/output
+InitCondFile                            snap_010
+OutputDir                               output
 SnapshotFileBase                        snap
-OutputListFilename                      run/examples/isolated_galaxy_collisionless_3d/output_list.txt
+OutputListFilename                      output_list.txt
 
 %---- File formats
 ICFormat                                1

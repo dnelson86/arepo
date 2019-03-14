@@ -7,11 +7,11 @@ CpuTimeBetRestartFile                     9000
 TimeLimitCPU                              90000
 
 %% initial conditions
-InitCondFile                              ./run/examples/shocktube_1d/IC
+InitCondFile                              IC
 ICFormat                                  3
 
 %% output options
-OutputDir                                 ./run/examples/shocktube_1d/output/
+OutputDir                                 output
 SnapshotFileBase                          snap
 SnapFormat                                3
 NumFilesPerSnapshot                       1

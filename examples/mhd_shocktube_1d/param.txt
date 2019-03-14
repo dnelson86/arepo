@@ -1,10 +1,10 @@
 %% examples/mhd_shocktube_1d.txt
 % parameter file for 1d mhd shocktube problem
 
-InitCondFile                           ./run/examples/mhd_shocktube_1d/IC
-ICFormat                               3
+InitCondFile                          IC
+ICFormat                              3
 
-OutputDir                             ./run/examples/mhd_shocktube_1d/output/
+OutputDir                             output
 SnapshotFileBase                      snap
 SnapFormat                            3
 NumFilesPerSnapshot                   1

@@ -23,6 +23,7 @@ TESTS+="polytrope_1d_spherical "
 TESTS+="gresho_2d "
 TESTS+="noh_2d "
 TESTS+="yee_2d "
+TESTS+="current_sheet_2d "
 
 ## available 3d examples
 TESTS+="noh_3d "
@@ -42,22 +43,19 @@ do
   rm -rf ./run
 
   ## create run directory
-  mkdir ./run
-  mkdir ./run/examples
-  mkdir ${RUNDIR}
+  mkdir -p ${RUNDIR}
+
+  ## copy Config and parameter file to run directory
+  cp ${DIR}/* ${RUNDIR}
   
   ## create ICs in run directory
   echo ${DIR}
-  python ${DIR}/create.py ${RUNDIR}
+  python ${RUNDIR}/create.py ${RUNDIR}
   ((return_value=$?))    ## get return value
   if [ $return_value != 0 ]    ## check return value
   then echo "ERROR: test.sh:\t" $DIR "\t python create.py failed!"
   exit $return_value
   fi
-  
-  ## copy Config and parameter file to run directory
-  cp ${DIR}/Config.sh ${RUNDIR}
-  cp ${DIR}/param.txt ${RUNDIR}
 
   ## compile Arepo
   make -j ${NUMBER_OF_TASKS} CONFIG=${RUNDIR}/Config.sh BUILD_DIR=${RUNDIR}/build EXEC=${RUNDIR}/Arepo
@@ -67,8 +65,8 @@ do
   exit $return_value
   fi
   
-  ## execute test simulation
-  mpiexec -np ${NUMBER_OF_TASKS} ${RUNDIR}/Arepo ${RUNDIR}/param.txt
+  ## change to RUNDIR in subshell and execute test simulation
+  (cd ${RUNDIR} && mpiexec -np ${NUMBER_OF_TASKS} ./Arepo ./param.txt)
   ((return_value=$?))    ## get return value
   if [ $return_value != 0 ]    ## check return value
   then echo "ERROR: test.sh:\t" $DIR "\t execution failed!"
@@ -76,7 +74,7 @@ do
   fi
   
   ## check result in example directory, this also creates some check plots
-  python ${DIR}/check.py ${RUNDIR}
+  python ${RUNDIR}/check.py ${RUNDIR}
   ((return_value=$?))    ## get return value
   if [ $return_value != 0 ]    ## check return value
   then echo "ERROR: test.sh: test failed!"

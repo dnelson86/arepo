@@ -1,10 +1,10 @@
 %% examples/noh_3d/param.txt
 % parameter file for 3d Noh problem
 
-InitCondFile                          ./run/examples/noh_3d/IC
+InitCondFile                          IC
 ICFormat                              3
 
-OutputDir                             ./run/examples/noh_3d/output/
+OutputDir                             output
 SnapshotFileBase                      snap
 SnapFormat                            3
 NumFilesPerSnapshot                   1

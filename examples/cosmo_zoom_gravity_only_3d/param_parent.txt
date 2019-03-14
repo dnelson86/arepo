@@ -1,8 +1,8 @@
 %----  Relevant files
-InitCondFile                          ./run/examples/cosmo_zoom_gravity_only_3d/ics_parent
-OutputDir                             ./run/examples/cosmo_zoom_gravity_only_3d/output_parent
+InitCondFile                          ics_parent
+OutputDir                             output_parent
 SnapshotFileBase                      snap
-OutputListFilename                    ./run/examples/cosmo_zoom_gravity_only_3d/output_list.txt
+OutputListFilename                    output_list.txt
 
 
 %---- File formats

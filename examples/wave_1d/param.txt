@@ -1,10 +1,10 @@
 %% ./examples/wave_1d/param.txt
 % parameter file for 1d wave propagation problem
 
-InitCondFile                          ./run/examples/wave_1d/IC
+InitCondFile                          IC
 ICFormat                              3
 
-OutputDir                             ./run/examples/wave_1d/output/
+OutputDir                             output
 SnapshotFileBase                      snap
 SnapFormat                            3
 NumFilesPerSnapshot                   1

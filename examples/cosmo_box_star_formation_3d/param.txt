@@ -1,10 +1,10 @@
 %% parameters for cosmo_box_star_formation_3d
 
 %----  Relevant files
-InitCondFile                            run/examples/cosmo_box_star_formation_3d/ics
-OutputDir                               run/examples/cosmo_box_star_formation_3d/output
+InitCondFile                            ics
+OutputDir                               output
 SnapshotFileBase                        snap
-OutputListFilename                      run/examples/cosmo_box_star_formation_3d/output_list.txt
+OutputListFilename                      output_list.txt
 
 %---- File formats
 ICFormat                                1
@@ -120,4 +120,4 @@ FactorEVP                               573.0
 TemperatureThresh                       1e+06
 FactorSN                                0.1
 
-TreecoolFile                            ./data/TREECOOL_ep
+TreecoolFile                            TREECOOL_ep
