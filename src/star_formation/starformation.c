@@ -272,7 +272,7 @@ void sfr_create_star_particles(void)
       else
         rate = 0;
 
-      /* compute the cumulative mass of stars (->>> CHECK ME!!!) */
+      /* compute the cumulative mass of stars */
       cum_mass_stars += total_sum_mass_stars;
 
       /* convert to solar masses per yr */
@@ -403,7 +403,7 @@ void spawn_star_from_cell(int igas, double birthtime, int istar, MyDouble mass_o
  *  \param[in] i Index of the gas cell.
  *  \param[in] prob Probability of making a star.
  *  \param[in] mass_of_star Desired mass of the star particle.
- *  \param[in] sum_mass_stars Holds the mass of all the stars created at the
+ *  \param[in, out] sum_mass_stars Holds the mass of all the stars created at the
  *             current time-step (for the local task)
  *
  *  \return void
