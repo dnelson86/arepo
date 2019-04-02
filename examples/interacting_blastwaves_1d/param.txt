@@ -7,11 +7,11 @@ CpuTimeBetRestartFile                     9000
 TimeLimitCPU                              90000
 
 %% initial conditions
-InitCondFile                              IC
+InitCondFile                              ./IC
 ICFormat                                  3
 
 %% output options
-OutputDir                                 output
+OutputDir                                 ./output/
 SnapshotFileBase                          snap
 SnapFormat                                3
 NumFilesPerSnapshot                       1

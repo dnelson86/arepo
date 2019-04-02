@@ -22,7 +22,10 @@ IntType = np.int32 # integer type
 
 ## computational domain
 Boxsize = FloatType(1.0)
-NumberOfCells = IntType(32)
+if len(sys.argv) > 3:
+  NumberOfCells = IntType(sys.argv[3])
+else:
+  NumberOfCells = IntType(32)
 
 ## initial state
 density_0 = FloatType(1.0)

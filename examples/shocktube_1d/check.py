@@ -8,12 +8,20 @@ created by Rainer Weinberger, last modified: 19.02.2019
 import sys    # needed for exit codes
 import numpy as np    # scientific computing package
 import h5py    # hdf5 format
+import os      # file specific calls
 import matplotlib.pyplot as plt    ## needs to be active for plotting!
+plt.rcParams['text.usetex'] = True
 
 from Riemann import *    ## Riemann-solver
 
-createFigures = False
-forceExitOnError = False  ## exits immediately when tolerance is exceeded
+makeplots = True
+if len(sys.argv) > 2:
+  if sys.argv[2] == "True":
+    makeplots = True
+  else:
+    makeplots = False
+
+forceExitOnError=False  ## exits immediately when tolerance is exceeded
 
 """ check functiions """
 def CheckL1Error(Pos, W, W_L, W_R, gamma, position_0, time):
@@ -188,20 +196,26 @@ def PlotSimulationData(Pos, W, W_L, W_R, gamma, position_0, time, simulation_dir
     fig, ax = plt.subplots(4, sharex=True, figsize=np.array([6.9,6.0]) )
     fig.subplots_adjust(left = 0.13, bottom = 0.09,right = 0.98, top = 0.98)
     
-    nskip = 0
-    i_show = np.arange(nskip, len(density)-nskip)
-    ax[0].plot(Pos, W[:,0], ls="", marker='o')
-    ax[0].plot(xx, W_exact[:,0], color="k")
-    ax[1].plot(Pos, W[:,1], ls="", marker='o')
-    ax[1].plot(xx, W_exact[:,1], color="k")
-    ax[2].plot(Pos, W[:,2]/W[:,0]/(gamma - 1.0), ls="", marker='o')
-    ax[2].plot(xx, W_exact[:,2]/W_exact[:,0]/(gamma - 1.0), color="k")
-    ax[3].plot(Pos, W[:,2], ls="", marker='o')
-    ax[3].plot(xx, W_exact[:,2], color="k")
+    ax[0].plot(xx, W_exact[:,0], color="k", lw=0.7, label="Exact solution")
+    ax[1].plot(xx, W_exact[:,1], color="k", lw=0.7)
+    ax[2].plot(xx, W_exact[:,2]/W_exact[:,0]/(gamma - 1.0), color="k", lw=0.7)
+    ax[3].plot(xx, W_exact[:,2], color="k", lw=0.7)
+    
+    ax[0].plot(Pos, W[:,0], '+r', mec='r', mfc="None", label="Arepo cells")
+    ax[1].plot(Pos, W[:,1], '+r', mec='r', mfc="None")
+    ax[2].plot(Pos, W[:,2]/W[:,0]/(gamma - 1.0), '+r', mec='r', mfc="None")
+    ax[3].plot(Pos, W[:,2], '+r', mec='r', mfc="None")
+    
+    ax[0].plot(Pos, W[:,0], 'b', label="Arepo")
+    ax[1].plot(Pos, W[:,1], 'b')
+    ax[2].plot(Pos, W[:,2]/W[:,0]/(gamma - 1.0), 'b')
+    ax[3].plot(Pos, W[:,2], 'b')
     
     ax[3].set_xlim([0,20])
     for i_plot in np.arange(4):
         ax[i_plot].set_ylim([ min[i_plot], max[i_plot] ])
+    
+    ax[0].legend( loc='upper right', frameon=False, fontsize=8 )
     
     ## set labels
     ax[3].set_xlabel(r"pos")  
@@ -209,23 +223,28 @@ def PlotSimulationData(Pos, W, W_L, W_R, gamma, position_0, time, simulation_dir
     ax[1].set_ylabel(r"velocity")
     ax[2].set_ylabel(r"spec. int. energy")
     ax[3].set_ylabel(r"pressure")
+    fig.align_ylabels(ax[:])
 
-    print(simulation_directory+"/output/figure_%03d.pdf" % (i_file) )
-    fig.savefig(simulation_directory+"/output/figure_%03d.pdf" % (i_file))
+    if not os.path.exists( simulation_directory+"/plots" ):
+      os.mkdir( simulation_directory+"/plots" )
+
+    print(simulation_directory+"/plots/figure_%03d.pdf" % (i_file) )
+    fig.savefig(simulation_directory+"/plots/figure_%03d.pdf" % (i_file))
     plt.close(fig)
 
     return 0
 
 simulation_directory = str(sys.argv[1])
-print("examples/wave_1d/check.py: checking simulation output in directory " + simulation_directory) 
+print("wave_1d: checking simulation output in directory " + simulation_directory) 
 
 Dtype = np.float64  # double precision: np.float64, for single use np.float32
 ## open initial conditiions to get parameters
-directory = simulation_directory+""
+directory = simulation_directory+"/"
 filename = "IC.hdf5" 
 try:
     data = h5py.File(directory+filename, "r")
 except:
+    print( "Could not find file {0}".format(directory+filename) )
     sys.exit(1)
 IC_position = np.array(data["PartType0"]["Coordinates"], dtype = np.float64)
 IC_mass = np.array(data["PartType0"]["Masses"], dtype = np.float64)
@@ -270,7 +289,7 @@ while True:
     
     
     """ plot data if you want """
-    if createFigures:
+    if makeplots:
         ReturnFlag += PlotSimulationData(position[:,0], W, W_L, W_R, gamma, position_0, time, simulation_directory)
         if ReturnFlag > 0 and forceExitOnError:
             print('ERROR: something went wrong in plot')

@@ -8,9 +8,16 @@ created by Rainer Weinberger, last modified 04.03.2019
 import sys    # needed for exit codes
 import numpy as np    # scientific computing package
 import h5py    # hdf5 format
-import matplotlib.pyplot as plt    # plot results
+import os      # file specific calls
+import matplotlib.pyplot as plt    ## needs to be active for plotting!
+plt.rcParams['text.usetex'] = True
 
-createFigures = False
+makeplots = True
+if len(sys.argv) > 2:
+  if sys.argv[2] == "True":
+    makeplots = True
+  else:
+    makeplots = False
 
 simulation_directory = str(sys.argv[1])
 print("examples/polytrope_1d_spherical/check.py: checking simulation output in directory " + simulation_directory) 
@@ -62,29 +69,31 @@ while True:
     
     
     """ plots """
-    if createFigures:
+    if makeplots:
         fig, ax = plt.subplots(ncols=1, nrows=4, sharex=True, figsize=np.array([6.9,6.0]) )
         fig.subplots_adjust(left = 0.13, bottom = 0.09,right = 0.98, top = 0.98)
         
-        ax[0].plot(Pos, Density, 'r', label='final')
-        ax[0].plot(Pos_ref, Density_ref, 'b--', label='IC')
+        ax[0].plot(Pos, Density, 'b', label='evolved profile')
+        ax[0].plot(Pos, Density, 'r+', label='Arepo cells')
+        ax[0].plot(Pos_ref, Density_ref, 'k--', label='initial profile', lw=0.7)
         ax[0].set_ylabel(r"density")
         ax[0].fill_between([0.1,0.7],[0.0,0.0],[1.01,1.01], color='k',alpha=0.2)
+        ax[0].set_ylim( 0., 1. )
         
-        ax[1].plot(Pos, Density/Density_ref, 'r')
-        ax[1].plot(Pos_ref, [1.0]*Pos_ref.shape[0], 'b--')
+        ax[1].plot(Pos, Density/Density_ref, 'b')
+        ax[1].plot(Pos_ref, [1.0]*Pos_ref.shape[0], 'k--', lw=0.7)
         ax[1].set_ylabel(r"rel. density")
         ax[1].set_ylim([0.99,1.01])
         ax[1].fill_between([0.1,0.7],[0.99,0.99],[1.01,1.01], color='k',alpha=0.2)
         
-        ax[2].plot(Pos, Velocity, 'r')
-        ax[2].plot(Pos_ref, [0.0]*Pos_ref.shape[0], 'b--')
+        ax[2].plot(Pos, Velocity, 'b')
+        ax[2].plot(Pos_ref, [0.0]*Pos_ref.shape[0], 'k--', lw=0.7)
         ax[2].set_ylabel(r"velocity")
         ax[2].set_ylim([-0.01,0.01])
         ax[2].fill_between([0.1,0.7],[-0.01,-0.01],[0.01,0.01], color='k',alpha=0.2)
         
-        ax[3].plot(Pos[:-1], Accel[:-1] - GradPress[:-1] / Density[:-1], 'r')
-        ax[3].plot(Pos_ref[:-1], Accel_ref[:-1] - GradPress_ref[:-1] / Density_ref[:-1], 'b--')
+        ax[3].plot(Pos[:-1], Accel[:-1] - GradPress[:-1] / Density[:-1], 'b')
+        ax[3].plot(Pos_ref[:-1], Accel_ref[:-1] - GradPress_ref[:-1] / Density_ref[:-1], 'k--', lw=0.7)
         ax[3].set_ylim([-0.5,0.1])#
         
         ax[3].set_ylabel(r"net accel.")
@@ -96,7 +105,9 @@ while True:
         
         fig.align_ylabels(ax[:])
         
-        fig.savefig(simulation_directory+"profiles_%03d.pdf"%i_snap)
+        if not os.path.exists( simulation_directory+"/plots" ):
+          os.mkdir( simulation_directory+"/plots" )
+        fig.savefig(simulation_directory+"plots/profiles_%03d.pdf"%i_snap)
     
     
     """ compare to ICs by interpolating to IC positions """

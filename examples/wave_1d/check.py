@@ -8,12 +8,20 @@ created by Rainer Weinberger, last modified 19.2.2019 -- comments welcome
 import sys    # system specific calls
 import numpy as np    # scientific computing package
 import h5py    # hdf5 format
+import os     # file specific calls
 
 simulation_directory = str(sys.argv[1])
-print("examples/wave_1d/check.py: checking simulation output in directory " + simulation_directory) 
+print("wave_1d: checking simulation output in directory " + simulation_directory) 
 
 FloatType = np.float64  # double precision: np.float64, for single use np.float32
 IntType = np.int32 # integer type
+
+makeplots = True
+if len(sys.argv) > 2:
+  if sys.argv[2] == "True":
+    makeplots = True
+  else:
+    makeplots = False
 
 """ open initial conditiions to get parameters """
 try:
@@ -52,10 +60,12 @@ while True:
     
     """ get simulation data """
     ## simulation data
-    Pos = np.array(data["PartType0"]["Coordinates"], dtype = FloatType)
+    Pos = np.array(data["PartType0"]["CenterOfMass"], dtype = FloatType)
     Density = np.array(data["PartType0"]["Density"], dtype = FloatType)
+    Mass = np.array(data["PartType0"]["Masses"], dtype = FloatType)
     Velocity = np.array(data["PartType0"]["Velocities"], dtype = FloatType)
     Uthermal = np.array(data["PartType0"]["InternalEnergy"], dtype = FloatType)
+    Volume = Mass / Density
 
     """ calculate analytic solution at new cell positions """
     Density_ref = np.full(Pos.shape[0], density_0, dtype=FloatType)
@@ -69,18 +79,18 @@ while True:
     """ compare data """
     ## density
     abs_delta_dens = np.abs(Density - Density_ref) / Density_ref
-    L1_dens = np.average(abs_delta_dens)
+    L1_dens = np.average(abs_delta_dens, weights=Volume)
     
-    ## velocity, here, use absolute error (velocity should be zero!)
-    abs_delta_vel = np.abs(Velocity - Velocity_ref)
-    L1_vel = np.average(abs_delta_vel)
+    ## velocity, here, use absolute error (velocity should be zero! check only x-vel, taking all components dilutes the norm!)
+    abs_delta_vel = np.abs(Velocity - Velocity_ref)[:,0]
+    L1_vel = np.average(abs_delta_vel, weights=Volume)
     
     ## internal energy
     abs_delta_utherm = np.abs(Uthermal - Uthermal_ref) / Uthermal_ref
-    L1_utherm = np.average(abs_delta_utherm)
+    L1_utherm = np.average(abs_delta_utherm, weights=Volume)
 
     """ printing results """
-    print("examples/wave_1d/check.py: L1 error of " + filename +":")
+    print("wave_1d: L1 error of " + filename +":")
     print("\t density: %g" % L1_dens)
     print("\t velocity: %g" % L1_vel)
     print("\t specific internal energy: %g" % L1_utherm)
@@ -89,6 +99,40 @@ while True:
     """ criteria for failing the test """
     if L1_dens > DeltaMaxAllowed or L1_vel > DeltaMaxAllowed or L1_utherm > DeltaMaxAllowed:
         sys.exit(1)
+    
+    if makeplots and i_file > 0:
+      if not os.path.exists( simulation_directory+"/plots" ):
+        os.mkdir( simulation_directory+"/plots" )
+      
+      # only import matplotlib if needed
+      import matplotlib.pyplot as plt
+      plt.rcParams['text.usetex'] = True
+      f = plt.figure( figsize=(3.5,3.5) )
+      ax = plt.axes( [0.19, 0.12, 0.75, 0.75] )
+      refpos = np.linspace( 0, Boxsize, 257 )
+      ax.plot( refpos, density_0 * (1. + delta * np.sin(2.0 * np.pi * refpos / Boxsize)), 'k', lw=0.7, label="Analytical solution" )
+      ax.plot( Pos[:,0], Density, 'o-r', mec='r', mfc="None", label="Arepo" )
+      ax.set_xlim( 0, Boxsize )
+      ax.set_xlabel( "x" )
+      ax.set_ylabel( "Density deviation" )
+      ax.legend( loc='upper right', frameon=False, fontsize=8 )
+      ax.set_title( "$\mathrm{wave\_1d:}\ \mathrm{N}=%d,\ \mathrm{L1}=%4.1e$" % (NumberOfCells,L1_dens), loc='right', size=8 )
+      plt.ticklabel_format( axis='y', style='sci', scilimits=(0,0) )
+      f.savefig( simulation_directory+"plots/density.pdf" )
+      
+      f = plt.figure( figsize=(3.5,3.5) )
+      ax = plt.axes( [0.19, 0.12, 0.75, 0.75] )
+      refpos = np.linspace( 0, Boxsize, 257 )
+      ax.plot( refpos, np.ones(257)*velocity_0, 'k', lw=0.7, label="Analytical solution" )
+      ax.plot( Pos[:,0], Velocity[:,0], 'o-r', mec='r', mfc="None", label="Arepo" )
+      ax.set_xlim( 0, Boxsize )
+      ax.set_xlabel( "x" )
+      ax.set_ylabel( "Velocity" )
+      ax.legend( loc='lower center', frameon=False, fontsize=8 )
+      ax.set_title( "$\mathrm{wave\_1d:}\ \mathrm{N}=%d,\ \mathrm{L1}=%4.1e$" % (NumberOfCells,L1_vel), loc='right', size=8 )
+      plt.ticklabel_format( axis='y', style='sci', scilimits=(0,0) )
+      f.savefig( simulation_directory+"plots/velocity.pdf" )
+    
     i_file += 1
 
 """ normal exit """

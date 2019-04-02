@@ -8,15 +8,22 @@ created by Rainer Weinberger, last modified 12.03.2019
 import sys    ## load sys; needed for exit codes
 import numpy as np    ## load numpy
 import h5py    ## load h5py; needed to read snapshots
+import os      # file specific calls
 import matplotlib.pyplot as plt
+plt.rcParams['text.usetex'] = True
 
 
-createFigures = False
+makeplots = True
+if len(sys.argv) > 2:
+  if sys.argv[2] == "True":
+    makeplots = True
+  else:
+    makeplots = False
 CreateReferenceSolution = False
 
 
 simulation_directory = str(sys.argv[1])
-print("examples/mhd_shocktube_1d/check.py: checking simulation output in directory " + simulation_directory) 
+print("mhd_shocktube_1d: checking simulation output in directory " + simulation_directory) 
 
 FloatType = np.float64  # double precision: np.float64, for single use np.float32
 
@@ -59,10 +66,10 @@ while True:
     
     if CreateReferenceSolution:
         checkData = verificationData[::40,:]
-        np.savetxt('examples/mhd_shocktube_1d/data_%03d.txt'%i_file,checkData)
+        np.savetxt(simulation_directory+'/data_%03d.txt'%i_file,checkData)
         status = 0
     else:
-        checkData = np.loadtxt('examples/mhd_shocktube_1d/data_%03d.txt'%i_file)
+        checkData = np.loadtxt(simulation_directory+'/data_%03d.txt'%i_file)
         
         rho_ref = np.interp(x[:,0], checkData[:,0], checkData[:,1])
         vel_ref = np.interp(x[:,0], checkData[:,0], checkData[:,2])
@@ -75,26 +82,39 @@ while True:
         delta_u = u - u_ref
         delta_B = absB - absB_ref
         
-        if createFigures:
+        if makeplots:
             fig, ax = plt.subplots(4, sharex=True, figsize=np.array([6.9,6.0]))
             fig.subplots_adjust(left = 0.09, bottom = 0.09,right = 0.98, top = 0.98)
             
-            ax[0].plot(x[:,0], rho, marker='o', markersize=2, zorder=2)
-            ax[0].plot(checkData[:,0], checkData[:,1], c='red', zorder=1)
+            ax[0].plot(x[:,0], rho, 'b', zorder=3, label="Arepo")
+            ax[0].plot(x[:,0], rho, 'r+', zorder=2, label="Arepo cells")
+            ax[0].plot(checkData[:,0], checkData[:,1], c='k', zorder=1, lw=0.7, label="Exact solution")
             ax[0].set_ylabel(r'density')
-            ax[1].plot(x[:,0], vel[:,0], marker='o', markersize=2, zorder=2)
-            ax[1].plot(checkData[:,0], checkData[:,2], c='red', zorder=1)
+            
+            ax[1].plot(x[:,0], vel[:,0], 'b', zorder=3)
+            ax[1].plot(x[:,0], vel[:,0], 'r+', zorder=2)
+            ax[1].plot(checkData[:,0], checkData[:,2], c='k', zorder=1, lw=0.7)
             ax[1].set_ylabel(r'vel')
-            ax[2].plot(x[:,0], u, marker='o', markersize=2, zorder=2)
-            ax[2].plot(checkData[:,0], checkData[:,3], c='red', zorder=1)
+            
+            ax[2].plot(x[:,0], u, 'b', zorder=3)
+            ax[2].plot(x[:,0], u, 'r+', zorder=2)
+            ax[2].plot(checkData[:,0], checkData[:,3], c='k', zorder=1, lw=0.7)
             ax[2].set_ylabel(r'u$_{th}$')
-            ax[3].plot(x[:,0], absB, marker='o', markersize=2, zorder=2)
-            ax[3].plot(checkData[:,0], checkData[:,4], c='red', zorder=1)
+            
+            ax[3].plot(x[:,0], absB, 'b', zorder=3)
+            ax[3].plot(x[:,0], absB, 'r+', zorder=2)
+            ax[3].plot(checkData[:,0], checkData[:,4], c='k', zorder=1, lw=0.7)
             ax[3].set_ylabel(r'abs(B)')
             ax[3].set_xlabel(r'position')
             ax[3].set_xlim([-0.1,2.6])
+            
             fig.align_ylabels(ax[:])
-            fig.savefig(simulation_directory+'/snap_%03d.pdf'%i_file)
+            ax[0].legend( loc='upper right', frameon=False, fontsize=8 )
+            
+            if not os.path.exists( simulation_directory+"/plots" ):
+              os.mkdir( simulation_directory+"/plots" )
+            
+            fig.savefig(simulation_directory+'/plots/figure_%03d.pdf'%i_file)
         
 
         

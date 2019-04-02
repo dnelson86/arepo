@@ -8,9 +8,16 @@ created by Rainer Weinberger, last modified: 04.03.2019
 import sys    # needed for exit codes
 import numpy as np    # scientific computing package
 import h5py    # hdf5 format
+import os      # file specific calls
 import matplotlib.pyplot as plt    ## needs to be active for plotting!
+plt.rcParams['text.usetex'] = True
 
-createFigures = False
+makeplots = True
+if len(sys.argv) > 2:
+  if sys.argv[2] == "True":
+    makeplots = True
+  else:
+    makeplots = False
 
 """ check functions """
 def CheckL1Error(Pos, W, gamma, i_snap):
@@ -28,9 +35,9 @@ def CheckL1Error(Pos, W, gamma, i_snap):
     """
     
     try:
-        xx, rho, v, pres = np.loadtxt("./examples/interacting_blastwaves_1d/reference_%03d.txt" % i_snap ).T
+        xx, rho, v, pres = np.loadtxt(simulation_directory+"/reference_%03d.txt" % i_snap ).T
     except:
-        print("Check_L1_Error: could not find: ./examples/interacting_blastwaves_1d/reference_%03d.txt" % i_snap)
+        print("Check_L1_Error: could not find: %s/reference_%03d.txt" % (simulation_directory,i_snap))
         return 1
     W_exact = np.array([rho, v, pres]).T
     
@@ -89,22 +96,28 @@ def PlotSimulationData(Pos, W, gamma, i_snap, simulation_directory):
 
     try:
         ## exact data, from 20,000 cell fixed grid simulation; downsampled by factor of 20
-        xx, rho, v, pres = np.loadtxt("./examples/interacting_blastwaves_1d/reference_%03d.txt" % i_snap).T
+        xx, rho, v, pres = np.loadtxt(simulation_directory+"/reference_%03d.txt" % i_snap).T
     except:
-        print("PlotSimulationData: could not find: ./examples/interacting_blastwaves_1d/reference_%03d.txt" % i_snap)
+        print("PlotSimulationData: could not find: %s/reference_%03d.txt" % (simulation_directory,i_snap))
         return 1
     ## plot:
     fig, ax = plt.subplots(4, sharex=True, figsize=np.array([6.9,6.0]))
     fig.subplots_adjust(left = 0.13, bottom = 0.09,right = 0.98, top = 0.98)
     
-    ax[0].plot(Pos, W[:,0], ls="", marker='o')
-    ax[0].plot(xx, rho, color="k")
-    ax[1].plot(Pos, W[:,1], ls="", marker='o')
-    ax[1].plot(xx, v, color="k")
-    ax[2].plot(Pos, W[:,2]/W[:,0]/(gamma - 1.0), ls="", marker='o')
-    ax[2].plot(xx, pres / rho / (gamma - 1.0), color="k")
-    ax[3].plot(Pos, W[:,2], ls="", marker='o')
-    ax[3].plot(xx, pres, color="k")
+    ax[0].plot(Pos, W[:,0], 'r+', label="Arepo cells")
+    ax[1].plot(Pos, W[:,1], 'r+')
+    ax[2].plot(Pos, W[:,2]/W[:,0]/(gamma - 1.0), 'r+')
+    ax[3].plot(Pos, W[:,2], 'r+')
+    
+    ax[0].plot(Pos, W[:,0], 'b', label="Arepo")
+    ax[1].plot(Pos, W[:,1], 'b')
+    ax[2].plot(Pos, W[:,2]/W[:,0]/(gamma - 1.0), 'b')
+    ax[3].plot(Pos, W[:,2], 'b')
+    
+    ax[0].plot(xx, rho, color="k", lw=0.7, label="Exact solution")
+    ax[1].plot(xx, v, color="k", lw=0.7)
+    ax[2].plot(xx, pres / rho / (gamma - 1.0), color="k", lw=0.7)
+    ax[3].plot(xx, pres, color="k", lw=0.7)
     
     for i_plot in np.arange(4):
         ax[i_plot].set_ylim([ min[i_plot], max[i_plot] ])
@@ -118,13 +131,15 @@ def PlotSimulationData(Pos, W, gamma, i_snap, simulation_directory):
     ax[3].set_ylabel(r"pressure")
     fig.align_ylabels(ax[:])
 
-    fig.savefig(simulation_directory+"/output/figure_%03d.pdf" % (i_file))
+    if not os.path.exists( simulation_directory+"/plots" ):
+      os.mkdir( simulation_directory+"/plots" )
+    fig.savefig(simulation_directory+"/plots/figure_%03d.pdf" % (i_file))
     plt.close(fig)
 
     return 0
 
 simulation_directory = str(sys.argv[1])
-print("examples/wave_1d/check.py: checking simulation output in directory " + simulation_directory) 
+print("wave_1d: checking simulation output in directory " + simulation_directory) 
 
 ##parameters
 Dtype = np.float64  # double precision: np.float64, for single use np.float32
@@ -155,16 +170,16 @@ internalEnergy = np.array(data["PartType0"]["InternalEnergy"], dtype = Dtype)
 W = np.array([density, vel[:,0], (gamma-1.0)*internalEnergy*density], dtype=Dtype).T ## shape: (n,3)
 
 """ plot data if you want """
-if createFigures:
+if makeplots:
     ReturnFlag += PlotSimulationData(position[:,0], W, gamma, i_file, simulation_directory)
 
 """ perform checks """
 ReturnFlag += CheckL1Error(position[:,0], W, gamma, i_file)
       
 if ReturnFlag == 0:
-    print("examples/interacting_blastwaves_1d/check.py: success!")
+    print("interacting_blastwaves_1d: success!")
 else:
-    print("examples/interacting_blastwaves_1d/check.py: failed!")
+    print("interacting_blastwaves_1d: failed!")
 
 sys.exit(ReturnFlag)
 

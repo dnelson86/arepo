@@ -18,6 +18,7 @@ FORCE_EQUAL_TIMESTEPS                    # variable but global timestep
 DOUBLEPRECISION=1                        # Mode of double precision: not defined: single; 1: full double precision 2: mixed, 3: mixed, fewer single precisions; unless short of memory, use 1.
 INPUT_IN_DOUBLEPRECISION                 # initial conditions are in double precision
 OUTPUT_IN_DOUBLEPRECISION                # snapshot files will be written in double precision
+OUTPUT_CENTER_OF_MASS                    # output centers of cells
 
 #--------------------------------------- Output/Input options
 HAVE_HDF5                                # needed when HDF5 I/O support is desired (recommended)

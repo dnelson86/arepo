@@ -46,7 +46,7 @@ do
   mkdir -p ${RUNDIR}
 
   ## copy Config and parameter file to run directory
-  cp ${DIR}/* ${RUNDIR}
+  cp -r ${DIR}/* ${RUNDIR}
   
   ## create ICs in run directory
   echo ${DIR}

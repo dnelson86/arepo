@@ -238,7 +238,7 @@ static int subfind_so_potegy_loctree_treebuild(int npart, int start)
                   /* seems like we're dealing with particles at identical (or extremely close)
                    * locations. Shift subnode index to allow tree construction. Note: Multipole moments
                    * of tree are still correct, but one should MAX_TREE_LEVEL large enough to have
-                   *      DomainLen/2^MAX_TREE_LEEL  < gravitational softening length
+                   *      DomainLen/2^MAX_TREE_LEVEL  < gravitational softening length
                    */
                   for(int j = 0; j < 8; j++)
                     {
@@ -345,7 +345,9 @@ static int subfind_so_potegy_loctree_treebuild(int npart, int start)
 /*! \brief Walk the tree and update node data recursively.
  *
  *  This routine computes the multipole moments for a given internal node and
- *  all its subnodes using a recursive computation.
+ *  all its subnodes using a recursive computation. Note that this switches
+ *  the information stored in LocNodes[no].u from suns to d!
+ *
  *
  *  \param[in] no Node index.
  *  \param[in] sib Sibling index.

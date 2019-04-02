@@ -1,10 +1,10 @@
 %% ./examples/polytrope_1d_spherical/param.txt
 % parameter file for 1d polytrope test problem
 
-InitCondFile                          IC
+InitCondFile                          ./IC
 ICFormat                              3
 
-OutputDir                             output
+OutputDir                             ./output/
 SnapshotFileBase                      snap
 SnapFormat                            3
 NumFilesPerSnapshot                   1
