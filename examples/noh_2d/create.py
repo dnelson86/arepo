@@ -1,4 +1,4 @@
-""" @package ./examples/noh_2d/create.py
+""" @package ./examples/Noh_2d/create.py
 Code that creates 2d Noh test problem initial conditions
 
 created by Rainer Weinberger, last modified 24.02.2019
@@ -10,7 +10,7 @@ import numpy as np    # scientific computing package
 import h5py    # hdf5 format
 
 simulation_directory = str(sys.argv[1])
-print("examples/noh_2d/create.py: creating ICs in directory " + simulation_directory)
+print("examples/Noh_2d/create.py: creating ICs in directory " + simulation_directory)
 
 """ initial condition parameters """
 FilePath = simulation_directory + '/IC.hdf5'

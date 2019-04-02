@@ -1,4 +1,4 @@
-""" @package ./examples/gresho_2d/create.py
+""" @package ./examples/Gresho_2d/create.py
 Code that creates 2d Gresho vortex initial conditions
 
 created by Rainer Weinberger, last modified 21.02.2019 -- comments welcome
@@ -10,7 +10,7 @@ import numpy as np    ## load numpy
 import h5py    ## load h5py; needed to write initial conditions in hdf5 format
 
 simulation_directory = str(sys.argv[1])
-print("examples/gresho_2d/create.py: creating ICs in directory " + simulation_directory)
+print("examples/Gresho_2d/create.py: creating ICs in directory " + simulation_directory)
 
 """ initial condition parameters """
 FilePath = simulation_directory + '/IC.hdf5'

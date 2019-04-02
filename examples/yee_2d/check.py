@@ -1,16 +1,26 @@
-""" @package ./examples/yee_2d/check.py
+""" @package ./examples/Yee_2d/check.py
 Code that checks results of 2d Yee vortex problem
 
-created by Rainer Weinberger, last modified 21.02.2019 -- comments welcome
+created by Rainer Weinberger, last modified 07.01.2018 -- comments welcome
 """
 
 #### load libraries
 import sys    ## load sys; needed for exit codes
 import numpy as np    ## load numpy
 import h5py    ## load h5py; needed to read snapshots
+import os      # file specific calls
+import matplotlib.pyplot as plt    ## needs to be active for plotting!
+plt.rcParams['text.usetex'] = True
+
+makeplots = True
+if len(sys.argv) > 2:
+  if sys.argv[2] == "True":
+    makeplots = True
+  else:
+    makeplots = False
 
 simulation_directory = str(sys.argv[1])
-print("examples/yee_2d/check.py: checking simulation output in directory " + simulation_directory)
+print("Yee_2d: checking simulation output in directory " + simulation_directory) 
 
 FloatType = np.float64  # double precision: np.float64, for single use np.float32
 ## open initial conditiions to get parameters
@@ -45,7 +55,9 @@ while True:
     
     """ get simulation data """
     ## simulation data
-    Pos = np.array(data["PartType0"]["Coordinates"], dtype = FloatType)
+    Time = FloatType(data["Header"].attrs["Time"])
+    Pos = np.array(data["PartType0"]["CenterOfMass"], dtype = FloatType)
+    VoronoiPos = np.array(data["PartType0"]["Coordinates"], dtype = FloatType)
     Density = np.array(data["PartType0"]["Density"], dtype = FloatType)
     Mass = np.array(data["PartType0"]["Masses"], dtype = FloatType)
     Velocity = np.array(data["PartType0"]["Velocities"], dtype = FloatType)
@@ -84,11 +96,53 @@ while True:
     L1_utherm = np.average(abs_delta_utherm, weights=Volume)
 
     """ printing results """
-    print("examples/Yee_2d/check.py: L1 error of " + filename +":")
+    print("Yee_2d: L1 error of " + filename +":")
     print("\t density: %g" % L1_dens)
     print("\t velocity: %g" % L1_vel)
     print("\t specific internal energy: %g" % L1_utherm)
     print("\t tolerance: %g for %d cells per dimension" % (DeltaMaxAllowed, CellsPerDimension) )
+    
+    if makeplots:
+      ## plot:
+      fig = plt.figure( figsize=np.array([7.0,3.5]), dpi=300 )
+      
+      Nplot = 256
+      from scipy import spatial # needed for KDTree that we use for nearest neighbour search
+      Edges1d = np.linspace(0., Boxsize, Nplot+1, endpoint=True, dtype=FloatType)
+      Grid1d = 0.5 * (Edges1d[1:] + Edges1d[:-1])
+      xx, yy = np.meshgrid(Grid1d, Grid1d)
+      Grid2D = np.array( [xx.reshape(Nplot**2), yy.reshape(Nplot**2)] ).T
+      
+      vor = spatial.Voronoi( VoronoiPos[:,:2] )
+      dist, cells = spatial.KDTree( VoronoiPos[:,:2] ).query( Grid2D, k=1 )
+      
+      ax  = plt.axes( [0.05,0.15,0.35,0.7] )
+      pc  = ax.pcolormesh( Edges1d, Edges1d, Density[cells].reshape((Nplot,Nplot)), rasterized=True )
+      cax = plt.axes( [0.42,0.15,0.01,0.7] )
+      plt.colorbar( pc, cax=cax )
+      ax.set_title( 'Density' )
+      spatial.voronoi_plot_2d( vor, ax=ax, line_colors='w', show_points=False, show_vertices=False, line_width=0.5 )
+      ax.set_xlim( 0, Boxsize )
+      ax.set_ylim( 0, Boxsize )
+      
+      error = (Density[cells]-Density_ref[cells])/Density_ref[cells]
+      ax  = plt.axes( [0.53,0.15,0.35,0.7] )
+      pc  = ax.pcolormesh( Edges1d, Edges1d, error.reshape((Nplot,Nplot)), rasterized=True )
+      cax = plt.axes( [0.90,0.15,0.01,0.7] )
+      plt.colorbar( pc, cax=cax )
+      ax.set_title( 'Relative density error' )
+      spatial.voronoi_plot_2d( vor, ax=ax, line_colors='w', show_points=False, show_vertices=False, line_width=0.5 )
+      ax.set_xlim( 0, Boxsize )
+      ax.set_ylim( 0, Boxsize )
+      
+      plt.text( 0.5, 0.92, "$t=%4.1f,\ L_1=%5.1e$" % (Time,L1_dens), ha='center', size=12, transform=fig.transFigure )
+
+      if not os.path.exists( simulation_directory+"/plots" ):
+        os.mkdir( simulation_directory+"/plots" )
+
+      print(simulation_directory+"/plots/figure_%03d.pdf" % (i_file) )
+      fig.savefig(simulation_directory+"/plots/figure_%03d.pdf" % (i_file), dpi=300)
+      plt.close(fig)
     
     """ criteria for failing the test """
     if L1_dens > DeltaMaxAllowed or L1_vel > DeltaMaxAllowed or L1_utherm > DeltaMaxAllowed:

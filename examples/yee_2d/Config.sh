@@ -1,6 +1,6 @@
 #!/bin/bash            # this line only there to enable syntax highlighting in this file
 
-## examples/yee_2d/Config.sh
+## examples/Yee_2d/Config.sh
 ## config file for 2d Yee vortex probelm
 
 
@@ -21,6 +21,7 @@ TREE_BASED_TIMESTEPS                     # non-local timestep criterion (take 's
 DOUBLEPRECISION=1                        # Mode of double precision: not defined: single; 1: full double precision 2: mixed, 3: mixed, fewer single precisions; unless short of memory, use 1.
 INPUT_IN_DOUBLEPRECISION                 # initial conditions are in double precision
 OUTPUT_IN_DOUBLEPRECISION                # snapshot files will be written in double precision
+OUTPUT_CENTER_OF_MASS                    # output centers of cells
 
 #--------------------------------------- Output/Input options
 HAVE_HDF5                                # needed when HDF5 I/O support is desired (recommended)

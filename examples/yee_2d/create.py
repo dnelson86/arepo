@@ -1,4 +1,4 @@
-""" @package ./examples/yee_2d/create.py
+""" @package ./examples/Yee_2d/create.py
 Code that creates 2d Yee vortex initial conditions
 parameters are identical to Pakmor et al. (2016), MNRAS 455, 1134
 
@@ -11,7 +11,7 @@ import numpy as np    ## load numpy
 import h5py    ## load h5py; needed to write initial conditions in hdf5 format
 
 simulation_directory = str(sys.argv[1])
-print("examples/yee_2d/create.py: creating ICs in directory " + simulation_directory)
+print("examples/Yee_2d/create.py: creating ICs in directory " + simulation_directory)
 
 """ initial condition parameters """
 FilePath = simulation_directory + '/IC.hdf5'
@@ -20,7 +20,10 @@ FloatType = np.float64  # double precision: np.float64, for single use np.float3
 IntType = np.int32
 
 Boxsize = FloatType(10.0)
-CellsPerDimension = IntType(50)
+if len(sys.argv) > 3:
+  CellsPerDimension = IntType(sys.argv[3])
+else:
+  CellsPerDimension = IntType(50)
 
 #### parameters
 Tinf = FloatType(1.0)
