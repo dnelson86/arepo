@@ -13,10 +13,10 @@ import matplotlib.pyplot as plt    ## plot stuff
 from scipy.interpolate import interp1d    ## inetrpolation
 
 simulation_directory = str(sys.argv[1])
-print("examples/galaxy_merger_star_formation_3d/check.py: checking simulation output in directory " + simulation_directory) 
+print("galaxy_merger_star_formation_3d: checking simulation output in directory " + simulation_directory) 
 
 createReferenceSolution = False
-createFigures = False
+createFigures = True
 
 FloatType = np.float64  # double precision: np.float64, for single use np.float32
 Gcgs = 6.6738e-8
@@ -25,9 +25,9 @@ Gcgs = 6.6738e-8
 """ compare to reference output """
 data = np.loadtxt(simulation_directory+"/output/sfr.txt")
 if createReferenceSolution:
-    np.savetxt("./examples/galaxy_merger_star_formation_3d/sfr_reduced_ref.txt", data[::50,:])
+    np.savetxt(simulation_directory+"/sfr_reduced_ref.txt", data[::50,:])
 
-data_ref = np.loadtxt("./examples/galaxy_merger_star_formation_3d/sfr_reduced_ref.txt")
+data_ref = np.loadtxt(simulation_directory+"/sfr_reduced_ref.txt")
 time_ref = data_ref[:,0]
 mstar_ref =  data_ref[:,5]
 

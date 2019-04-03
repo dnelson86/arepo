@@ -35,7 +35,7 @@ if createICs:
     file=open('Makefile.systype','w')
     file.write(str+'\n')
     file.close()
-    call(['cp', cwd+'/examples/isolated_galaxy_collisionless_3d/Makefile.galic', 'Makefile'])
+    call(['cp', simulation_directory+'/Makefile.galic', 'Makefile'])
     str = 'DOUBLEPRECISION=1 \nHAVE_HDF5 \nVER_1_1 \n'
     file=open('Config.sh','w')
     file.write(str+'\n')
@@ -50,7 +50,7 @@ if createICs:
         sys.exit(status)
     os.chdir(cwd)
 else:
-    call(['cp', './examples/isolated_galaxy_collisionless_3d/ICs/ICs', simulation_directory+'/snap_010'])
+    call(['cp', simulation_directory+'/ICs/ICs', simulation_directory+'/snap_010'])
 
 
 """ set output times """

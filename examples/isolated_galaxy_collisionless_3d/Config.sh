@@ -6,7 +6,6 @@
 #########################################################
 
 
-
 #--------------------------------------- Gravity treatment
 SELFGRAVITY                              # gravitational intraction between simulation particles/cells
 HIERARCHICAL_GRAVITY                     # use hierarchical splitting of the time integration of the gravity

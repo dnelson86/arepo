@@ -1,8 +1,8 @@
 %----  Relevant files
-InitCondFile                          ics_parent
-OutputDir                             output_parent
+InitCondFile                          ./ics_parent
+OutputDir                             ./output_parent
 SnapshotFileBase                      snap
-OutputListFilename                    output_list.txt
+OutputListFilename                    ./output_list.txt
 
 
 %---- File formats

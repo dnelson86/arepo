@@ -47,7 +47,7 @@ NGB_TREE_DOUBLEPRECISION                 # if this is enabled, double precision 
 
 #-------------------------------------------- Things for special behaviour
 PROCESS_TIMES_OF_OUTPUTLIST              # goes through times of output list prior to starting the simulaiton to ensure that outputs are written as close to the desired time as possible (as opposed to at next possible time if this flag is not active)
-
+OVERRIDE_PEANOGRID_WARNING               # don't stop if peanogrid is not fine enough
 
 #--------------------------------------- Output/Input options
 HAVE_HDF5                                # needed when HDF5 I/O support is desired (recommended)

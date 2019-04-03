@@ -1,8 +1,8 @@
 %----  Relevant files
-InitCondFile                            ICs_1_1_merger_30_15_45_0_rmin10_start320_lowres.dat
-OutputDir                               output
+InitCondFile                            ./ICs_1_1_merger_30_15_45_0_rmin10_start320_lowres.dat
+OutputDir                               ./output
 SnapshotFileBase                        snap
-OutputListFilename                      output_list.txt
+OutputListFilename                      ./output_list.txt
 
 %---- File formats
 ICFormat                                1

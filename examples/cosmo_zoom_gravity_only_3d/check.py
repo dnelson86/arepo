@@ -9,13 +9,20 @@ created by Rainer Weinberger, last modified 05.03.2019
 import sys    ## load sys; needed for exit codes
 import numpy as np    ## load numpy
 import h5py    ## load h5py; needed to read snapshots
-from matplotlib import pyplot as plt    ## optional plots
+import os      # file specific calls
+import matplotlib.pyplot as plt    # needs to be active for plotting!
+plt.rcParams['text.usetex'] = True
 
 createReferenceSolution = False
-createFigures = False
+makeplots = True
+if len(sys.argv) > 2:
+  if sys.argv[2] == "True":
+    makeplots = True
+  else:
+    makeplots = False
 
 simulation_directory = str(sys.argv[1])
-print("examples/cosmo_zoom_3d/check.py: checking simulation output in directory " + simulation_directory) 
+print("cosmo_zoom_3d: checking simulation output in directory " + simulation_directory) 
 
 FloatType = np.float64  # double precision: np.float64, for single use np.float32
 IntType = np.int32
@@ -60,10 +67,10 @@ for i_file, z in enumerate(Redshifts):
         
         if createReferenceSolution:
             # save reference masses
-            np.savetxt("./examples/cosmo_zoom_gravity_only_3d/Masses_z%.1g.txt"% z, SubhaloMass)
+            np.savetxt(simulation_directory+"/Masses_z%.1g.txt"% z, SubhaloMass)
 
     """ optional figure """
-    if createFigures:
+    if makeplots:
         filename = "snap_%03d.hdf5" % (i_file)
         try:
             data = h5py.File(directory+filename, "r")
@@ -101,22 +108,22 @@ for i_file, z in enumerate(Redshifts):
         
         particle_select = np.where( (pos[:,2]>zpos-2.5) & (pos[:,2]<zpos+2.5) )[0]
         particle2_select = np.where( (pos2[:,2]>zpos-2.5) & (pos2[:,2]<zpos+2.5) )[0]
-        ax.scatter(pos[particle_select, 0], pos[particle_select, 1], marker='.', s=0.05, alpha=0.5, rasterized=True)
-        ax.scatter(pos2[particle2_select, 0],pos2[particle2_select,1], marker='.', s=0.05, c='r', alpha=0.5, rasterized=True)
+        ax.scatter(pos[particle_select, 0], pos[particle_select, 1], marker='.', s=0.05, alpha=0.5)
+        ax.scatter(pos2[particle2_select, 0],pos2[particle2_select,1], marker='.', s=0.05, c='r', alpha=0.5)
         
+
         if i_file != 0:
             ax.add_artist(plt.Circle((GrpPos[0,0], GrpPos[0,1]),GrpR200c[0],linestyle='--', color='k', fill=False))
             
             for i in np.arange(SubhaloRad.shape[0]):
                 if (dist[i] < 2.0 * GrpR200c[0]):
                     ax.add_artist(plt.Circle((SubhaloPos[i,0], SubhaloPos[i,1]), SubhaloRad[i], color='k', fill=False))
-        
         ax.set_xlim([0,100./HubbleParam])
         ax.set_ylim([0,100./HubbleParam])
         
         if i_file != 0:
-            ax.set_xlim([ GrpPos[0,0]-1.75, GrpPos[0,0]+1.25])
-            ax.set_ylim([ GrpPos[0,1]-1.25, GrpPos[0,1]+1.75])
+            ax.set_xlim( GrpPos[0,0]-1.75, GrpPos[0,0]+1.25 )
+            ax.set_ylim( GrpPos[0,1]-1.25, GrpPos[0,1]+1.75 )
         ax.set_xlabel('[Mpc]')
         ax.set_ylabel('[Mpc]')
         
@@ -128,19 +135,21 @@ for i_file, z in enumerate(Redshifts):
             bx.set_yscale('log')
             bx.set_xlim([9e9,3e12])
             bx.set_ylim([0.9,150])
-            bx.set_xlabel(r"$M_{h}$ [M$_\odot$]")
-            bx.set_ylabel(r"$N$(>$M$)")
-            
-        fig.savefig(simulation_directory+'/haloStructure_z%.1d.pdf'%z, dpi=300)
+            bx.set_xlabel(r"$M_{h}\ \mathrm{[M_\odot]}$")
+            bx.set_ylabel(r"$N(>M)$")
+        
+        if not os.path.exists( simulation_directory+"/plots" ):
+            os.mkdir( simulation_directory+"/plots" )
+        fig.savefig(simulation_directory+'/plots/haloStructure_z%.1d.pdf'%z, dpi=300)
 
     ## comparison to reference run (sorted list of SubhaloMass)
     if i_file != 0:
-        SubhaloMass_ref = np.loadtxt("./examples/cosmo_zoom_gravity_only_3d/Masses_z%.1g.txt"% z)
+        SubhaloMass_ref = np.loadtxt(simulation_directory+"/Masses_z%.1g.txt"% z)
         minLen = np.min([len(SubhaloMass), len(SubhaloMass_ref)])
         i_select2 = np.arange(minLen)
         delta = np.array(SubhaloMass[i_select2]-SubhaloMass_ref[i_select2], dtype=np.float64)
-        tolerance_average = 1e11
-        tolerance_std = 1e12
+        tolerance_average = 3e10
+        tolerance_std = 1e11
         if np.abs(np.average(delta)) > tolerance_average or np.abs(np.std(delta)) > tolerance_std:
             status = 1
             print("ERROR: z=%g difference in subhalo masses exceeding limits!" % z)

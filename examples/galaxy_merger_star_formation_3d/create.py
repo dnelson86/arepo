@@ -17,7 +17,7 @@ from subprocess import call    # execute shell commands
 
 """ input """
 simulation_directory = str(sys.argv[1])
-print("examples/collisionless_galaxy_3d/create.py " + simulation_directory)
+print("create.py " + simulation_directory)
 
 
 """ set output times """
@@ -31,19 +31,24 @@ np.savetxt(simulation_directory+"/output_list.txt",data, fmt="%g %1.f" )
 
 
 """ copy treecool file to run directory """
-call(['cp', './data/TREECOOL_ep', simulation_directory+'/TREECOOL_ep'])
+if len(sys.argv) > 2:
+    arepopath = sys.argv[2]
+else:
+    arepopath ='.'
+call(['cp', arepopath+'/data/TREECOOL_ep', simulation_directory+'/TREECOOL_ep'])
 
+cwd = os.getcwd()
 
 """ create backgroundgrid ICs from SPH ICs """
 ## compile Arepo with ADDBACKGROUNDGRID
+os.chdir(arepopath)
 res = call(["make", "CONFIG="+simulation_directory+"/Config_ADDBACKGROUNDGRID.sh", \
              "BUILD_DIR="+simulation_directory+"/build_ADDBACKGROUNDGRID", \
             "EXEC="+simulation_directory+"/Arepo_ADDBACKGRUNDGRID"])
 if res != 0:
     sys.exit( np.int(res) )
-
-## execute Arepo with ADDBACKGROUNDGRID
-cwd = os.getcwd()
+    
+## execute Arepo with ADDBACKGROUNDGRID from run directory
 os.chdir(simulation_directory)
 res = call(["mpiexec", "-np", "1","./Arepo_ADDBACKGRUNDGRID", "./param_ADDBACKGROUNDGRID.txt"])
 if res != 0:

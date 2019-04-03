@@ -13,7 +13,7 @@ import matplotlib.pyplot as plt    ## plot stuff
 from matplotlib.colors import LogNorm
 
 
-createFigures = False
+createFigures = True
 
 
 simulation_directory = str(sys.argv[1])

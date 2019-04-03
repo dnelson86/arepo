@@ -8,10 +8,12 @@ created by Rainer Weinberger, last modified 25.02.2019
 import sys    ## load sys; needed for exit codes
 import numpy as np    ## load numpy
 import h5py    ## load h5py; needed to read snapshots
-import matplotlib.pyplot as plt    ## plot stuff
+import os      # file specific calls
+import matplotlib.pyplot as plt    # needs to be active for plotting!
+plt.rcParams['text.usetex'] = True
 
 simulation_directory = str(sys.argv[1])
-print("examples/cosmo_box_gravity_only_3d/check.py: checking simulation output in directory " + simulation_directory) 
+print("cosmo_box_gravity_only_3d: checking simulation output in directory " + simulation_directory) 
 
 FloatType = np.float64  # double precision: np.float64, for single use np.float32
 
@@ -24,7 +26,12 @@ Redshifts = [1, 0]
 status = 0
 
 CompareAgainstReferenceRun = True ## comparison for small L50m32 box; deactivate this when comparing against self-created ICs
-createFigures = False
+makeplots = True
+if len(sys.argv) > 2:
+  if sys.argv[2] == "True":
+    makeplots = True
+  else:
+    makeplots = False
 
 for i_file, z in enumerate(Redshifts):
     """ try to read in snapshot """
@@ -46,7 +53,7 @@ for i_file, z in enumerate(Redshifts):
     
     if CompareAgainstReferenceRun:
         ## comparison to reference run (sorted list of M200)
-        M200c_ref = np.loadtxt("./examples/cosmo_box_gravity_only_3d/Masses_L50n32_z%.1d.txt"% z)
+        M200c_ref = np.loadtxt(simulation_directory+"/Masses_L50n32_z%.1d.txt"% z)
         
         minLen = np.min([len(M200c), len(M200c_ref)])
         i_select = np.arange(minLen)
@@ -67,7 +74,7 @@ for i_file, z in enumerate(Redshifts):
             print(np.std(delta))
     
     """ optional figure """
-    if createFigures:
+    if makeplots:
         filename = "snap_%03d.hdf5" % (i_file)
         try:
             data = h5py.File(directory+filename, "r")
@@ -98,9 +105,12 @@ for i_file, z in enumerate(Redshifts):
         bx.set_yscale('log')
         bx.set_xlim([9e12,5e14])
         bx.set_ylim([9e-7,2e-4])
-        bx.set_xlabel(r"M$_{200,c}$ [M$_\odot$]")
-        bx.set_ylabel(r"$n$(>M) [Mpc$^{-3}$]")
-        fig.savefig(simulation_directory+'/largeScaleStructure_z%.1d.pdf'%z, dpi=300)
+        bx.set_xlabel(r"$M_{200,c}\ \mathrm{[M_\odot]}$")
+        bx.set_ylabel(r"$n(>M)\ \mathrm{[Mpc^{-3}]}$")
+        
+        if not os.path.exists( simulation_directory+"/plots" ):
+          os.mkdir( simulation_directory+"/plots" )
+        fig.savefig(simulation_directory+'/plots/largeScaleStructure_z%.1d.pdf'%z, dpi=300)
 
 ## if everything is ok: 0 else: 1
 sys.exit(status)

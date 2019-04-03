@@ -28,7 +28,7 @@ runParent=False
 
 
 simulation_directory = str(sys.argv[1])
-print("examples/cosmo_zoom_gravity_only_3d/create.py " + simulation_directory)
+print("create.py " + simulation_directory)
 
 
 """ output times """
@@ -39,11 +39,15 @@ np.savetxt(simulation_directory+"/output_list.txt",data, fmt="%g %1.f" )
 
 
 """ IC generating code MUSIC """
-# get code from repository and compile IC generating code
-status = call(['hg', 'clone', 'https://bitbucket.org/ohahn/music', simulation_directory+'/music'])
-if status != 0:
-    print('CREATE: ERROR: hg clone failed!')
-    sys.exit(status)
+# check if music code is there already, otherwise get code from repository and compile IC generating code
+if os.path.exists( "{0}/../../../music".format(sys.path[0]) ):
+  call(['cp','-r',"{0}/../../../music".format(sys.path[0]),simulation_directory+'/music'])
+else:
+  print('CREATE: did not fine dir {0}/../../music, trying to clone from bitbucket.'.format(sys.path[0]))
+  status = call(['hg', 'clone', 'https://bitbucket.org/ohahn/music', simulation_directory+'/music'])
+  if status != 0:
+      print('CREATE: ERROR: hg clone failed!')
+      sys.exit(status)
 cwd = os.getcwd()
 os.chdir(simulation_directory+'/music/')
 status = call(['make'])
@@ -56,7 +60,7 @@ if runParent:
     """ parent simulation """
     # execute ic generating code for parent box ICs (change working directory to do this)
     os.chdir(simulation_directory+'/music/')
-    status = call(['./MUSIC', cwd+'/examples/cosmo_zoom_gravity_only_3d/param_music_parent.txt'])
+    status = call(['./MUSIC',simulation_directory+'param_music_parent.txt'])
     if status != 0:
         print('CREATE: ERROR: IC creation failed!')
         sys.exit(status)
@@ -186,7 +190,7 @@ if runParent:
 
 # execute ic generating code for zoom ICs (change working directory to do this)
 os.chdir(simulation_directory+'/music/')
-status = call(['./MUSIC', cwd+'/examples/cosmo_zoom_gravity_only_3d/param_music.txt'])
+status = call(['./MUSIC', '../param_music.txt'])
 if status != 0:
     print('CREATE: ERROR: execution failed!')
     sys.exit(status)

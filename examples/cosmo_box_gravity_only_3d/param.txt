@@ -1,8 +1,8 @@
 %----  Relevant files
-InitCondFile                          ics
-OutputDir                             output
+InitCondFile                          ./ics
+OutputDir                             ./output
 SnapshotFileBase                      snap
-OutputListFilename                    output_list.txt
+OutputListFilename                    ./output_list.txt
 
 %---- File formats
 ICFormat                              1

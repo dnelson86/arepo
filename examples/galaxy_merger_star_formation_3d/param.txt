@@ -1,8 +1,8 @@
 %----  Relevant files
-InitCondFile                            ICs_1_1_merger_30_15_45_0_rmin10_start320_lowres.dat-with-grid
-OutputDir                               output
+InitCondFile                            ./ICs_1_1_merger_30_15_45_0_rmin10_start320_lowres.dat-with-grid
+OutputDir                               ./output
 SnapshotFileBase                        snap
-OutputListFilename                      output_list.txt
+OutputListFilename                      ./output_list.txt
 
 %---- File formats
 ICFormat                                3
@@ -118,5 +118,5 @@ FactorEVP                               573.0
 TemperatureThresh                       1e+06
 FactorSN                                0.1
 
-TreecoolFile                            TREECOOL_ep
+TreecoolFile                            ./TREECOOL_ep
 
