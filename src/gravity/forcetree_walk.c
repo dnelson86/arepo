@@ -267,6 +267,7 @@ int force_treeevaluate(gravdata_in * in, gravdata_out * out, int target, int mod
                       continue;
                     }
 
+                  // note that aold is strictly speaking |acceleration| / G
 #ifdef ACTIVATE_MINIMUM_OPENING_ANGLE
                   if(mass * len2 > r2 * r2 * aold && len2 > r2 * (0.4 * 0.4))
 #else /* #ifdef ACTIVATE_MINIMUM_OPENING_ANGLE */

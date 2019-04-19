@@ -433,6 +433,7 @@ Gravitational force accuracy
 **ErrTolForceAcc**
 
   The accuracy parameter for the relative opening criterion for the tree walk.
+  Only used if ``ErrTolTheta 0``.
 
 -----
 

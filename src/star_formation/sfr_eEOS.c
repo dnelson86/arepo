@@ -162,6 +162,7 @@ void cooling_and_starformation(void)
                 {
                   unew = SphP[i].Utherm;
 
+                  // put (cold) star forming cells on the effective equation of state
                   if(SphP[i].Utherm < egyeff)
                     {
                       unew = egyeff;
@@ -510,7 +511,7 @@ void set_units_sfr(void)
  *  \param[in, out] ne Fractional electron density.
  *  \param[out] x Fraction cold gas within model.
  *  \param[out] tsfr Star formation timescale.
- *  \param[out] factorEVP FactorEVP for given density.
+ *  \param[out] factorEVP Supernova evaporation factor for given density.
  */
 double calc_egyeff(int i, double gasdens, double *ne, double *x, double *tsfr, double *factorEVP)
 {

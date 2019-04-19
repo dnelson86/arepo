@@ -143,22 +143,28 @@ for i_file, z in enumerate(Redshifts):
         fig.savefig(simulation_directory+'/plots/haloStructure_z%.1d.pdf'%z, dpi=300)
 
     ## comparison to reference run (sorted list of SubhaloMass)
-    if i_file != 0:
+    if i_file > 3:
         SubhaloMass_ref = np.loadtxt(simulation_directory+"/Masses_z%.1g.txt"% z)
         minLen = np.min([len(SubhaloMass), len(SubhaloMass_ref)])
         i_select2 = np.arange(minLen)
-        delta = np.array(SubhaloMass[i_select2]-SubhaloMass_ref[i_select2], dtype=np.float64)
-        tolerance_average = 3e10
-        tolerance_std = 1e11
-        if np.abs(np.average(delta)) > tolerance_average or np.abs(np.std(delta)) > tolerance_std:
+        delta = np.array((SubhaloMass[i_select2]-SubhaloMass_ref[i_select2]) / np.sqrt(0.5 * (SubhaloMass[i_select2]+SubhaloMass_ref[i_select2]) ), dtype=np.float64)
+        delta = np.abs(delta)
+        tolerance = 5e4  ## corresponds to 5e11 Msun for 1e14 Msun halo and 5e10 for 2e12 Msun subhalo
+        ## typical average delta values (empirically determined by varying 
+        ## the number of MPI ranks) is around 3e4
+        
+        if np.abs(np.average(delta)) > tolerance:
             status = 1
             print("ERROR: z=%g difference in subhalo masses exceeding limits!" % z)
-            print("mass error (=delta)")
-            print(delta)
-            print("average (tolerance: %g)" % tolerance_average)
+            print("average mass error/sqrt(mass) (=delta)")
             print(np.average(delta))
-            print("stddev (tolerance: %g)" % tolerance_std)
-            print(np.std(delta))
+            print("tolerance: %g" % tolerance)
+            print("Individual error values:")
+            for element in delta:
+                print(element)
+            
+           
+ 
 
 ## if everything is ok: 0 else: 1
 sys.exit(status)
