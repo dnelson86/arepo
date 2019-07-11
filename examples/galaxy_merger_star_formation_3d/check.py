@@ -9,14 +9,23 @@ created by Rainer Weinberger, last modified 09.03.2019
 import sys    ## system calls
 import numpy as np    ## load numpy
 import h5py    ## load h5py; needed to read snapshots
+import os      # file specific calls
 import matplotlib.pyplot as plt    ## plot stuff
 from scipy.interpolate import interp1d    ## inetrpolation
+plt.rcParams['text.usetex'] = True
+
+createReferenceSolution = False
+makeplots = True
+if len(sys.argv) > 2:
+  if sys.argv[2] == "True":
+    makeplots = True
+  else:
+    makeplots = False
 
 simulation_directory = str(sys.argv[1])
 print("galaxy_merger_star_formation_3d: checking simulation output in directory " + simulation_directory) 
 
-createReferenceSolution = False
-createFigures = True
+
 
 FloatType = np.float64  # double precision: np.float64, for single use np.float32
 Gcgs = 6.6738e-8
@@ -45,7 +54,7 @@ for i, t in enumerate(time_probe):
     avg_mass_stars[i] += 0.5 * np.interp(t, time_ref, mstar_ref)
 
 
-if createFigures:
+if makeplots:
     fig, ax = plt.subplots(2,3, figsize=np.array([6.9,5.35]), sharex=True, sharey=True )
     fig.subplots_adjust(hspace=0.0, wspace=0.0, left=0.1,right=0.98, bottom=0.1, top=0.98)
 
@@ -68,7 +77,7 @@ for i_plot, i_snap in enumerate([10,11,12,21,22,24]):
     ix = np.int(i_plot % 3)
     iy = np.int(i_plot / 3)
     
-    if createFigures:
+    if makeplots:
         ax[iy,ix].scatter(pos2[:, 0], pos2[:, 1], marker='.', c='k', s=0.05, alpha=0.5, rasterized=True, zorder=2)
         ax[iy,ix].scatter(pos3[:, 0], pos3[:, 1], marker='.', c='k', s=0.05, alpha=0.5, rasterized=True, zorder=2)
         ax[iy,ix].scatter(pos4[:, 0], pos4[:, 1], marker='.', c='red', s=0.05, alpha=0.2, rasterized=True, zorder=3)
@@ -77,7 +86,7 @@ for i_plot, i_snap in enumerate([10,11,12,21,22,24]):
         ax[iy,ix].set_ylim([290,360])
     
 
-if createFigures:
+if makeplots:
     ## trajectory
     filename = '/output/snap_%03d.hdf5'%0
     data = h5py.File(simulation_directory+filename, "r")
@@ -142,9 +151,10 @@ if createFigures:
     ax[1,1].set_xlabel("[kpc]")
     ax[1,2].set_xlabel("[kpc]")
     
-    fig.savefig(simulation_directory+'./stars_evolution.pdf')
+    if not os.path.exists( simulation_directory+"/plots" ):
+        os.mkdir( simulation_directory+"/plots" )
+    fig.savefig(simulation_directory+'/plots/stars_evolution.pdf')
     
-    """ figure -- optional """
     fig=plt.figure()
     ax = plt.axes([0.15,0.15,0.8,0.8])
     ax.plot(time, mstar * 1e10/0.6774, label="new")
@@ -152,7 +162,7 @@ if createFigures:
     ax.set_xlabel(r"time")
     ax.set_ylabel(r"Stellar mass formed [M$_\odot$]")
     ax.legend(loc=2)
-    fig.savefig(simulation_directory+"./Mstar_time.pdf")
+    fig.savefig(simulation_directory+"/plots/Mstar_time.pdf")
 
 
 """ check if deviations within tolerance """

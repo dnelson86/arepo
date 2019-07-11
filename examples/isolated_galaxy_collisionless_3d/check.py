@@ -9,12 +9,18 @@ created by Rainer Weinberger, last modified 10.03.2019
 import sys    ## system calls
 import numpy as np    ## load numpy
 import h5py    ## load h5py; needed to read snapshots
+import os      # file specific calls
 import matplotlib.pyplot as plt    ## plot stuff
+from scipy.interpolate import interp1d    ## inetrpolation
+plt.rcParams['text.usetex'] = True
 from matplotlib.colors import LogNorm
 
-
-createFigures = True
-
+makeplots = True
+if len(sys.argv) > 2:
+  if sys.argv[2] == "True":
+    makeplots = True
+  else:
+    makeplots = False
 
 simulation_directory = str(sys.argv[1])
 print("examples/isolated_galaxy_collisionless_3d/check.py: checking simulation output in directory " + simulation_directory) 
@@ -114,7 +120,7 @@ while True:
     vTotGrid =  np.sqrt(mEncTotGrid * Gcgs / rGrid * 6.4459e11)
     
     
-    if createFigures:
+    if makeplots:
         ## figure of positions
         fig = plt.figure(figsize = np.array([6.9,9.2]))
         ax = []
@@ -163,7 +169,9 @@ while True:
         
         fig.colorbar(img, cax=cax)
         
-        fig.savefig(directory+"/positions_%03d.pdf"%i_file)
+        if not os.path.exists( simulation_directory+"/plots" ):
+            os.mkdir( simulation_directory+"/plots" )
+        fig.savefig(simulation_directory+"/plots/positions_%03d.pdf"%i_file)
         
         ## figure of rotation curve
         fig = plt.figure()
@@ -176,7 +184,7 @@ while True:
         ax.set_ylim(0,300)
         ax.set_xlabel(r"radius")
         ax.set_ylabel(r"v$_c$")
-        fig.savefig(directory+"/rotation_curve_%03d.pdf"%i_file)
+        fig.savefig(simulation_directory+"/plots/rotation_curve_%03d.pdf"%i_file)
     
     
     ## comparision to first snapshot (ICs)
