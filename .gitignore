@@ -1,0 +1,32 @@
+#eclipse stuff
+.cproject
+.dep/
+.project
+.settings/
+.pydevproject
+
+#OS
+.gdb_history
+.DS_Store
+
+#binaries
+build
+Arepo*
+Arepo.dSYM
+.build*/
+*.o
+*.check
+*.pyc
+
+# param, Config, Makefile.systype
+param.txt
+Config.sh
+Makefile.systype
+run.sh
+
+#run and output directory
+/run
+/output
+
+#documentation build
+/documentation/build
