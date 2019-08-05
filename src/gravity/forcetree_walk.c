@@ -279,13 +279,12 @@ int force_treeevaluate(gravdata_in * in, gravdata_out * out, int target, int mod
                       continue;
                     }
 
-                  /* check in addition whether we lie inside the cell */
-
-                  if(fabs(nop->center[0] - pos_x) < 0.60 * nop->len)
+                  /* check in addition whether we lie inside or very close to the cell */
+                  if(fabs(GRAVITY_NEAREST_X(nop->center[0] - pos_x)) < 0.60 * nop->len)
                     {
-                      if(fabs(nop->center[1] - pos_y) < 0.60 * nop->len)
+                      if(fabs(GRAVITY_NEAREST_Y(nop->center[1] - pos_y)) < 0.60 * nop->len)
                         {
-                          if(fabs(nop->center[2] - pos_z) < 0.60 * nop->len)
+                          if(fabs(GRAVITY_NEAREST_Z(nop->center[2] - pos_z)) < 0.60 * nop->len)
                             {
                               no = nop->u.d.nextnode;
                               continue;
