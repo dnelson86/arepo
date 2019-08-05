@@ -42,6 +42,11 @@
 #define MASK_ACTIVE_FLAG_IN_TYPE 127
 #define SET_ACTIVE_FLAG_IN_TYPE  128
 
+enum domain_displace_mode
+{
+  DISPLACE_POSITION_FORWARD,
+  DISPLACE_POSITION_BACKWARD
+};
 
 extern struct local_topnode_data
 {
@@ -163,6 +168,7 @@ int domain_compare_local_trans_data_ID(const void *a, const void *b);
 int domain_compare_recv_trans_data_ID(const void *a, const void *b);
 int domain_compare_recv_trans_data_oldtask(const void *a, const void *b);
 void mysort_domain(void *b, size_t n, size_t s);
+void domain_displacePosition( MyDouble *pos, enum domain_displace_mode mode );
 
 
 #endif /* #ifndef DOMAIN_H */

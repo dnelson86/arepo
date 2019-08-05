@@ -170,7 +170,7 @@ void io_func_pos(int particle, int components, void *buffer, int mode)
           for(k = 0; k < 3; k++)
             {
 
-              pp[k] = P[particle].Pos[k];
+              pp[k] = P[particle].Pos[k] - All.GlobalDisplacementVector[k];
 
 #if defined(GRAVITY_NOT_PERIODIC)
               if(P[particle].Type != 0)
@@ -202,7 +202,7 @@ void io_func_pos(int particle, int components, void *buffer, int mode)
           for(k = 0; k < 3; k++)
             {
 
-              pp[k] = P[particle].Pos[k];
+              pp[k] = P[particle].Pos[k] - All.GlobalDisplacementVector[k];
 
 #if defined(GRAVITY_NOT_PERIODIC)
               if(P[particle].Type != 0)
@@ -238,7 +238,7 @@ void io_func_pos(int particle, int components, void *buffer, int mode)
 
       for(k = 0; k < components; k++)
         {
-          P[particle].Pos[k] = in_buffer[k];
+          P[particle].Pos[k] = in_buffer[k] + All.GlobalDisplacementVector[k];
         }
     }
 }

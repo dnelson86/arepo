@@ -83,6 +83,53 @@ void write_compile_time_options_in_hdf5(hid_t handle);
 
 #ifdef FOF
 
+/*! \brief Make sure a position lies in the box in case of periodic boundaries.
+ *
+ *  \param[in] pos Single coordinate in one dimension to be wrapped
+ *  \param[in] dim Index of coordinate [0/1/2]
+ *
+ *  \return double: wrapped coordinate
+ */
+MyOutputFloat static wrap_position( MyOutputFloat pos, int dim )
+{
+#if defined(REFLECTIVE_X)
+  if(dim == 0)
+    return pos;
+#endif
+
+#if defined(REFLECTIVE_Y)
+  if(dim == 1)
+    return pos;
+#endif
+
+ #if defined(REFLECTIVE_Z)
+  if(dim == 2)
+    return pos;
+#endif
+  
+  double boxsize = All.BoxSize;
+
+#ifdef LONG_X
+  if(dim == 0)
+    boxsize *= LONG_X;
+#endif
+#ifdef LONG_Y
+  if(dim == 1)
+    boxsize *= LONG_Y;
+#endif
+#ifdef LONG_Z
+  if(dim == 2)
+    boxsize *= LONG_Z;
+#endif
+
+  while(pos < 0)
+    pos += boxsize;
+
+  while(pos >= boxsize)
+    pos -= boxsize;
+
+  return pos;
+}
 
 /*! \brief Main routine for group output.
  *
@@ -576,14 +623,14 @@ void fof_subfind_fill_write_buffer(enum fof_subfind_iofields blocknr, int *start
         case IO_FOF_POS:
           for(k = 0; k < 3; k++)
 #ifdef SUBFIND
-            *fp++ = Group[pindex].Pos[k];
+            *fp++ = wrap_position( Group[pindex].Pos[k] - All.GlobalDisplacementVector[k], k );
 #else /* #ifdef SUBFIND */
-            *fp++ = Group[pindex].CM[k];
+            *fp++ = wrap_position( Group[pindex].CM[k] - All.GlobalDisplacementVector[k], k );
 #endif /* #ifdef SUBFIND #else */
           break;
         case IO_FOF_CM:
           for(k = 0; k < 3; k++)
-            *fp++ = Group[pindex].CM[k];
+            *fp++ = wrap_position( Group[pindex].CM[k] - All.GlobalDisplacementVector[k], k );
           break;
         case IO_FOF_VEL:
           for(k = 0; k < 3; k++)
@@ -1094,7 +1141,7 @@ void fof_subfind_fill_write_buffer(enum fof_subfind_iofields blocknr, int *start
         case IO_SUB_POS:
 #ifdef SUBFIND
           for(k = 0; k < 3; k++)
-            *fp++ = SubGroup[pindex].Pos[k];
+            *fp++ = wrap_position( SubGroup[pindex].Pos[k] - All.GlobalDisplacementVector[k], k );
 #endif /* #ifdef SUBFIND */
           break;
         case IO_SUB_VEL:
@@ -1118,7 +1165,7 @@ void fof_subfind_fill_write_buffer(enum fof_subfind_iofields blocknr, int *start
         case IO_SUB_CM:
 #ifdef SUBFIND
           for(k = 0; k < 3; k++)
-            *fp++ = SubGroup[pindex].CM[k];
+            *fp++ = wrap_position( SubGroup[pindex].CM[k] - All.GlobalDisplacementVector[k], k );
 #endif /* #ifdef SUBFIND */
           break;
         case IO_SUB_SPIN:

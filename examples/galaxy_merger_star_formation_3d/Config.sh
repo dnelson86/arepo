@@ -30,7 +30,6 @@ CELL_CENTER_GRAVITY                      # uses geometric centers to calculate g
 ALLOW_DIRECT_SUMMATION                   # Performed direct summation instead of tree-based gravity if number of active particles < DIRECT_SUMMATION_THRESHOLD (= 3000 unless specified differently here)
 DIRECT_SUMMATION_THRESHOLD=500           # Overrides maximum number of active particles for which direct summation is performed instead of tree based calculation
 GRAVITY_NOT_PERIODIC                     # gravity is not treated periodically
-RANDOMIZE_DOMAINCENTER                   # random displacement to position of domain center; avoids correlated force-errors, important mainly for isolated systems (which otherwise might start to drift in some direction).
 
 
 #--------------------------------------- Gravity softening

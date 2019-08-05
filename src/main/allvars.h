@@ -1287,6 +1287,7 @@ MyIDType MaxID;
   double CoreRadius;
 #endif /* #ifdef ONEDIMS_SPHERICAL */
 
+  double GlobalDisplacementVector[3];
 }
 All;
 

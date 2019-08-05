@@ -147,6 +147,14 @@ void domain_exchange_and_update_DC(void)
 {
   double t0 = second();
 
+#if !defined(GRAVITY_NOT_PERIODIC) && !defined(DO_NOT_RANDOMIZE_DOMAINCENTER) && defined(SELFGRAVITY)
+  /* remove all image flags, after our box movement stunt they are all incorrect anyway */
+  for(int i = 0; i < MaxNvc; i++)
+    {
+      DC[i].image_flags = 1;
+    }
+#endif
+
   /* first, we need to complete the translation table */
   for(int j = 0; j < NTask; j++)
     Send_count[j] = 0;
@@ -338,6 +346,9 @@ void domain_exchange_and_update_DC(void)
       recv_transscribe_data[i].new_task = trans_table[old_index].new_task;
       recv_transscribe_data[i].new_index = trans_table[old_index].new_index;
 
+#if !defined(GRAVITY_NOT_PERIODIC) && !defined(DO_NOT_RANDOMIZE_DOMAINCENTER) && defined(SELFGRAVITY)
+      // Nothing to do here
+#else
       if(recv_transscribe_data[i].new_task >= 0)
         {
           if(trans_table[old_index].wrapped)
@@ -417,6 +428,7 @@ void domain_exchange_and_update_DC(void)
               recv_transscribe_data[i].image_flags = (1 << (zbits * 9 + ybits * 3 + xbits));
             }
         }
+#endif
     }
 
   /* now return the data */

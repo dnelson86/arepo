@@ -92,6 +92,9 @@ int init(void)
     }
 
   set_cosmo_factors_for_current_time();
+  
+  for(j = 0; j < 3; j++)
+    All.GlobalDisplacementVector[j] = 0;
 
   All.NumCurrentTiStep = 0;     /* setup some counters */
   All.SnapshotFileCount = 0;

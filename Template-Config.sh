@@ -67,7 +67,6 @@
 #DIRECT_SUMMATION_THRESHOLD=1000  # Overrides maximum number of active particles for which direct summation is performed instead of tree based calculation
 #EXACT_GRAVITY_FOR_PARTICLE_TYPE=4  #N-squared fashion gravity for a small number of particles of the given type
 #EVALPOTENTIAL                 # computes gravitational potential
-#RANDOMIZE_DOMAINCENTER        # random displacement to position of domain center; avoids correlated force-errors, important mainly for isolated systems (which otherwise might start to drift in some direction).
 
 #--------------------------------------- TreePM Options; default: no Particle-Mesh
 #PMGRID=512                    # Enables particle mesh; number of cells used for grid in each dimension

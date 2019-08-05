@@ -45,6 +45,53 @@
 #include "domain.h"
 #include "../mesh/voronoi/voronoi.h"
 
+/*! \brief Move the coordinate in pos by the global displacement vector
+ *
+ *  \param[in] pos coordinate vector (3 entries).
+ *  \param[in] mode displacement mode, either DISPLACE_POSITION_FORWARD or DISPLACE_POSITION_BACKWARD
+ *
+ *  \return void
+ */
+void domain_displacePosition( MyDouble *pos, enum domain_displace_mode mode )
+{
+  if(mode == DISPLACE_POSITION_FORWARD)
+    {
+      double xtmp, ytmp, ztmp;
+      pos[0] = WRAP_X( pos[0] + All.GlobalDisplacementVector[0] );
+      pos[1] = WRAP_Y( pos[1] + All.GlobalDisplacementVector[1] );
+      pos[2] = WRAP_Z( pos[2] + All.GlobalDisplacementVector[2] );
+    }
+  else if(mode == DISPLACE_POSITION_BACKWARD)
+    {
+      double xtmp, ytmp, ztmp;
+      pos[0] = WRAP_X( pos[0] - All.GlobalDisplacementVector[0] );
+      pos[1] = WRAP_Y( pos[1] - All.GlobalDisplacementVector[1] );
+      pos[2] = WRAP_Z( pos[2] - All.GlobalDisplacementVector[2] );
+    }
+  else
+    terminate( "Unkown mode %d.", mode );
+}
+
+/*! \brief Move the coordinate for all positions by the global displacement vector 
+ *
+ *  \param[in] mode displacement mode, either DISPLACE_POSITION_FORWARD or DISPLACE_POSITION_BACKWARD
+ *
+ *  \return void
+ */
+static void domain_displacePositions( enum domain_displace_mode mode )
+{
+  for(int i = 0; i < NumPart; i++)
+    {
+      if(P[i].ID == 0 && P[i].Mass == 0) /* derefined */
+        continue;
+      
+      domain_displacePosition( P[i].Pos, mode );
+      
+      if(i < NumGas)
+        domain_displacePosition( SphP[i].Center, mode );
+    }
+}
+
 
 /*! \brief Finds the extent of the global domain grid.
  *
@@ -116,7 +163,7 @@ void domain_findExtent(void)
 #endif /* #if defined(GRAVITY_NOT_PERIODIC) && !defined(ADDBACKGROUNDGRID) #else */
 
 
-#if !defined(RANDOMIZE_DOMAINCENTER)
+#if defined(DO_NOT_RANDOMIZE_DOMAINCENTER) || !defined(GRAVITY_NOT_PERIODIC) || defined(ONEDIMS) || defined(TWODIMS)
   for(j = 0; j < 3; j++)
     {
       DomainCenter[j] = 0.5 * (xmin_glob[j] + xmax_glob[j]);
@@ -175,6 +222,19 @@ void do_box_wrapping(void)
 #ifdef LONG_Z
   boxsize[2] *= LONG_Z;
 #endif /* #ifdef LONG_Z */
+
+#if !defined(GRAVITY_NOT_PERIODIC) && !defined(DO_NOT_RANDOMIZE_DOMAINCENTER) && defined(SELFGRAVITY) && (NUMDIMS > 2)
+  domain_displacePositions( DISPLACE_POSITION_BACKWARD );
+
+  if(ThisTask == 0)
+    for(j = 0; j < 3; j++)
+      All.GlobalDisplacementVector[j] = (get_random_number() - 0.5) * boxsize[j];
+  
+  mpi_printf("DOMAIN: New global displacement vector: %g, %g, %g\n", All.GlobalDisplacementVector[0], All.GlobalDisplacementVector[1], All.GlobalDisplacementVector[2]);
+  MPI_Bcast(All.GlobalDisplacementVector, 3, MPI_DOUBLE, 0, MPI_COMM_WORLD);
+  
+  domain_displacePositions( DISPLACE_POSITION_FORWARD );
+#endif
 
   int i;
   for(i = 0; i < NumPart; i++)
