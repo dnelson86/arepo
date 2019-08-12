@@ -368,13 +368,6 @@ testing global energy conservation.
 
 -----
 
-**RANDOMIZE_DOMAINCENTER**
-
-Random displacement to position of domain center; avoids correlated 
-force-errors, important mainly for isolated systems (which otherwise might 
-start to drift in some direction).
-
------
 
 TreePM 
 ==============

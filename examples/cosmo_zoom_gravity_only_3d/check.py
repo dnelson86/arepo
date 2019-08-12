@@ -88,7 +88,7 @@ for i_file, z in enumerate(Redshifts):
             cont_dist += (pos2[:,1] - GrpPos[0,1])**2
             cont_dist += (pos2[:,2] - GrpPos[0,2])**2
             cont_dist = np.sqrt(cont_dist)
-            print('minimum distance of contaminating (low-res) particle: %g'%np.min(cont_dist) )
+            print('minimum distance of contaminating (low-res) particle: %g Mpc'%np.min(cont_dist) )
             i_issue = np.where(cont_dist < GrpR200c[0])[0]
             
             if len(i_issue) > 0:
@@ -108,8 +108,8 @@ for i_file, z in enumerate(Redshifts):
         
         particle_select = np.where( (pos[:,2]>zpos-2.5) & (pos[:,2]<zpos+2.5) )[0]
         particle2_select = np.where( (pos2[:,2]>zpos-2.5) & (pos2[:,2]<zpos+2.5) )[0]
-        ax.scatter(pos[particle_select, 0], pos[particle_select, 1], marker='.', s=0.05, alpha=0.5)
-        ax.scatter(pos2[particle2_select, 0],pos2[particle2_select,1], marker='.', s=0.05, c='r', alpha=0.5)
+        ax.scatter(pos[particle_select, 0], pos[particle_select, 1], marker='.', s=0.05, alpha=0.5, rasterized=True)
+        ax.scatter(pos2[particle2_select, 0],pos2[particle2_select,1], marker='.', s=5, c='r', alpha=0.5, rasterized=True)
         
 
         if i_file != 0:

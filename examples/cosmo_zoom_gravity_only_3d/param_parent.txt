@@ -18,7 +18,7 @@ ResubmitCommand                       my-scriptfile
 
 
 %----- Memory alloction
-MaxMemSize                            10000
+MaxMemSize                            3500
 
 
 %---- Caracteristics of run

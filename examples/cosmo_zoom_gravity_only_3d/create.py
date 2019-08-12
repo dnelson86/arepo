@@ -2,7 +2,7 @@
 Code that creates ics and outuput list for a cosmological zoom 
 simulaiton;
 
-created by Rainer Weinberger, last modified 05.03.2019
+created by Rainer Weinberger, last modified 12.08.2019
 """
 
 """ load libraries """
@@ -50,7 +50,7 @@ else:
       sys.exit(status)
 cwd = os.getcwd()
 os.chdir(simulation_directory+'/music/')
-status = call(['make'])
+status = call(['make','-j'])
 if status != 0:
     print('CREATE: ERROR: make failed!')
     sys.exit(status)
@@ -59,29 +59,34 @@ os.chdir(cwd)
 if runParent:
     """ parent simulation """
     # execute ic generating code for parent box ICs (change working directory to do this)
+    # unfortunately, many working directory changes are necessary here!
     os.chdir(simulation_directory+'/music/')
-    status = call(['./MUSIC',simulation_directory+'param_music_parent.txt'])
+    status = call(['./MUSIC','../param_music_parent.txt'])
     if status != 0:
         print('CREATE: ERROR: IC creation failed!')
         sys.exit(status)
     os.chdir(cwd)
     
-    ConfigFile = cwd+'/examples/cosmo_zoom_gravity_only_3d/Config_parent.sh'
-    BuildDir = cwd+'/run/examples/cosmo_zoom_gravity_only_3d/build_parent'
-    ExecFile = cwd+'/run/examples/cosmo_zoom_gravity_only_3d/Arepo_parent'
-    ParamFile = cwd+'/examples/cosmo_zoom_gravity_only_3d/param_parent.txt'
+    ConfigFile = simulation_directory+'/Config_parent.sh'
+    BuildDir = simulation_directory+'/build_parent'
+    ExecFile = simulation_directory+'/Arepo_parent'
     
     ## compile Arepo for cosmological volume
-    status = call(['make', 'CONFIG='+ConfigFile, 'BUILD_DIR='+BuildDir, 'EXEC='+ExecFile])
+    status = call(['make','-j', 'CONFIG='+ConfigFile, 'BUILD_DIR='+BuildDir, 'EXEC='+ExecFile])
     if status != 0:
         print('CREATE: ERROR: compilation failed!')
         sys.exit(status)
     
-    ## run simulaiton
-    status = call(['mpiexec', '-np', '6', ExecFile, ParamFile])
+    ## run simulation
+    os.chdir(simulation_directory)
+
+    ExecFile = './Arepo_parent'
+    ParamFile = './param_parent.txt'
+    status = call(['mpiexec', '-np', '1', ExecFile, ParamFile])
     if status != 0:
         print('CREATE: ERROR: execution failed!')
         sys.exit(status)
+    os.chdir(cwd)
         
     ## select halo and set limits
     sn0 = h5py.File(simulation_directory+'/output_parent/snap_000.hdf5')
@@ -144,6 +149,7 @@ if runParent:
     id_particle_flagged = pid6[i_particles]
     
     # SEARCH FOR THESE PARTCLES IN INITIAL CONDITION TO FIND BOUNDS
+    # return_indices works only with numpy 1.15.0 and above
     ids, i_select1, dummy = np.intersect1d(pid0, id_particle_flagged, return_indices=True)
     print('number of matched ids: %d'%len(ids))
     
@@ -165,10 +171,10 @@ if runParent:
     print(zmin, zmax, zmax-zmin, 0.5*(zmax+zmin))
     
     center = [0.5 * (xmax+xmin) / 100000.0, 0.5 * (ymax+ymin) / 100000.0, 0.5 * (zmax+zmin) / 100000.0]
-    box = [(xmax-xmin)/100000. + 0.02, (ymax-ymin)/100000. + 0.02, (zmax-zmin)/100000. + 0.02]
+    box = [( (xmax-xmin) + 1000. )/100000.,( (ymax-ymin) + 1000. )/100000.,( (zmax-zmin) + 1000.)/100000.]
     
     ## replace the high-res extent in param_music.txt
-    paramFile = open('./examples/cosmo_zoom_gravity_only_3d/param_music_parent.txt', 'r')
+    paramFile = open(simulation_directory+'/param_music_parent.txt', 'r')
     paramOptions = []
     for line in paramFile:
         if line[:10] == 'ref_center':
@@ -182,7 +188,7 @@ if runParent:
         else:
             paramOptions.append(line)
     paramFile.close()
-    paramFile = open('./examples/cosmo_zoom_gravity_only_3d/param_music.txt', 'w')
+    paramFile = open(simulation_directory+'/param_music.txt', 'w')
     for line in paramOptions:
         paramFile.write(line)
     paramFile.close()

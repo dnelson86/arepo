@@ -26,6 +26,7 @@ Redshifts = [1, 0]
 status = 0
 
 CompareAgainstReferenceRun = True ## comparison for small L50m32 box; deactivate this when comparing against self-created ICs
+CreateReferenceSolution = False
 makeplots = True
 if len(sys.argv) > 2:
   if sys.argv[2] == "True":
@@ -50,6 +51,9 @@ for i_file, z in enumerate(Redshifts):
     M200c = np.array(data["Group"]["GroupMass"], dtype=FloatType) * UnitMass
     M200c = np.sort(M200c)[::-1]
     CumMassFunction = np.cumsum(np.ones(M200c.shape) ) / Volume
+    
+    if CreateReferenceSolution:
+        np.savetxt(simulation_directory+"/Masses_L50n32_z%.1d.txt"% z, M200c)
     
     if CompareAgainstReferenceRun:
         ## comparison to reference run (sorted list of M200)
