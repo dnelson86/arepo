@@ -36,28 +36,32 @@ RESULT     := $(shell CONFIG=$(CONFIG) PERL=$(PERL) BUILD_DIR=$(BUILD_DIR) make 
 CONFIGVARS := $(shell cat $(BUILD_DIR)/arepoconfig.h)
 RESULT     := $(shell SRC_DIR=$(SRC_DIR) BUILD_DIR=$(BUILD_DIR) ./git_version.sh)
 
-MPICHLIB  = -lmpich
-GMPLIB    = -lgmp
-GSLLIB    = -lgsl -lgslcblas
-MATHLIB   = -lm -lstdc++
+# Default
+MPICH_LIB  = -lmpich
+GMP_LIB    = -lgmp
+GSL_LIB    = -lgsl -lgslcblas
+MATH_LIB   = -lm -lstdc++
 HWLOC_LIB = -lhwloc
 
 
 # e.g. Mac OS using MacPorts modules for openmpi, fftw, gsl, hdf5 and hwloc
 ifeq ($(SYSTYPE),"Darwin")
-CC       =  mpicc   # sets the C-compiler
-OPTIMIZE =  -std=c11 -ggdb -O3 -Wall -Wno-format-security -Wno-unknown-pragmas -Wno-unused-function
-GSL_INCL = -I/opt/local/include 
-GSL_LIBS = -L/opt/local/lib
-FFTW_INCL= -I/opt/local/include -I/usr/local/include
-FFTW_LIBS= -L/opt/local/lib -I/usr/local/lib
-HDF5INCL = -I/opt/local/include -DH5_USE_16_API 
-HDF5LIB  = -L/opt/local/lib  -lhdf5 -lz
-HWLOC_INCL= -I/opt/local/include 
+# compiler and its optimization options
+CC        =  mpicc   # sets the C-compiler
+OPTIMIZE  =  -std=c11 -ggdb -O3 -Wall -Wno-format-security -Wno-unknown-pragmas -Wno-unused-function
+
+# overwrite default:
+MPICH_LIB = -lmpi
+GSL_INCL  = -I/opt/local/include
+GSL_LIB   = -L/opt/local/lib -lgsl -lgslcblas
 HWLOC_LIB = -L/opt/local/lib -lhwloc
-HYPRE_INCL = 
-HYPRE_LIB = 
-MPICHLIB = -lmpi
+
+# libraries that are included on demand, depending on Config.sh options
+FFTW_INCL = -I/opt/local/include -I/usr/local/include
+FFTW_LIBS = -L/opt/local/lib -I/usr/local/lib
+HDF5_INCL = -I/opt/local/include -DH5_USE_16_API 
+HDF5_LIB  = -L/opt/local/lib  -lhdf5 -lz
+HWLOC_INCL= -I/opt/local/include
 endif
 
 # insert the library paths for your system here, similar to SYSTYPE "Darwin" above
@@ -264,7 +268,8 @@ endif
 #determine the needed libraries#
 ################################
 
-# we only need fftw if PMGRID is turned on
+# we only need fftw if PMGRID is turned on, make sure variable is empty otherwise
+FFTW_LIB =
 ifeq (PMGRID, $(findstring PMGRID, $(CONFIGVARS)))
 ifeq (DOUBLEPRECISION_FFTW,$(findstring DOUBLEPRECISION_FFTW,$(CONFIGVARS)))  # test for double precision libraries
 FFTW_LIB = $(FFTW_LIBS) -lfftw3 
@@ -274,7 +279,8 @@ endif
 endif
 
 ifneq (HAVE_HDF5,$(findstring HAVE_HDF5,$(CONFIGVARS)))
-HDF5LIB  = 
+HDF5_INCL = 
+HDF5_LIB = 
 endif
 
 ifneq (IMPOSE_PINNING,$(findstring IMPOSE_PINNING,$(CONFIGVARS)))
@@ -287,9 +293,9 @@ endif
 #combine compiler options#
 ##########################
 
-CFLAGS = $(OPTIMIZE) $(OPT) $(HDF5INCL) $(GSL_INCL) $(EIGEN_INCL) $(FFTW_INCL) $(CVODE_INCL) $(CFITSIO_INCL) $(HEALPIX_INCL) $(GMP_INCL) $(MKL_INCL) $(HWLOC_INCL) -I$(BUILD_DIR)  $(NBC_INCL) $(HYPRE_INCL) $(VTUNE_INCL) $(GRACKLE_INCL)
+CFLAGS = $(OPTIMIZE) $(HDF5_INCL) $(GSL_INCL) $(FFTW_INCL) $(HWLOC_INCL) -I$(BUILD_DIR)
 
-LIBS = $(MATHLIB) $(HDF5LIB) $(MPICHLIB) $(GSL_LIBS) $(GSLLIB) $(FFTW_LIB) $(GMP_LIBS) $(GMPLIB) $(CVODE_LIB) $(CFITSIO_LIB) $(HEALPIX_LIB) $(MKL_LIBS) $(THREAD_LIB) $(HWLOC_LIB) $(NBC_LIB) $(HYPRE_LIB) $(VTUNE_LIBS) $(GRACKLE_LIBS) $(LAPACK_LIB)
+LIBS = $(GMP_LIB) $(MATH_LIB) $(MPICH_LIB) $(HDF5_LIB) $(GSL_LIB) $(FFTW_LIB) $(HWLOC_LIB)
 
 FOPTIONS = $(OPTIMIZE)
 FFLAGS = $(FOPTIONS)
@@ -332,8 +338,6 @@ clean:
 	@rm -f $(BUILD_DIR)/version.c
 	@rm -f $(TO_CHECK) $(CONFIG_CHECK)
 	@rm -rf $(BUILD_DIR)
-	@rm -rf user_guide/
-	@rm -rf developer_guide/
 
 $(BUILD_DIR)/%.o: $(SRC_DIR)/%.c $(INCL) $(MAKEFILES)
 	$(CC) $(CFLAGS) -c $< -o $@
