@@ -1,9 +1,10 @@
-#eclipse stuff
+#eclipse/emacs stuff
 .cproject
 .dep/
 .project
 .settings/
 .pydevproject
+*~
 
 #OS
 .gdb_history
