@@ -283,7 +283,7 @@ int init(void)
           SphP[i].Center[j] = P[i].Pos[j];
 
 #if defined(CELL_CENTER_GRAVITY) && !defined(OUTPUT_CENTER_OF_MASS)
-      if(RestartFlag == 18)
+      if(RestartFlag == 17 || RestartFlag == 18)
         for(j = 0; j < 3; j++)
           SphP[i].Center[j] = P[i].Pos[j];
 #endif /* #if defined(CELL_CENTER_GRAVITY) && !defined(OUTPUT_CENTER_OF_MASS) */
