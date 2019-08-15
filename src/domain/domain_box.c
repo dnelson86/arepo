@@ -169,7 +169,7 @@ void domain_findExtent(void)
       DomainCenter[j] = 0.5 * (xmin_glob[j] + xmax_glob[j]);
       DomainCorner[j] = 0.5 * (xmin_glob[j] + xmax_glob[j]) - 0.5 * len;
     }
-#else /* #if !defined(RANDOMIZE_DOMAINCENTER) */
+#else /* #if defined(DO_NOT_RANDOMIZE_DOMAINCENTER) || !defined(GRAVITY_NOT_PERIODIC) || defined(ONEDIMS) || defined(TWODIMS) */
   for(j = 0; j < 3; j++)
     {
       DomainCenter[j] = 0.5 * (xmin_glob[j] + xmax_glob[j]);
@@ -182,7 +182,7 @@ void domain_findExtent(void)
 
   for(j = 0; j < 3; j++)
     DomainCorner[j] = DomainCenter[j] - 0.5 * len;
-#endif /* #if !defined(RANDOMIZE_DOMAINCENTER) #else */
+#endif /* #if defined(DO_NOT_RANDOMIZE_DOMAINCENTER) || !defined(GRAVITY_NOT_PERIODIC) || defined(ONEDIMS) || defined(TWODIMS) #else */
 
   DomainLen = len;
 
@@ -234,7 +234,7 @@ void do_box_wrapping(void)
   MPI_Bcast(All.GlobalDisplacementVector, 3, MPI_DOUBLE, 0, MPI_COMM_WORLD);
   
   domain_displacePositions( DISPLACE_POSITION_FORWARD );
-#endif
+#endif /* #if !defined(GRAVITY_NOT_PERIODIC) && !defined(DO_NOT_RANDOMIZE_DOMAINCENTER) && defined(SELFGRAVITY) && (NUMDIMS > 2) */
 
   int i;
   for(i = 0; i < NumPart; i++)

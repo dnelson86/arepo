@@ -153,7 +153,7 @@ void domain_exchange_and_update_DC(void)
     {
       DC[i].image_flags = 1;
     }
-#endif
+#endif /* #if !defined(GRAVITY_NOT_PERIODIC) && !defined(DO_NOT_RANDOMIZE_DOMAINCENTER) && defined(SELFGRAVITY) */
 
   /* first, we need to complete the translation table */
   for(int j = 0; j < NTask; j++)
@@ -348,7 +348,7 @@ void domain_exchange_and_update_DC(void)
 
 #if !defined(GRAVITY_NOT_PERIODIC) && !defined(DO_NOT_RANDOMIZE_DOMAINCENTER) && defined(SELFGRAVITY)
       // Nothing to do here
-#else
+#else /* #if !defined(GRAVITY_NOT_PERIODIC) && !defined(DO_NOT_RANDOMIZE_DOMAINCENTER) && defined(SELFGRAVITY) */
       if(recv_transscribe_data[i].new_task >= 0)
         {
           if(trans_table[old_index].wrapped)
@@ -428,7 +428,7 @@ void domain_exchange_and_update_DC(void)
               recv_transscribe_data[i].image_flags = (1 << (zbits * 9 + ybits * 3 + xbits));
             }
         }
-#endif
+#endif /* #if !defined(GRAVITY_NOT_PERIODIC) && !defined(DO_NOT_RANDOMIZE_DOMAINCENTER) && defined(SELFGRAVITY) #else */
     }
 
   /* now return the data */

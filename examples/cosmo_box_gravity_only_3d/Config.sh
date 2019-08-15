@@ -41,7 +41,7 @@ FOF_SECONDARY_LINK_TYPES=1+16+32         # 2^type for the types linked to neares
 SUBFIND                                  # enables substructure finder
 SAVE_HSML_IN_SNAPSHOT                    # stores hsml, density, and velocity dispersion values in the snapshot files
 SUBFIND_CALC_MORE                        # calculates also the velocity dispersion in the local density estimate (this is automatically enabled by several other options, e.g. SAVE_HSML_IN_SNAPSHOT)
-#SUBFIND_EXTENDED_PROPERTIES              # adds calculation of further quantities related to angular momentum in different components
+SUBFIND_EXTENDED_PROPERTIES              # adds calculation of further quantities related to angular momentum in different components
 
 #-------------------------------------------- Things for special behaviour
 PROCESS_TIMES_OF_OUTPUTLIST              # goes through times of output list prior to starting the simulaiton to ensure that outputs are written as close to the desired time as possible (as opposed to at next possible time if this flag is not active)

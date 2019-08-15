@@ -8,6 +8,7 @@
 ## Number of cores to compile and run the problem on
 ## use NUMBER_OF_TASKS=1 for 1d test problems!
 NUMBER_OF_TASKS=1
+PLOT=False # create plots? True/False
 
 ## choose your examples
 TESTS=""
@@ -74,7 +75,7 @@ do
   fi
   
   ## check result in example directory, this also creates some check plots
-  python ${RUNDIR}/check.py ${RUNDIR}
+  python ${RUNDIR}/check.py ${RUNDIR} ${PLOT}
   ((return_value=$?))    ## get return value
   if [ $return_value != 0 ]    ## check return value
   then echo "ERROR: test.sh: test failed!"

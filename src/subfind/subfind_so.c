@@ -762,7 +762,7 @@ static int subfind_overdensity_evaluate(int target, int mode, int threadid)
                   else
                     rate = (SUBFIND_SO_POT_CALCULATION_PARTICLE_NUMBER / N200);
 
-                  if(get_random_number() < rate)
+                  if(get_random_number_aux() < rate)
                     {
                       if(NumPaux >= NumPart)
                         terminate("NumPaux >= NumPart");

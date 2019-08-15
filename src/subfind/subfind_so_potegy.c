@@ -195,7 +195,7 @@ static int subfind_so_potegy_loctree_treebuild(int npart, int start)
 
   /* insert all particles */
 
-  LocTree_IntPos_list = (unsigned long long *) mymalloc_movable(&LocTree_IntPos_list, "LocTree_IntPos_list", 3 * NumPart * sizeof(unsigned long long));
+  LocTree_IntPos_list = (unsigned long long *) mymalloc_movable(&LocTree_IntPos_list, "LocTree_IntPos_list", 3 * LocMaxPart * sizeof(unsigned long long));
 
   for(int k = 0; k < npart; k++)
     {
@@ -814,7 +814,13 @@ double subfind_so_potegy(double *egypot)
   for(int i = 1; i < Ngroups; i++)
     group_off[i] = group_off[i - 1] + group_len[i - 1];
 
-  subfind_so_potegy_loctree_treeallocate((int) (All.TreeAllocFactor * NumPart) + NTopnodes, NumPart);
+  int MaxAllocPart = NumPart;
+  // extend in case a single group holds more particles than NumPart
+  for(int i = 0; i < Ngroups; i++)
+    if(group_len[i] > MaxAllocPart)
+      MaxAllocPart = group_len[i];
+
+  subfind_so_potegy_loctree_treeallocate((int) (All.TreeAllocFactor * MaxAllocPart) + NTopnodes, MaxAllocPart);
 
   /* now do the actual potential calculation */
   for(int i = 0; i < Ngroups; i++)
