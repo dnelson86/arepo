@@ -90,6 +90,13 @@ static void domain_displacePositions( enum domain_displace_mode mode )
       if(i < NumGas)
         domain_displacePosition( SphP[i].Center, mode );
     }
+
+#ifdef PLACEHIGHRESREGION
+  domain_displacePosition( All.Xmintot[1], mode );
+  domain_displacePosition( All.Xmaxtot[1], mode );
+  domain_displacePosition( All.Corner[1], mode );
+  domain_displacePosition( All.UpperCorner[1], mode );
+#endif
 }
 
 
@@ -227,8 +234,14 @@ void do_box_wrapping(void)
   domain_displacePositions( DISPLACE_POSITION_BACKWARD );
 
   if(ThisTask == 0)
-    for(j = 0; j < 3; j++)
-      All.GlobalDisplacementVector[j] = (get_random_number() - 0.5) * boxsize[j];
+    {
+      double prefac = 1.;
+#ifdef PLACEHIGHRESREGION
+      prefac = 0.5;
+#endif
+      for(j = 0; j < 3; j++)
+        All.GlobalDisplacementVector[j] = (get_random_number() - 0.5) * boxsize[j] * prefac;
+    }
   
   mpi_printf("DOMAIN: New global displacement vector: %g, %g, %g\n", All.GlobalDisplacementVector[0], All.GlobalDisplacementVector[1], All.GlobalDisplacementVector[2]);
   MPI_Bcast(All.GlobalDisplacementVector, 3, MPI_DOUBLE, 0, MPI_COMM_WORLD);
