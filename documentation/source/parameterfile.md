@@ -4,11 +4,11 @@ Parameterfile
 ***************** 
 
 The parameter-file, often named param.txt, is a file containing run-time 
-options for AREPO. These include things like the input and output directory,
-maximum runtimes, memory limits and all kind of freely choosable simulaiton 
+options for Arepo. These include things like the input and output directory,
+maximum runtimes, memory limits and all kind of freely choosable simulation 
 and model parameters. In general, the code will output an error message if 
-there are either missing paramters for the given configuration AREPO was 
-compiled with, or if there are obsolete paramters. The latter can be 
+there are either missing parameters for the given configuration Arepo was 
+compiled with, or if there are obsolete parameters. The latter can be 
 deactivated by setting the compile-time flag ``ALLOWEXTRAPARAMS``.
 Unlike changing Config.sh, changing the parameters does not require 
 re-compilation of the code.
@@ -35,7 +35,7 @@ Initial conditions
   are supported, selected by one of the choices "1", "2", or "3". Format "1" 
   is the traditional fortran-style unformatted format familiar from GADGET. 
   Format "2" is a variant of this format, where each block of data is 
-  preceeded by a 4-character block-identifier. Finally, format "3" selects the 
+  preceded by a 4-character block-identifier. Finally, format "3" selects the 
   HDF-5 format.
 
 -----
@@ -64,7 +64,7 @@ Initial conditions
 ``MHD_SEEDFIELD``
 
   Direction of the uniform B field that is set before starting the simulation.
-  The direction is encoded by sum(2^k), where k is the index of direciton
+  The direction is encoded by sum(2^k), where k is the index of direction
   (0, 1, 2 for x, y, z, respectively). E.g. 3 is a diagonal field in 
   the xy plane, parallel to the z axis. This allows only orientations along
   coordinate axis, perpendicular to it or diagonal. Note that the equations of 
@@ -84,7 +84,7 @@ Initial conditions
 
 ``TILE_ICS``
 
-  Factor by which the ICs are dublicated in each dimension. Should be an 
+  Factor by which the ICs are duplicated in each dimension. Should be an 
   integer.
 
 -----
@@ -127,7 +127,7 @@ Output file names and formats
   hardware configuration. It can also help to avoid problems due to big 
   files for large simulations. Note that initial conditions may also 
   be distributed into several files, the number of which is automatically 
-  recognised by the code and does not have to be equal to 
+  recognized by the code and does not have to be equal to 
   ``NumFilesPerSnapshot`` (it may also be larger than the number of 
   processors).
 
@@ -162,7 +162,7 @@ Output file names and formats
 
   The number of files the code may read or write simultaneously when writing 
   or reading snapshot/restart files. If the value of this parameter is larger 
-  than the number of processors, it is capped by that. This parameter is only
+  then the number of processors, it is capped by that. This parameter is only
   important for very large runs, where the file-system can be significantly 
   affected by too many tasks writing (restart files) at the same time.
 
@@ -182,7 +182,7 @@ Output frequency
 
 **CpuTimeBetRestartFile**
 
-  The value specfied here gives the time in seconds the code will run before it
+  The value specified here gives the time in seconds the code will run before it
   writes regularly produced restart files. This can be useful to protect 
   against unexpected interruptions (for example due to a hardware problem) of 
   a simulation, particularly if it is run for a long time. It is then possible 
@@ -270,7 +270,7 @@ Memory allocation
 
   The memory allocate per MPI task, in megabytes. A contiguous memory arena of 
   this total size is allocated at startup, and then partitioned internally 
-  within AREPO for memory allocation and deallocation requests. Can generally 
+  within Arepo for memory allocation and deallocation requests. Can generally 
   be set to ~95% of the total available, e.g. (memory per node / number of MPI 
   tasks per node), to leave room for operating system tasks and MPI buffers. 
   This value can be changed on a restart to increase the amount of memory 
@@ -283,7 +283,7 @@ Simulated time and spatial extent
 
 **BoxSize**
 
-  The boxsize for the simulation, in internal code units. 
+  The box size for the simulation, in internal code units. 
   All particles and gas cells in the ICs must have Coordinates 
   within the range ``[0,BoxSize]`` in each dimension. The only exception from 
   this is for collisionless particles in a tree-only gravity mode (no 
@@ -343,7 +343,7 @@ Cosmological parameters
 **OmegaBaryon**
 
   Gives the baryon density in units of the critical 
-  densty at z=0 for cosmological simulations. Relevant for comoving 
+  density at z=0 for cosmological simulations. Relevant for comoving 
   integration, halo/subhalo finder and star formation model.
 
 -----
@@ -363,8 +363,8 @@ Cosmological parameters
   the definition of the internal code units, such that for gravitational 
   dynamics and adiabatic gas dynamics the actual value assigned for 
   ``HubbleParam`` is not used by the code. Only used when conversions to 
-  physical cgs units are required (e.g. for radiative cooling physics). 
-  In other cases, use 1.0.
+  proper (i.e. non-comoving) cgs units are required (e.g. for radiative 
+  cooling physics). In other cases, use 1.0.
 
 -----
 
@@ -373,8 +373,8 @@ System of units
 
 **UnitVelocity_in_cm_per_s**
 
-  This sets the internal velocity unit in **cm/sec**. For example, the 
-  choice of ``1e5`` sets the velocity unit to 1.0 *km/sec*. 
+  This sets the internal velocity unit in **cm/s**. For example, the 
+  choice of ``1e5`` sets the velocity unit to 1.0 *km/s*. 
   Note that the specification of ``UnitLength_in_cm``, ``UnitMass_in_g``, and
   ``UnitVelocity_in_cm_per_s`` also determines the internal unit of time.
 
@@ -390,7 +390,7 @@ System of units
 
 **UnitMass_in_g**
 
-  This sets the internal mass unit in **g/h**, where H_0 = 100 h km/sec/Mpc.  
+  This sets the internal mass unit in **g/h**, where H_0 = 100 h km/s/Mpc.  
   For example, the choice of ``1.989e43`` sets the mass unit to 
   `10^10 Msun/h`.
 
@@ -417,7 +417,7 @@ Gravitational force accuracy
 **TypeOfOpeningCriterion**
 
   This selects the type of cell-opening criterion used in the tree walks. A 
-  value of "1" selects the relative opening criterion. 
+  value of ``1`` selects the relative opening criterion. 
   *Required value: 1* (only implemented option).
 
 -----
@@ -443,8 +443,8 @@ Time integration accuracy
 **TypeOfTimestepCriterion**
 
   This parameter can in principle be used to select different kinds of 
-  timestep criteria for gravitational dynamics. However, AREPO presently only 
-  supports the criterion "0".
+  timestep criteria for gravitational dynamics. However, Arepo presently only 
+  supports the criterion ``0``.
 
 -----
 
@@ -501,7 +501,7 @@ Domain decomposition
 
   Number of domains per MPI task. Consequently, the domain decomposition will
   cut computational box in ``MultipleDomains`` times number of tasks chunks.
-  Too few of them will lead to cpu load and memory inbalances, too many to more
+  Too few of them will lead to cpu load and memory imbalances, too many to more
   MPI communication as there are more domain boundaries.
 
 -----
@@ -528,7 +528,7 @@ Moving mesh
 
 **MaxNumNgbDeviation**
 
-  This sets the allowed variation of the number of neighbours around the target 
+  This sets the allowed variation of the number of neighbors around the target 
   value ``DesNumNgb``. A larger tolerance will reduce the number of iterations.
   to find the correct radius.
 
@@ -599,7 +599,7 @@ not  ``REGULARIZE_MESH_FACE_ANGLE``
 
   Alternative "roundness" criterion. This criterion uses the distance between 
   center of mass and mesh-generating point as a measure for roundness. If this 
-  distnce exceeds twice the cell radius times ``CellShapingFactor``, the cell 
+  distance exceeds twice the cell radius times ``CellShapingFactor``, the cell 
   will not be refined.
   If this distance exceeds 0.75 times the cell radius times 
   ``CellShapingFactor`` the movement of the mesh-generating point will deviate 
@@ -661,7 +661,7 @@ Refinement and derefinement
 ``REFINEMENT``
 
   Selects the criterion for refinement; "0" no refinement, "1" target mass 
-  refinement, "2" Jeans stability refinement cirtrion.
+  refinement, "2" Jeans stability refinement criterion.
 
 -----
 
@@ -670,7 +670,7 @@ Refinement and derefinement
 ``REFINEMENT``
 
   Selects the criterion for derefinement; "0" no derefinement, "1" target mass 
-  derefinement, "2" Jeans stability derefinement cirtrion.
+  derefinement, "2" Jeans stability derefinement criterion.
 
 -----
 
@@ -703,15 +703,15 @@ Hydrodynamics
 **MinEgySpec**
 
   Minimum specific energy allowed in a gas cell. If specific energy is smaller
-  than the value specified here, AREPO will add additional thermal energy in 
+  than the value specified here, Arepo will add additional thermal energy in 
   this cell such that it reaches a specific thermal energy of ``MinEgySpec``.
   This is mainly as a protection against negative specific energies emerging 
   from numerical round-off errors in kinetically or magnetically dominated 
   cells (keep in mind that the thermal energy is recomputed from the total 
-  energy in AREPO.
+  energy in Arepo.
   In case this parameter is nonzero, it overrides ``MinGasTemp``.
   If this is zero, internally, ``MinEgySpec`` will be calculated via the value
-  of ``MinGasTemp``. In case both ``MinEgySpec``and ``MinGasTemp`` are nonzero,
+  of ``MinGasTemp``. In case both ``MinEgySpec`` and ``MinGasTemp`` are nonzero,
   ``MinGasTemp`` will only set a lower limit to the cooling.
 
 -----
@@ -731,7 +731,7 @@ Gravitational softening
 **GasSoftFactor**
 
   The gravitational softening length of a gas cell is this value times the 
-  cellsize, which is calculated as the radius of the volume-equilvalent-sphere.
+  cell size, which is calculated as the radius of the volume-equilvalent sphere.
 
 -----
 
@@ -750,11 +750,11 @@ Gravitational softening
   gravitational softening length corresponding to ``SofteningComovingTypeX`` 
   (referenced by one or more specific 
   particle types depending on the entries of ``SofteningTypeOfPartTypeN``). 
-  Depening on the relative settings of the *Comoving* and *MaxPhys* softenings,
+  Depending on the relative settings of the *Comoving* and *MaxPhys* softenings,
   the code will hence switch from a softening constant in comoving units to 
   one constant in physical units. For example, if the *MaxPhys* value is 
   exactly half the *Comoving* value, then particles using this softening type 
-  will have comoving softening until`z=1` and fixed physical softenings 
+  will have comoving softening until `z=1` and fixed physical softenings 
   after that point in time. Code length units.
 
 -----
@@ -762,7 +762,7 @@ Gravitational softening
 **SofteningTypeOfPartTypeX**
 
   For each particle type in the simulation which is involved gravitational 
-  calculations, it must be assigned to a "softening type", a 0-based integer 
+  calculations, it must be assigned to a "softening type", an integer 
   index corresponding to one of the above 
   ``SofteningComovingTypeX``/``SofteningMaxPhysTypeX`` entry pairs.
   
@@ -772,7 +772,7 @@ Gravitational softening
 
 ``ADAPTIVE_HYDRO_SOFTENING``
 
-  If this treatment for gas softenings is based used, a discrete spectrum of 
+  If this treatment for gas softenings is used, a discrete spectrum of 
   possible softening lengths for gas cells is created at 
   startup. It contains ``NSOFTTYPES_HYDRO`` entries, controlled by 
   this 'minimum' parameter and the following 'spacing' parameter (as a 
@@ -785,7 +785,8 @@ Gravitational softening
 ``ADAPTIVE_HYDRO_SOFTENING``
 
   The logarithmic spacing for the adaptive gas softenings table, as described 
-  above. Must be larger than one.
+  above. This is the multiplicative factor by which the next discrete softening
+  length is larger than the previous one. Consequently, must be larger than unity.
 
 -----
 
@@ -799,7 +800,7 @@ Subfind parameters
   The (integer) minimum number of particles/cells, of all types, for Subfind 
   groups. If a Subfind group is identified with fewer than this number of 
   total particles/cells, it is discarded. Note that this means many small 
-  friends-of-friends groups (with a nomimal minimum number of 32 member 
+  friends-of-friends groups (with a nominal minimum number of 32 member 
   particles) may frequently have no sufficiently large Subfind groups, and 
   so will have ``GroupFirstSub==-1`` indicating that that FoF has no central 
   subhalo in addition to no satellite subhalos.
@@ -901,7 +902,7 @@ Cooling and star formation
 
 ``USE_SFR``
 
-  The "supernova temperature" ``T_SN`` of the hot intercloud medium in Kelvin.
+  The "supernova temperature" ``T_SN`` of the hot inter-cloud medium in Kelvin.
 
 -----
 

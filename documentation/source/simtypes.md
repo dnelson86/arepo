@@ -1,12 +1,12 @@
 Simulation examples
 **************************
 
-AREPO is a multi-purpose code that supports a number of different types of 
+Arepo is a multi-purpose code that supports a number of different types of 
 simulations. Here, we present some examples that in our opinion are 
 particularly relevant. This list is by no means complete, and highly biased 
 to the fields of interest of the authors. 
 We encourage users that have other simulation setups to make them (or small
-test examples) availlable to us, in order to provide a more exhaustive list of 
+test examples) available to us, in order to provide a more exhaustive list of 
 examples in future code versions.
 
 
@@ -66,29 +66,29 @@ specific directory is the execution of Arepo ``mpiexec -np 8 ./Arepo param.txt``
 because the parameter file contains relative paths of the initial 
 conditions, other required files, and the output directory. All other 
 commands can be executed from an arbitrary directory, as long as
-the relative path handed over is correct.
+the relative path handed over is valid.
 
 
 Cosmological Simulations
 ========================
 
-One for the main simulation types in AREPO are simulations on an expanding 
+One of the main simulation types in Arepo are simulations on an expanding 
 spacetime, where the coordinates are treated as comoving coordinates.
 This mode is active whenever the parameter flag ``ComovingIntegrationOn`` is set
 to "1" in the parameter file. In this case the code models the expanding 
-spacetime discribed by the Friedmann equations.
+spacetime described by the Friedmann equations.
 
 The halo (FoF) and subhalo finder (subfind) are analysis tools mainly for these
-types of simulatons.
+types of simulations.
 
 Cosmological volumes
 --------------------
 
 One of the standard types of cosmological simulations are 
-cosmological volume simulations. These simulatons have a uniform mass 
+cosmological volume simulations. These simulations have a uniform mass 
 resolution and are set up using cosmological perturbation theory, converted
 to small initial position and velocity perturbations in a periodic box
-with fixed comoving extent. These simulatios can be done with gravity only, 
+with fixed comoving extent. These simulations can be done with gravity only, 
 in which case the simulation particles are all of a single type (type > 0) and 
 gravity is recommended to be calculated using a TreePM
 algorithm. This means that the compile time flags ``SELFGRAVITY`` and ``PMGRID`` 
@@ -115,11 +115,11 @@ studies of galaxy and galaxy cluster formation are so-called zoom simulations,
 in which the Lagrangian region belonging to a single final object is 
 sampled with significantly higher resolution than the rest of the cosmological 
 volume. This way, it is possible to accurately resolve the formation of an
-individual object, while still modelling the large-scale environmental 
+individual object, while still modeling the large-scale environmental 
 effects. These simulations are, as the above ones, possible to run in gravity
 only mode or including gas physics. A gravity only example is given as
 ``cosmo_zoom_gravity_only_3d`` in the examples (note however that the ICs need to be created
-separately in this example, as they are slightly too large to inclue them 
+separately in this example, as they are slightly too large to include them 
 into the main code repository).
 Technically, such a zoom simulation needs slightly different configuration 
 in the particle-mesh algorithm. In particular, it is useful to place a second
@@ -133,7 +133,7 @@ Initial conditions generation
 -----------------------------
 
 The creation of initial conditions for cosmological simulation is in general
-a complicated procedure, and not included in the AREPO code. However, we included
+a complicated procedure, and not included in the Arepo code. However, we included
 in the examples the possibility to download and execute third-party initial condition
 generating software to illustrate the general procedure how to create them
 (MUSIC, Hahn&Abel 2011, MNRAS, 415, 2101 and N-GenIC, 
@@ -141,7 +141,7 @@ Springel et al. 2005, Nature, 435, 629)
 We note that these third party software packages generally 
 have different library requirements than Arepo, and therefore might 
 not work immediately on some machines. We also note that the
-initial conditions used in the examples are choosen for illustration 
+initial conditions used in the examples are chosen for illustration 
 purposes and to minimize computational effort to run them. They are
 generally not suited to be used directly in scientific work.
 
@@ -149,8 +149,8 @@ generally not suited to be used directly in scientific work.
 Newtonian space
 ===============
 
-Apart from comoving integration, AREPO can also handle ordinary Newtonian 
-spacetime by coosing the parameter option ``ComovingIntegrationOn 0``. 
+Apart from comoving integration, Arepo can also handle ordinary Newtonian 
+spacetime by choosing the parameter option ``ComovingIntegrationOn 0``. 
 While cosmological simulations usually assume periodic boundary conditions, 
 simulations in Newtonian space can also have reflective or inflow/outflow
 boundary conditions. 
@@ -160,11 +160,7 @@ object, such as in ``isolated_galaxy_collisionless_3d``. This particular case
 only contains collisionless particles, namely the dark matter and stellar 
 component of a disk galaxy, and their gravitational interactions
 are calculated with a tree algorithm only, assuming non-periodic forces.
-One specific compile-time flag recommended in these kind of simulations is 
-``RANDOMIZE_DOMAINCENTER``.  Without this flag it is possible that correlated 
-force-errors cause an isolated galaxy to drift from the initial center of 
-mass, which is prevented by de-correlating these errors by frequently choosing 
-a new domain center. The initial conditions of this problem are created with
+The initial conditions of this problem are created with
 the GalIC code (Yurin&Springel 2014, MNRAS, 444, 62). The initial conditions
 generation can be triggered in the create.py script, however is a computationally
 expensive procedure. Therefore we also provide the initial conditions in the
@@ -173,15 +169,15 @@ repository.
 Another popular type of simulations in galactic astrophysics are mergers of
 galaxies. The example ``galaxy_merger_star_formation_3d`` shows such an example, 
 which is similar to ``isolated_galaxy_collisionless_3d``, however in this 
-particular case includes gas and two galaxies interacting. AREPO, as every 
-grid code, requires a finite extent of the simulation box as well as non-zero 
+particular case includes gas and two galaxies interacting. Arepo, as every 
+grid code, requires a finite extent of the simulation box as well as positive 
 density at every point.
-This is different from Smoothed-Particle-Hydrodynamics simulations such as 
-the ones performed with GADGET, where simply not placing gas particles in
+This is different from smoothed-particle-hydrodynamics simulations such as 
+the ones performed with Gadget, where simply not placing gas particles in
 the initial condition is an acceptable solution to treat low-density regions.
 The initial condition for ``galaxy_merger_sfr_3d`` are, for historic reasons,
-Smoothed-Particle-Hydrodynamics initial conditions. To be able to use them
-in AREPO, the compile-time opiton ``ADDBACKGROUNDGRID`` was introduced.
+smoothed-particle-hydrodynamics initial conditions. To be able to use them
+in Arepo, the compile-time option ``ADDBACKGROUNDGRID`` was introduced.
 With this mode enabled, the code does not perform a simulation, but converts 
 the SPH gas particles into a hierarchical oct-tree structure of cells.
 Once this is done, this output (using the recommended box size) can be used
@@ -216,7 +212,7 @@ convergence order of the code. Both these tests are sensitive to accurate
 hydrodynamical modelling and gradient estimates.
 
 Other 2d test problems are ``noh_2d``, a converging gas flow in 2d which 
-introduces a strong shock and is a challanging problem for the Riemann solver,
+introduces a strong shock and is a challenging problem for the Riemann solver,
 as well as ``current_sheet_2d``, an MHD test probing numerical reconnection 
 properties of the code.
 
@@ -253,12 +249,12 @@ One-dimensional simulations in spherical symmetry
 
 An important set of simulations for stellar astrophysics are one dimensional 
 simulations in spherical symmetry, such as given for example in 
-``polytrope_1d_spherical``. Generally, AREPO is not optimized for such kind of 
+``polytrope_1d_spherical``. Generally, Arepo is not optimized for such kind of 
 simulations and can only run these in serial. However, this option has proven 
 to be useful for quick test simulations as well as for calculating radial 
 profiles which are then used as initial conditions for three dimensional 
 simulations. One of the key aspect for these simulation is the quality of the
-boundary conditions. In this spherically symmetric mode, AREPO uses a 
+boundary conditions. In this spherically symmetric mode, Arepo uses a 
 reflective inner boundary condition and an inflow/outflow boundary condition
 at the outer end. 
 

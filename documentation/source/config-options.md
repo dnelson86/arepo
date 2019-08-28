@@ -46,7 +46,7 @@ periodic boundary conditions
 These options can be used to distort the simulation cube along the 
 given direction with the given factor into a parallelepiped of arbitrary aspect
 ratio. The box size in the given direction increases from the value in the 
-parameterfile by the factor given (e.g. if Boxsize is set to 100 and ``LONG_X=4``
+parameter file by the factor given (e.g. if ``Boxsize`` is set to 100 and ``LONG_X=4``
 is set the simulation domain extends from 0 to 400 along X and from 0 to 100 
 along Y and Z.)
 
@@ -187,7 +187,7 @@ decomposition is disabled.
 
 Enables domain decomposition together with ``VORONOI_STATIC_MESH`` (which is 
 otherwise then disabled), in case non-gas particle types exist and the use of 
-domain decompotions is desired. Note that on one hand it may be advantageous 
+domain decompositions is desired. Note that on one hand it may be advantageous 
 in case the non-gas particles mix well or cluster strongly, but on the other 
 hand the mesh construction that follows the domain decomposition is slow for a 
 static mesh, so whether or not using this new flag is overall advantageous 
@@ -218,7 +218,7 @@ Refinement
 ===========================
 
 By default, there is no refinement and derefinement and unless set otherwise,
-the cirterion for refinement/derefenment is a target mass.
+the criterion for refinement/derefinement is a target mass.
 
 **REFINEMENT_SPLIT_CELLS**
 
@@ -276,7 +276,7 @@ remaining mesh structures are freed after this step as usual.
 
 -----
 
-Non-standard phyiscs
+Non-standard physics
 ====================
 
 **COOLING**
@@ -293,14 +293,14 @@ This imposes an adaptive floor for the temperature.
 
 **USE_SFR**
 
-Star formation model, turning dense gas into collisionless partices. See
+Star formation model, turning dense gas into collisionless particles. See
 Springel&Hernquist, (2003, MNRAS, 339, 289)
 
 -----
 
 **SFR_KEEP_CELLS**
 
-Do not distroy cell out of which a star has formed.
+Do not destroy cell out of which a star has formed.
 
 -----
 
@@ -311,7 +311,7 @@ If nothing is active, no gravity included.
 
 **SELFGRAVITY**
 
-Gravitational intraction between simulation particles/cells.
+Gravitational interaction between simulation particles/cells.
 
 -----
 
@@ -342,7 +342,7 @@ Gravity is not treated periodically.
 
 **ALLOW_DIRECT_SUMMATION**
 
-Performes direct summation instead of tree-based gravity if number of active 
+Performs direct summation instead of tree-based gravity if number of active 
 particles < ``DIRECT_SUMMATION_THRESHOLD`` (= 3000 unless specified differently)
 
 -----
@@ -414,7 +414,7 @@ which works well independent of the data layout, in particular it can cope
 well with highly clustered particle distributions that occupy only a small 
 subset of the total simulated volume. However, this method is a bit slower 
 than the default approach (used when the option is disabled), which is best 
-matched for homogenously sampled periodic boxes.
+matched for homogeneously sampled periodic boxes.
 
 -----
 
@@ -446,7 +446,7 @@ This is only relevant when ``PLACEHIGHRESREGION`` is activated. The size of
 the high resolution box will be automatically determined as the minimum size 
 required to contain the selected particle type(s), in a "shrink-wrap" fashion. 
 This region is be expanded on the fly, as needed. However, in order to prevent 
-a situation where this size needs to be enlarged frquently, such as when the 
+a situation where this size needs to be enlarged frequently, such as when the 
 particle set is (slowly) expanding, the minimum size is multiplied by the 
 factor ``ENLARGEREGION`` (if defined). Then even if the set is expanding, this 
 will only rarely trigger a recalculation of the high resolution mesh geometry, 
@@ -482,7 +482,7 @@ Gravity softening
 =================
 
 In the default configuration, the code uses a small table of possible 
-gravitational softening lengths, which are specified in the parameterfile 
+gravitational softening lengths, which are specified in the parameter file 
 through the ``SofteningComovingTypeX`` and ``SofteningMaxPhysTypeX`` options, 
 where X is an integer that gives the "softening type". Each particle type is 
 mapped to one of these softening types through the 
@@ -506,7 +506,7 @@ If the tree walk wants to use a 'softened node' (i.e. where the maximum
 gravitational softening of some particles in the node is larger than the node 
 distance and larger than the target particle's softening), the node is opened 
 by default (because there could be mass components with a still smaller 
-softening hidden in the node). This can cause a subtantial performance penalty 
+softening hidden in the node). This can cause a substantial performance penalty 
 in some cases. By setting this option, this can be avoided. The code will then 
 be allowed to use softened nodes, but it does that by evaluating the 
 node-particle interaction for each mass component with different softening 
@@ -515,7 +515,7 @@ This also requires that each tree node computes and stores a vector with these
 different masses. It is therefore desirable to not make the table of softening 
 types excessively large. This option can be combined with adaptive hydro 
 softening. In this case, particle type 0 needs to be mapped to softening type 
-0 in the parameterfile, and no other particle type may be mapped to softening 
+0 in the parameter file, and no other particle type may be mapped to softening 
 type 0 (the code will issue an error message if one doesn't obey to this).
 
 -----
@@ -532,7 +532,7 @@ desired softening length by scaling the type-1 softening with the cube root of
 the mass ratio. Then, the softening type that is closest to this desired 
 softening is assigned to the particle (*choosing only from those softening 
 values explicitly input as a SofteningComovingTypeX parameter*). This option 
-is primarily useful for zoon simulations, where one may for example lump all 
+is primarily useful for zoom simulations, where one may for example lump all 
 boundary dark matter particles together into type 2 or 3, but yet provide a 
 set of softening types over which they are automatically distributed according 
 to their mass. If both ``ADAPTIVE_HYDRO_SOFTENING`` and 
@@ -547,7 +547,7 @@ assignment exclude softening type 0. Note: particles that accrete matter
 When this is enabled, the gravitational softening lengths of hydro cells are 
 varied according to their radius. To this end, the radius of a cell is 
 multiplied by the parameter ``GasSoftFactor``. Then, the closest softening 
-from a logarithmicaly spaced table of possible softenings is adopted for the 
+from a logarithmically spaced table of possible softenings is adopted for the 
 cell. The minimum softening in the table is specified by the parameter 
 ``MinimumComovingHydroSoftening``, and the larger ones are spaced a factor
 ``AdaptiveHydroSofteningSpacing`` apart. The resulting minimum and maximum 
@@ -789,7 +789,7 @@ Sum(2^type) for the primary dark matter type.
 
 With this option, FOF groups can be augmented by particles/cells of other 
 particle types that they "enclose". To this end, for each particle among the 
-types selected by the bit mask specifed with ``FOF_SECONDARY_LINK_TYPES``, the 
+types selected by the bit mask specified with ``FOF_SECONDARY_LINK_TYPES``, the 
 nearest among ``FOF_PRIMARY_LINK_TYPES`` is found and then the particle is 
 attached to whatever group this particle is in. sum(2^type) for the types 
 linked to nearest primaries.
@@ -802,7 +802,7 @@ An option to make the secondary linking work better in zoom runs (after the
 FOF groups have been found, the tree is newly constructed for all the 
 secondary link targets). This should normally be set to all dark matter 
 particle types. If not set, it defaults to ``FOF_PRIMARY_LINK_TYPES``, which 
-reproduces the old behaviour.
+reproduces the old behavior.
 
 -----
 
@@ -814,7 +814,7 @@ Minimum number of particles (primary+secondary) in one group (default is 32).
 
 **FOF_LINKLENGTH=0.16**
 
-Linkinglength for FoF in units of the mean inter-particle separation. 
+Linking length for FoF in units of the mean inter-particle separation. 
 (default=0.2)
 
 -----
@@ -830,7 +830,7 @@ Sort fuzz particles by nearest group and generate offset table in catalog
 
 Normally, the snapshots produced with a FOF group catalogue are stored in 
 group order, such that the particle set making up a group can be inferred as a 
-contiguous block of particles in the snapsot file, making it redundant to 
+contiguous block of particles in the snapshot file, making it redundant to 
 separately store the IDs of the particles making up a group in the group 
 catalogue. By activating this option, one can nevertheless force to create the 
 corresponding lists of IDs as part of the group catalogue output.
@@ -851,7 +851,7 @@ within each group.
 **SAVE_HSML_IN_SNAPSHOT**
 
 When activated, this will store the hsml-values used for estimating total 
-matter density around every point and the corresonding densities in the 
+matter density around every point and the corresponding densities in the 
 snapshot files associated with a run of Subfind.
 
 -----
@@ -870,13 +870,13 @@ set together with ``SAVE_HSML_IN_SNAPSHOT``.
 
 Additional calculations are carried out, which may be expensive.
 (i) Further quantities related to the angular momentum in different components.
-(ii) The kinetic, thermal and potential binding energies for sperical 
+(ii) The kinetic, thermal and potential binding energies for spherical 
 overdensity halos.
 
 
 -----
 
-Special behaviour 
+Special behavior 
 ============================
 
 **RUNNING_SAFETY_FILE**
@@ -938,7 +938,7 @@ This can be used to load SPH ICs that contain identical particle coordinates.
 
 **RECOMPUTE_POTENTIAL_IN_SNAPSHOT**
 
-Needed for postprocess option 18 that can be used to calculate potential 
+Needed for post-processing option 18 that can be used to calculate potential 
 values for a snapshot.
 
 -----
@@ -1059,14 +1059,14 @@ Reads in dark matter particles as gas cells.
 
 **TILE_ICS**
 
-Tile ICs by TileICsFactor (specified as paramter) in each dimension.
+Tile ICs by TileICsFactor (specified as parameter) in each dimension.
 
 -----
 
 Output fields 
 ==========================
 
-Default output filds are: ``position``, ``velocity``, ``ID``, ``mass``, 
+Default output fields are: ``position``, ``velocity``, ``ID``, ``mass``, 
 ``specific internal energy`` (gas only), ``density`` (gas only)
 
 **OUTPUT_TASK**
@@ -1119,7 +1119,7 @@ Output of velocity of mesh-generating point.
 
 **OUTPUT_VOLUME**
 
-Output of volume of cells; note that this can always be computat as both, density 
+Output of volume of cells; note that this can always be computed as both, density 
 and mass of cells are by default in output.
 
 -----
@@ -1171,7 +1171,7 @@ Output of particle softenings.
 
 **OUTPUTGRAVINTERACTIONS**
 
-Output of gravitatational interactions (from the gravitational tree) of particles.
+Output of gravitational interactions (from the gravitational tree) of particles.
 
 -----
 
@@ -1208,7 +1208,7 @@ Output of vorticity of gas.
 **OUTPUT_CSND**
 
 Output of sound speed. This field is only used for tree-based timesteps! 
-Calculate from hydro quantities in postprocessing if required for science 
+Calculate from hydro quantities in post-processing if required for science 
 applications.
 
 -----
@@ -1218,7 +1218,7 @@ Output options
 
 **PROCESS_TIMES_OF_OUTPUTLIST**
 
-Goes through times of output list prior to starting the simulaiton to ensure 
+Goes through times of output list prior to starting the simulation to ensure 
 that outputs are written as close to the desired time as possible (as opposed 
 to at next possible time if this flag is not active).
 
@@ -1227,7 +1227,7 @@ to at next possible time if this flag is not active).
 **REDUCE_FLUSH**
 
 If enabled files and stdout are only flushed after a certain time defined in 
-the parameter file (standard behaviour: everything is flashed most times 
+the parameter file (standard behavior: everything is flushed most times 
 something is written to it).
 
 -----
@@ -1235,7 +1235,7 @@ something is written to it).
 **OUTPUT_EVERY_STEP**
 
 Create snapshot on every (global) synchronization point, independent of 
-parameters choosen or output list.
+parameters chosen or output list.
 
 -----
 
@@ -1286,7 +1286,7 @@ Reports readjustments of buffer sizes.
 Re-gridding
 ============================
 
-These opitions are auxiliary modes to prepare/convert/relax initial conditions
+These options are auxiliary modes to prepare/convert/relax initial conditions
 and will not carry out a simulation.
 
 **MESHRELAX**

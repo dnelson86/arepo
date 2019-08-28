@@ -4,7 +4,7 @@ Diagnostic output
 
 Arepo will not only output the simulation snapshot and reduced data via 
 the halo-finder files, but also a number of (mostly ascii) diagnostic log-
-files which contian important information about the code performance and 
+files which contain important information about the code performance and 
 runtime behavior. 
 
 In practice, to quickly check the performance of large
@@ -104,7 +104,7 @@ cpu.txt
 =======
 
 Each sync-point, such a block is written. This file
-reports the result of the different timers built into AREPO. Each 
+reports the result of the different timers built into Arepo. Each 
 computationally expensive operation has a different timer attached to it and 
 this way allows to closely monitor what the computational time is spent on. 
 Some of the timers (e.g. treegrav) have sub-timers for individual operations.
@@ -114,8 +114,8 @@ possible to identify inefficient parts of the overall algorithm and optimize
 only the most time-consuming parts of the code. There is the option 
 ``OUTPUT_CPU_CSV`` which also returns this data as a ``cpu.csv`` file.
 
-The different colums are:
-name; wallclock-time (in s) this step; percentage this step; wallclock-time 
+The different columns are:
+name; wallclock time (in s) this step; percentage this step; wallclock time 
 (in s) cumulative; percentage up to this step. A typical block of cpu.txt looks
 the following (here a gravity-only, tree-only run):
 
@@ -264,13 +264,13 @@ are written into this file, e.g.
 memory.txt 
 ==========
 
-AREPO internally uses an own memory manager. This means that one large chunk of
-memory is reserved initially for AREPO (specified by the parameter 
-`MaxMemSize`) and allocation for individual arrays is handeled internally. 
+Arepo internally uses an own memory manager. This means that one large chunk of
+memory is reserved initially for Arepo (specified by the parameter 
+`MaxMemSize`) and allocation for individual arrays is handled internally. 
 The reason for introducing this was to avoid memory fragmentation during 
 runtime on some machines, but also to have detailed information about how much
-memory AREPO actually needs and to terminate if this exceeds a pre-defined 
-treshold. ``memory.txt`` reports this internal memory usage, and how much memory 
+memory Arepo actually needs and to terminate if this exceeds a pre-defined 
+threshold. ``memory.txt`` reports this internal memory usage, and how much memory 
 is actually needed by the simulation. 
 
 .. code-block :: python
@@ -461,7 +461,7 @@ is actually needed by the simulation.
 sfr.txt 
 =======
 
-In case ``USE_SFR`` is active, AREPO will create a ``sfr.txt`` file, which reports
+In case ``USE_SFR`` is active, Arepo will create a ``sfr.txt`` file, which reports
 the stars created in every call of the star-formation routine. 
 
 The individual columns are:
@@ -493,7 +493,7 @@ gravitational interactions on the largest possible timestep that is allowed by
 the timestep criterion and allowed by the binary hierarchy of time steps. 
 Each for each timestep, a linked list of particles on this particular 
 integration step exists, and their statistics are reported  in `timebins.txt`.
-In this file, the number of gas cells and collisionless-particles in each 
+In this file, the number of gas cells and collisionless particles in each 
 timebin (i.e. integration timestep) is reported for each sync-point, as well 
 as the cpu time and fraction spent on each timebin. A typical bock looks like
 

@@ -7,7 +7,7 @@ Particle data
 
 
 Arepo supports various formats for in- and output, which are essentially the same
-as in GADGET-2. Format 1 and format 2 are binary outputs and the main reason
+as in Gadget-2. Format 1 and format 2 are binary outputs and the main reason
 why they are still supported is to allow the use of initial conditions from 
 well-tested initial condition codes that write one of these formats.
 For output (or when creating new initial condition generating code), the 
@@ -49,7 +49,7 @@ script.
     +-----------------------------+--------------+------------------------------------------------------------------------------------------------------------------+-------------------------------------------------------------------------------------------------------------------------------------+
     | VelocityCurl                | ROTV         | :math:`\text{UnitVelocity}` :math:`\text{UnitLength}^{-1}` :math:`h`                                             | Rotation of velocity (``OUTPUT_CURLVEL``)                                                                                           |
     +-----------------------------+--------------+------------------------------------------------------------------------------------------------------------------+-------------------------------------------------------------------------------------------------------------------------------------+
-    | CoolingHeatingEnergy        | COHE         | :math:`\text{UnitLength}^{-1}` :math:`\text{UnitVelocity}^3` :math:`\text{UnitMass}`                             | Actual cooling rate, differing from nominal coolnig rate in star forming cells (``OUTPUT_COOLHEAT``)                                |
+    | CoolingHeatingEnergy        | COHE         | :math:`\text{UnitLength}^{-1}` :math:`\text{UnitVelocity}^3` :math:`\text{UnitMass}`                             | Actual cooling rate, differing from nominal cooling rate in star forming cells (``OUTPUT_COOLHEAT``)                                |
     +-----------------------------+--------------+------------------------------------------------------------------------------------------------------------------+-------------------------------------------------------------------------------------------------------------------------------------+
     | SurfaceArea                 | AREA         | :math:`\text{UnitLength}^2` :math:`a^2 \, h^{-2}`                                                                | Surface area of a Voronoi cell (``OUTPUT_SURFACE_AREA``)                                                                            |
     +-----------------------------+--------------+------------------------------------------------------------------------------------------------------------------+-------------------------------------------------------------------------------------------------------------------------------------+
@@ -85,7 +85,7 @@ script.
     +-----------------------------+--------------+------------------------------------------------------------------------------------------------------------------+-------------------------------------------------------------------------------------------------------------------------------------+
     | Softenings                  | SOFT         | :math:`\text{UnitLength}` :math:`a \, h^{-1}`                                                                    | Gravitational softening length of particle/cell (``OUTPUT_SOFTENINGS``)                                                             |
     +-----------------------------+--------------+------------------------------------------------------------------------------------------------------------------+-------------------------------------------------------------------------------------------------------------------------------------+
-    | GravityInteractions         | GINT         |                                                                                                                  | Number of foce calculations in tree (``OUTPUTGRAVINTERACTIONS``)                                                                    |
+    | GravityInteractions         | GINT         |                                                                                                                  | Number of force calculations in tree (``OUTPUTGRAVINTERACTIONS``)                                                                   |
     +-----------------------------+--------------+------------------------------------------------------------------------------------------------------------------+-------------------------------------------------------------------------------------------------------------------------------------+
     | MagneticField               | BFLD         | :math:`\text{UnitLength}^{-1.5}` :math:`\text{UnitMass}^{0.5}` :math:`\text{UnitVelocity}` :math:`h \, a^{-2}`   | Magnetic field (in code units but Gauss system; note that internally, the Heaviside-Lorentz system is used) (``MHD``)               |
     +-----------------------------+--------------+------------------------------------------------------------------------------------------------------------------+-------------------------------------------------------------------------------------------------------------------------------------+
@@ -99,7 +99,7 @@ script.
     +-----------------------------+--------------+------------------------------------------------------------------------------------------------------------------+-------------------------------------------------------------------------------------------------------------------------------------+
     | SubfindHsml                 | SFHS         | :math:`\text{UnitLength}` :math:`a \, h^{-1}`                                                                    | SPH smoothing length for density estimate (``SAVE_HSML_IN_SNAPSHOT``)                                                               |
     +-----------------------------+--------------+------------------------------------------------------------------------------------------------------------------+-------------------------------------------------------------------------------------------------------------------------------------+
-    | SubfindVelDisp              | SFVD         | :math:`\text{UnitVelocity}`                                                                                      | SPH avaraged velocity dispersion around particle (``SAVE_HSML_IN_SNAPSHOT``)                                                        |
+    | SubfindVelDisp              | SFVD         | :math:`\text{UnitVelocity}`                                                                                      | SPH averaged velocity dispersion around particle (``SAVE_HSML_IN_SNAPSHOT``)                                                        |
     +-----------------------------+--------------+------------------------------------------------------------------------------------------------------------------+-------------------------------------------------------------------------------------------------------------------------------------+
     | GroupNr                     | GROU         |                                                                                                                  | Number of nearest group (``FOF_FUZZ_SORT_BY_NEAREST_GROUP=1``)                                                                      |
     +-----------------------------+--------------+------------------------------------------------------------------------------------------------------------------+-------------------------------------------------------------------------------------------------------------------------------------+
@@ -114,7 +114,7 @@ Format 1
 
 Format 1 is organized in blocks, each holding information about all particles
 for a specific property. The first block is the header, containing global 
-informmation about the particle set. Within the other blocks, particles are 
+information about the particle set. Within the other blocks, particles are 
 ordered according to their particle type. 
 
 For a more detailed description of this file format, see the GADGET-2 user
@@ -160,7 +160,7 @@ FOF/Subfind
 ===========
 
 The halo and subhalo finder produces a separate output file, summarizing the 
-properties determined by the on the fly analyisis. These run immediately 
+properties determined by the on the fly analysis. These run immediately 
 before every simulation output, and also sort the particles in the particle 
 data output according to group membership, subhalo membership and binding 
 energy.
