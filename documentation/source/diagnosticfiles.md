@@ -473,6 +473,8 @@ The individual columns are:
  * total mass in stars formed in this timestep (after sampling) (code units), 
  * cumulative stellar mass formed (code units).
 
+Example: 
+
 .. code-block :: python
 
       4.373019e-01   9.714635e-03   1.100743e+02   1.405136e+02   2.2809

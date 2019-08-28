@@ -117,7 +117,7 @@ for a specific property. The first block is the header, containing global
 information about the particle set. Within the other blocks, particles are 
 ordered according to their particle type. 
 
-For a more detailed description of this file format, see the GADGET-2 user
+For a more detailed description of this file format, see the Gadget-2 user
 guide (https://wwwmpa.mpa-garching.mpg.de/gadget/users-guide.pdf).
 
 
