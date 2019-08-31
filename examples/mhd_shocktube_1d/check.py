@@ -104,7 +104,7 @@ while True:
             ax[3].plot(x[:,0], absB, 'b', zorder=3)
             ax[3].plot(x[:,0], absB, 'r+', zorder=2)
             ax[3].plot(checkData[:,0], checkData[:,4], c='k', zorder=1, lw=0.7)
-            ax[3].set_ylabel(r'abs(B)')
+            ax[3].set_ylabel(r'$\left|\mathbf{B}\right|$')
             ax[3].set_xlabel(r'position')
             ax[3].set_xlim([-0.1,2.6])
             
