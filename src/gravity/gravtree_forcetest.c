@@ -36,39 +36,33 @@
  *                void forcetest_ewald_init(void)
  *                static void ewald_correction_force_table_lookup(double dx,
  *                  double dy, double dz, double force[4])
- * 
+ *
  * \par Major modifications and contributions:
- * 
+ *
  * - DD.MM.YYYY Description
  * - 20.05.2018 Prepared file for public release -- Rainer Weinberger
  */
 
-
+#include <math.h>
 #include <mpi.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <math.h>
 
-
+#include "../domain/domain.h"
 #include "../main/allvars.h"
 #include "../main/proto.h"
-#include "../domain/domain.h"
-
 
 #ifdef FORCETEST
-
 
 #if !defined(EVALPOTENTIAL) && defined(FORCETEST)
 #error "When you enable FORCETEST you should also switch on EVALPOTENTIAL"
 #endif /* #if !defined(EVALPOTENTIAL) && defined(FORCETEST) */
 
-
 static void gravity_forcetest_evaluate(int target, int mode, int threadid);
 static void ewald_correction_force(double x, double y, double z, double force[4]);
 static void ewald_other_images(double x, double y, double z, double alpha, double force[4]);
 static void ewald_correction_force_table_lookup(double x, double y, double z, double force[4]);
-
 
 /*! \brief Local data structure for collecting particle/cell data that is sent
  *         to other processors if needed. Type called data_in and static
@@ -85,7 +79,6 @@ typedef struct
 
 static data_in *DataIn, *DataGet;
 
-
 /*! \brief Routine that fills the relevant particle/cell data into the input
  *         structure defined above. Needed by generic_comm_helpers2.
  *
@@ -95,7 +88,7 @@ static data_in *DataIn, *DataGet;
  *
  *  \return void
  */
-static void particle2in(data_in * in, int i, int firstnode)
+static void particle2in(data_in *in, int i, int firstnode)
 {
 #ifdef CELL_CENTER_GRAVITY
   if(P[i].Type == 0)
@@ -110,12 +103,11 @@ static void particle2in(data_in * in, int i, int firstnode)
         in->Pos[k] = P[i].Pos[k];
     }
 
-  in->Type = P[i].Type;
+  in->Type          = P[i].Type;
   in->SofteningType = P[i].SofteningType;
 
   in->Firstnode = firstnode;
 }
-
 
 /*! \brief Local data structure that holds results acquired on remote
  *         processors. Type called data_out and static pointers DataResult and
@@ -131,11 +123,10 @@ typedef struct
   MyFloat AccShortRange[3];
   MyFloat PotLongRange;
   MyFloat PotShortRange;
-#endif                          /* #ifdef PMGRID */
+#endif /* #ifdef PMGRID */
 } data_out;
 
 static data_out *DataResult, *DataOut;
-
 
 /*! \brief Routine to store or combine result data. Needed by
  *         generic_comm_helpers2.
@@ -148,27 +139,27 @@ static data_out *DataResult, *DataOut;
  *
  *  \return void
  */
-static void out2particle(data_out * out, int i, int mode)
+static void out2particle(data_out *out, int i, int mode)
 {
-  if(mode == MODE_LOCAL_PARTICLES)      /* initial store */
+  if(mode == MODE_LOCAL_PARTICLES) /* initial store */
     {
       P[i].GravAccelDirect[0] = out->Acc[0];
       P[i].GravAccelDirect[1] = out->Acc[1];
       P[i].GravAccelDirect[2] = out->Acc[2];
-      P[i].PotentialDirect = out->Pot;
-      P[i].DistToID1 = out->DistToID1;
+      P[i].PotentialDirect    = out->Pot;
+      P[i].DistToID1          = out->DistToID1;
 #ifdef PMGRID
-      P[i].GravAccelLongRange[0] = out->AccLongRange[0];
-      P[i].GravAccelLongRange[1] = out->AccLongRange[1];
-      P[i].GravAccelLongRange[2] = out->AccLongRange[2];
+      P[i].GravAccelLongRange[0]  = out->AccLongRange[0];
+      P[i].GravAccelLongRange[1]  = out->AccLongRange[1];
+      P[i].GravAccelLongRange[2]  = out->AccLongRange[2];
       P[i].GravAccelShortRange[0] = out->AccShortRange[0];
       P[i].GravAccelShortRange[1] = out->AccShortRange[1];
       P[i].GravAccelShortRange[2] = out->AccShortRange[2];
-      P[i].PotentialLongRange = out->PotLongRange;
-      P[i].PotentialShortRange = out->PotShortRange;
+      P[i].PotentialLongRange     = out->PotLongRange;
+      P[i].PotentialShortRange    = out->PotShortRange;
 #endif /* #ifdef PMGRID */
     }
-  else                          /* combine */
+  else /* combine */
     {
       P[i].GravAccelDirect[0] += out->Acc[0];
       P[i].GravAccelDirect[1] += out->Acc[1];
@@ -189,9 +180,7 @@ static void out2particle(data_out * out, int i, int mode)
     }
 }
 
-
 #include "../utils/generic_comm_helpers2.h"
-
 
 /*! \brief Routine that defines what to do with local particles.
  *
@@ -230,7 +219,6 @@ static void kernel_local(void)
   }
 }
 
-
 /*! \brief Routine that defines what to do with imported particles.
  *
  *  Calls the *_evaluate function in MODE_IMPORTED_PARTICLES.
@@ -255,7 +243,6 @@ static void kernel_imported(void)
       }
   }
 }
-
 
 /*! \brief This function computes the gravitational forces for all active
  *  particles.
@@ -282,7 +269,7 @@ void gravity_forcetest(void)
 
       if(get_random_number() < FORCETEST)
         {
-          P[i].TimeBinGrav = -P[i].TimeBinGrav - 1;     /* Mark as selected */
+          P[i].TimeBinGrav = -P[i].TimeBinGrav - 1; /* Mark as selected */
           nloc++;
         }
     }
@@ -297,7 +284,7 @@ void gravity_forcetest(void)
 
   generic_comm_pattern(TimeBinsGravity.NActiveParticles, kernel_local, kernel_imported);
 
-  double t1 = second();
+  double t1   = second();
   double maxt = timediff(t0, t1);
 
   /*  muliply by G */
@@ -366,20 +353,20 @@ void gravity_forcetest(void)
                 {
 #ifdef PMGRID
                   fprintf(FdForceTest,
-                          "%d %d %lld  %g  %g %g %g  %g  %15.10g %15.10g %15.10g  %15.10g %15.10g %15.10g  %15.10g %15.10g %15.10g  %15.10g %15.10g %15.10g  %15.10g %15.10g %15.10g  %15.10g %15.10g %15.10g %15.10g  %15.10g\n",
-                          P[i].Type, ThisTask, (long long) P[i].ID, All.Time, P[i].Pos[0], P[i].Pos[1], P[i].Pos[2], P[i].DistToID1,
-                          P[i].GravAccelDirect[0], P[i].GravAccelDirect[1], P[i].GravAccelDirect[2],
-                          P[i].GravAccelShortRange[0], P[i].GravAccelShortRange[1], P[i].GravAccelShortRange[2],
-                          P[i].GravAccelLongRange[0], P[i].GravAccelLongRange[1], P[i].GravAccelLongRange[2],
-                          P[i].GravAccel[0], P[i].GravAccel[1], P[i].GravAccel[2],
-                          P[i].GravPM[0], P[i].GravPM[1], P[i].GravPM[2], P[i].PotentialDirect, P[i].PotentialShortRange, P[i].PotentialLongRange, P[i].Potential, P[i].PM_Potential);
-#else /* #ifdef PMGRID */
-                  fprintf(FdForceTest, "%d %d %lld %g  %g %g %g %g  %15.10g %15.10g %15.10g  %15.10g %15.10g %15.10g  %15.10g %15.10g\n",
-                          P[i].Type, ThisTask, (long long) P[i].ID,
-                          All.Time,
-                          P[i].Pos[0], P[i].Pos[1], P[i].Pos[2],
-                          P[i].DistToID1, P[i].GravAccelDirect[0], P[i].GravAccelDirect[1], P[i].GravAccelDirect[2], P[i].GravAccel[0], P[i].GravAccel[1], P[i].GravAccel[2],
-                          P[i].PotentialDirect, P[i].Potential);
+                          "%d %d %lld  %g  %g %g %g  %g  %15.10g %15.10g %15.10g  %15.10g %15.10g %15.10g  %15.10g %15.10g %15.10g  "
+                          "%15.10g %15.10g %15.10g  %15.10g %15.10g %15.10g  %15.10g %15.10g %15.10g %15.10g  %15.10g\n",
+                          P[i].Type, ThisTask, (long long)P[i].ID, All.Time, P[i].Pos[0], P[i].Pos[1], P[i].Pos[2], P[i].DistToID1,
+                          P[i].GravAccelDirect[0], P[i].GravAccelDirect[1], P[i].GravAccelDirect[2], P[i].GravAccelShortRange[0],
+                          P[i].GravAccelShortRange[1], P[i].GravAccelShortRange[2], P[i].GravAccelLongRange[0],
+                          P[i].GravAccelLongRange[1], P[i].GravAccelLongRange[2], P[i].GravAccel[0], P[i].GravAccel[1],
+                          P[i].GravAccel[2], P[i].GravPM[0], P[i].GravPM[1], P[i].GravPM[2], P[i].PotentialDirect,
+                          P[i].PotentialShortRange, P[i].PotentialLongRange, P[i].Potential, P[i].PM_Potential);
+#else  /* #ifdef PMGRID */
+                  fprintf(FdForceTest,
+                          "%d %d %lld %g  %g %g %g %g  %15.10g %15.10g %15.10g  %15.10g %15.10g %15.10g  %15.10g %15.10g\n", P[i].Type,
+                          ThisTask, (long long)P[i].ID, All.Time, P[i].Pos[0], P[i].Pos[1], P[i].Pos[2], P[i].DistToID1,
+                          P[i].GravAccelDirect[0], P[i].GravAccelDirect[1], P[i].GravAccelDirect[2], P[i].GravAccel[0],
+                          P[i].GravAccel[1], P[i].GravAccel[2], P[i].PotentialDirect, P[i].Potential);
 #endif /* #ifdef PMGRID #else */
                 }
             }
@@ -406,13 +393,12 @@ void gravity_forcetest(void)
     {
       double costtotal = NumPart * ntot;
 
-      fprintf(FdTimings, "DIRECT Nf= %d    part/sec=%g | %g  ia/part=%g\n\n", ntot, ((double) ntot) / (NTask * maxt + 1.0e-20),
-              ntot / ((maxt + 1.0e-20) * NTask), ((double) (costtotal)) / (ntot + 1.0e-20));
+      fprintf(FdTimings, "DIRECT Nf= %d    part/sec=%g | %g  ia/part=%g\n\n", ntot, ((double)ntot) / (NTask * maxt + 1.0e-20),
+              ntot / ((maxt + 1.0e-20) * NTask), ((double)(costtotal)) / (ntot + 1.0e-20));
 
       myflush(FdTimings);
     }
 }
-
 
 /*! \brief This function does the gravitational force computation with direct
  *  summation for the specified particle.
@@ -443,10 +429,10 @@ static void gravity_forcetest_evaluate(int target, int mode, int threadid)
   double xtmp, ytmp, ztmp;
 #endif /* #if !defined(GRAVITY_NOT_PERIODIC) */
 
-  double acc_x = 0;
-  double acc_y = 0;
-  double acc_z = 0;
-  double pot = 0;
+  double acc_x     = 0;
+  double acc_y     = 0;
+  double acc_z     = 0;
+  double pot       = 0;
   double disttoid1 = 0;
 
   data_out out;
@@ -463,19 +449,20 @@ static void gravity_forcetest_evaluate(int target, int mode, int threadid)
           {
             if(Thread[threadid].Exportflag[task] != target)
               {
-                Thread[threadid].Exportflag[task] = target;
-                int nexp = Thread[threadid].Nexport++;
-                Thread[threadid].PartList[nexp].Task = task;
+                Thread[threadid].Exportflag[task]     = target;
+                int nexp                              = Thread[threadid].Nexport++;
+                Thread[threadid].PartList[nexp].Task  = task;
                 Thread[threadid].PartList[nexp].Index = target;
                 Thread[threadid].ExportSpace -= Thread[threadid].ItemSize;
               }
 
             int nexp = Thread[threadid].NexportNodes++;
-            nexp = -1 - nexp;
-            struct datanodelist *nodelist = (struct datanodelist *) (((char *) Thread[threadid].PartList) + Thread[threadid].InitialSpace);
-            nodelist[nexp].Task = task;
+            nexp     = -1 - nexp;
+            struct datanodelist *nodelist =
+                (struct datanodelist *)(((char *)Thread[threadid].PartList) + Thread[threadid].InitialSpace);
+            nodelist[nexp].Task  = task;
             nodelist[nexp].Index = target;
-            nodelist[nexp].Node = 0;    /* the node doesn't matter here */
+            nodelist[nexp].Node  = 0; /* the node doesn't matter here */
             Thread[threadid].ExportSpace -= sizeof(struct datanodelist) + sizeof(int);
           }
     }
@@ -487,7 +474,7 @@ static void gravity_forcetest_evaluate(int target, int mode, int threadid)
   pos_x = target_data->Pos[0];
   pos_y = target_data->Pos[1];
   pos_z = target_data->Pos[2];
-  h_i = All.ForceSoftening[target_data->SofteningType];
+  h_i   = All.ForceSoftening[target_data->SofteningType];
 
 #ifdef PLACEHIGHRESREGION
   if(pmforce_is_particle_high_res(target_data->Type, target_data->Pos))
@@ -497,7 +484,7 @@ static void gravity_forcetest_evaluate(int target, int mode, int threadid)
   out.Pot = 0;
 #ifdef PMGRID
   out.PotShortRange = 0;
-  out.PotLongRange = 0;
+  out.PotLongRange  = 0;
 #endif /* #ifdef PMGRID */
 
   for(int i = 0; i < 3; i++)
@@ -505,7 +492,7 @@ static void gravity_forcetest_evaluate(int target, int mode, int threadid)
       out.Acc[i] = 0;
 #ifdef PMGRID
       out.AccShortRange[i] = 0;
-      out.AccLongRange[i] = 0;
+      out.AccLongRange[i]  = 0;
 #endif /* #ifdef PMGRID */
     }
 
@@ -554,49 +541,49 @@ static void gravity_forcetest_evaluate(int target, int mode, int threadid)
       if(r > 0)
         {
           fac_newton = mass / (r2 * r);
-          wp_newton = -mass / r;
+          wp_newton  = -mass / r;
         }
       else
         {
           fac_newton = 0;
-          wp_newton = 0;
+          wp_newton  = 0;
         }
 
       if(r >= hmax)
         {
           fac = fac_newton;
-          wp = wp_newton;
+          wp  = wp_newton;
         }
       else
         {
-          double h_inv = 1.0 / hmax;
+          double h_inv  = 1.0 / hmax;
           double h3_inv = h_inv * h_inv * h_inv;
-          double u = r * h_inv;
+          double u      = r * h_inv;
 
           if(u < 0.5)
             {
               double u2 = u * u;
-              fac = mass * h3_inv * (SOFTFAC1 + u2 * (SOFTFAC2 * u + SOFTFAC3));
-              wp = mass * h_inv * (SOFTFAC4 + u2 * (SOFTFAC5 + u2 * (SOFTFAC6 * u + SOFTFAC7)));
+              fac       = mass * h3_inv * (SOFTFAC1 + u2 * (SOFTFAC2 * u + SOFTFAC3));
+              wp        = mass * h_inv * (SOFTFAC4 + u2 * (SOFTFAC5 + u2 * (SOFTFAC6 * u + SOFTFAC7)));
             }
           else
             {
               double u2 = u * u, u3 = u2 * u;
               fac = mass * h3_inv * (SOFTFAC8 + SOFTFAC9 * u + SOFTFAC10 * u2 + SOFTFAC11 * u3 + SOFTFAC12 / u3);
-              wp = mass * h_inv * (SOFTFAC13 + SOFTFAC14 / u + u2 * (SOFTFAC1 + u * (SOFTFAC15 + u * (SOFTFAC16 + SOFTFAC17 * u))));
+              wp  = mass * h_inv * (SOFTFAC13 + SOFTFAC14 / u + u2 * (SOFTFAC1 + u * (SOFTFAC15 + u * (SOFTFAC16 + SOFTFAC17 * u))));
             }
         }
 
       double acc_newton_x = dx * fac;
       double acc_newton_y = dy * fac;
       double acc_newton_z = dz * fac;
-      double pot_newton = wp;
+      double pot_newton   = wp;
 
 #ifdef PMGRID
       double u = 0.5 / asmth * r;
 
       double factor_force = (erfc(u) + 2.0 * u / sqrt(M_PI) * exp(-u * u) - 1.0);
-      double factor_pot = erfc(u);
+      double factor_pot   = erfc(u);
 
       fac += fac_newton * factor_force;
       wp += wp_newton * (factor_pot - 1.0);
@@ -604,7 +591,7 @@ static void gravity_forcetest_evaluate(int target, int mode, int threadid)
       double acc_short_x = dx * fac;
       double acc_short_y = dy * fac;
       double acc_short_z = dz * fac;
-      double pot_short = wp + mass * M_PI / (asmth * asmth * boxSize_X * boxSize_Y * boxSize_Z);
+      double pot_short   = wp + mass * M_PI / (asmth * asmth * boxSize_X * boxSize_Y * boxSize_Z);
 
       out.AccShortRange[0] += acc_short_x;
       out.AccShortRange[1] += acc_short_y;
@@ -617,7 +604,7 @@ static void gravity_forcetest_evaluate(int target, int mode, int threadid)
 
 #if !defined(FORCETEST_TESTFORCELAW)
       ewald_correction_force_table_lookup(dx, dy, dz, fcorr);
-#else /* #if !defined(FORCETEST_TESTFORCELAW) */
+#else  /* #if !defined(FORCETEST_TESTFORCELAW) */
       ewald_correction_force(dx, dy, dz, fcorr);
 #endif /* #if !defined(FORCETEST_TESTFORCELAW) #else */
 
@@ -626,7 +613,7 @@ static void gravity_forcetest_evaluate(int target, int mode, int threadid)
       acc_z = acc_newton_z + mass * fcorr[2];
 
       pot = pot_newton + mass * fcorr[3];
-#else /* #if defined(SELFGRAVITY) && !defined(GRAVITY_NOT_PERIODIC) && !defined(ONEDIMS_SPHERICAL) */
+#else  /* #if defined(SELFGRAVITY) && !defined(GRAVITY_NOT_PERIODIC) && !defined(ONEDIMS_SPHERICAL) */
       acc_x = acc_newton_x;
       acc_y = acc_newton_y;
       acc_z = acc_newton_z;
@@ -639,7 +626,7 @@ static void gravity_forcetest_evaluate(int target, int mode, int threadid)
       out.Pot += pot;
 
 #ifdef PMGRID
-      double fimages[4] = { 0, 0, 0, 0 };
+      double fimages[4] = {0, 0, 0, 0};
 #ifdef FORCETEST_TESTFORCELAW
       ewald_other_images(dx, dy, dz, 0.5 / asmth, fimages);
 #endif /* #ifdef FORCETEST_TESTFORCELAW */
@@ -659,7 +646,6 @@ static void gravity_forcetest_evaluate(int target, int mode, int threadid)
     DataResult[target] = out;
 }
 
-
 #ifdef FORCETEST_TESTFORCELAW
 /*! \brief Places particle with ID 1 radomly in box and calculates force on it.
  *
@@ -677,7 +663,7 @@ void gravity_forcetest_testforcelaw(void)
     {
       mpi_printf("\nTEST-FORCE-LAW: cycle=%d|%d ----------------------------------\n\n", cycle, Ncycles);
 
-      double epsloc = 0, xyzloc[3] = { 0, 0, 0 };
+      double epsloc = 0, xyzloc[3] = {0, 0, 0};
 
       /* set particle with ID=1 to new random coordinate in box */
       for(int n = 0; n < NumPart; n++)
@@ -714,15 +700,16 @@ void gravity_forcetest_testforcelaw(void)
       MPI_Allreduce(&epsloc, &eps, 1, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
 
       double rmin = 0.01 * eps;
-      double rmax = sqrt(pow(0.5 * All.BoxSize * STRETCHX, 2) + pow(0.5 * All.BoxSize * STRETCHY, 2) + pow(0.5 * All.BoxSize * STRETCHZ, 2));
+      double rmax =
+          sqrt(pow(0.5 * All.BoxSize * STRETCHX, 2) + pow(0.5 * All.BoxSize * STRETCHY, 2) + pow(0.5 * All.BoxSize * STRETCHZ, 2));
 
       for(int n = 0; n < NumPart; n++)
         {
           if(P[n].ID != 1)
             {
-              double r = exp(log(rmin) + (log(rmax) - log(rmin)) * get_random_number());
+              double r     = exp(log(rmin) + (log(rmax) - log(rmin)) * get_random_number());
               double theta = acos(2 * get_random_number() - 1);
-              double phi = 2 * M_PI * get_random_number();
+              double phi   = 2 * M_PI * get_random_number();
 
               double dx = r * sin(theta) * cos(phi);
               double dy = r * sin(theta) * sin(phi);
@@ -736,7 +723,7 @@ void gravity_forcetest_testforcelaw(void)
         }
 
       domain_free();
-      domain_Decomposition();   /* do domain decomposition if needed */
+      domain_Decomposition(); /* do domain decomposition if needed */
 
 #ifdef PMGRID
       long_range_force();
@@ -748,7 +735,6 @@ void gravity_forcetest_testforcelaw(void)
   endrun();
 }
 #endif /* #ifdef FORCETEST_TESTFORCELAW */
-
 
 /*! \brief Periodicity effects in gravity.
  *
@@ -772,21 +758,21 @@ static void ewald_other_images(double x, double y, double z, double alpha, doubl
 
   if(x < 0)
     {
-      x = -x;
+      x     = -x;
       signx = +1;
     }
   else
     signx = -1;
   if(y < 0)
     {
-      y = -y;
+      y     = -y;
       signy = +1;
     }
   else
     signy = -1;
   if(z < 0)
     {
-      z = -z;
+      z     = -z;
       signz = +1;
     }
   else
@@ -802,12 +788,12 @@ static void ewald_other_images(double x, double y, double z, double alpha, doubl
         {
           if(nx != 0 || ny != 0 || nz != 0)
             {
-              double dx = x - nx * STRETCHX * All.BoxSize;
-              double dy = y - ny * STRETCHY * All.BoxSize;
-              double dz = z - nz * STRETCHZ * All.BoxSize;
-              double r2 = dx * dx + dy * dy + dz * dz;
-              double r = sqrt(r2);
-              double val = erfc(alpha * r) + 2.0 * alpha * r / sqrt(M_PI) * exp(-alpha2 * r2);
+              double dx   = x - nx * STRETCHX * All.BoxSize;
+              double dy   = y - ny * STRETCHY * All.BoxSize;
+              double dz   = z - nz * STRETCHZ * All.BoxSize;
+              double r2   = dx * dx + dy * dy + dz * dz;
+              double r    = sqrt(r2);
+              double val  = erfc(alpha * r) + 2.0 * alpha * r / sqrt(M_PI) * exp(-alpha2 * r2);
               double val2 = val / (r2 * r);
               double val3 = erfc(alpha * r) / r;
 
@@ -822,7 +808,6 @@ static void ewald_other_images(double x, double y, double z, double alpha, doubl
   force[1] *= signy;
   force[2] *= signz;
 }
-
 
 /*! \brief Force due to periodic boundary conditions.
  *
@@ -845,31 +830,31 @@ static void ewald_correction_force(double x, double y, double z, double force[4]
 
   if(x < 0)
     {
-      x = -x;
+      x     = -x;
       signx = +1;
     }
   else
     signx = -1;
   if(y < 0)
     {
-      y = -y;
+      y     = -y;
       signy = +1;
     }
   else
     signy = -1;
   if(z < 0)
     {
-      z = -z;
+      z     = -z;
       signz = +1;
     }
   else
     signz = -1;
 
-  double lmin = imin(imin(STRETCHX, STRETCHY), STRETCHZ);
-  double alpha = 2.0 / lmin / All.BoxSize;
+  double lmin   = imin(imin(STRETCHX, STRETCHY), STRETCHZ);
+  double alpha  = 2.0 / lmin / All.BoxSize;
   double alpha2 = alpha * alpha;
-  double r = sqrt(r2);
-  double r3inv = 1.0 / (r2 * r);
+  double r      = sqrt(r2);
+  double r3inv  = 1.0 / (r2 * r);
 
   force[0] += r3inv * x;
   force[1] += r3inv * y;
@@ -881,14 +866,14 @@ static void ewald_correction_force(double x, double y, double z, double force[4]
     for(int ny = -nmax; ny <= nmax; ny++)
       for(int nz = -nmax; nz <= nmax; nz++)
         {
-          double dx = x - nx * STRETCHX * All.BoxSize;
-          double dy = y - ny * STRETCHY * All.BoxSize;
-          double dz = z - nz * STRETCHZ * All.BoxSize;
-          double r2 = dx * dx + dy * dy + dz * dz;
-          double r = sqrt(r2);
-          double val = erfc(alpha * r) + 2.0 * alpha * r / sqrt(M_PI) * exp(-alpha2 * r2);
+          double dx   = x - nx * STRETCHX * All.BoxSize;
+          double dy   = y - ny * STRETCHY * All.BoxSize;
+          double dz   = z - nz * STRETCHZ * All.BoxSize;
+          double r2   = dx * dx + dy * dy + dz * dz;
+          double r    = sqrt(r2);
+          double val  = erfc(alpha * r) + 2.0 * alpha * r / sqrt(M_PI) * exp(-alpha2 * r2);
           double val2 = val / (r2 * r);
-          double val3 = erfc(alpha * r) / r;    /* for potential */
+          double val3 = erfc(alpha * r) / r; /* for potential */
 
           force[0] -= dx * val2;
           force[1] -= dy * val2;
@@ -896,9 +881,9 @@ static void ewald_correction_force(double x, double y, double z, double force[4]
           force[3] -= val3;
         }
 
-  int nxmax = (int) (4 * alpha * All.BoxSize * (STRETCHX / lmin) + 0.5);
-  int nymax = (int) (4 * alpha * All.BoxSize * (STRETCHY / lmin) + 0.5);
-  int nzmax = (int) (4 * alpha * All.BoxSize * (STRETCHZ / lmin) + 0.5);
+  int nxmax = (int)(4 * alpha * All.BoxSize * (STRETCHX / lmin) + 0.5);
+  int nymax = (int)(4 * alpha * All.BoxSize * (STRETCHY / lmin) + 0.5);
+  int nzmax = (int)(4 * alpha * All.BoxSize * (STRETCHZ / lmin) + 0.5);
 
   for(int nx = -nxmax; nx <= nxmax; nx++)
     for(int ny = -nymax; ny <= nymax; ny++)
@@ -912,9 +897,9 @@ static void ewald_correction_force(double x, double y, double z, double force[4]
           if(k2 > 0)
             {
               double kdotx = (x * kx + y * ky + z * kz);
-              double vv = 4.0 * M_PI / (k2 * pow(All.BoxSize, 3) * STRETCHX * STRETCHY * STRETCHZ) * exp(-k2 / (4.0 * alpha2));
-              double val = vv * sin(kdotx);
-              double val2 = vv * cos(kdotx);
+              double vv    = 4.0 * M_PI / (k2 * pow(All.BoxSize, 3) * STRETCHX * STRETCHY * STRETCHZ) * exp(-k2 / (4.0 * alpha2));
+              double val   = vv * sin(kdotx);
+              double val2  = vv * cos(kdotx);
               force[0] -= kx * val;
               force[1] -= ky * val;
               force[2] -= kz * val;
@@ -929,21 +914,16 @@ static void ewald_correction_force(double x, double y, double z, double force[4]
   force[2] *= signz;
 }
 
-
 #if !defined(FORCETEST_TESTFORCELAW)
-
 
 #define TEW_N 128
 
-
-#define TEW_NX (DBX*STRETCHX*TEW_N)
-#define TEW_NY (DBY*STRETCHY*TEW_N)
-#define TEW_NZ (DBZ*STRETCHZ*TEW_N)
-
+#define TEW_NX (DBX * STRETCHX * TEW_N)
+#define TEW_NY (DBY * STRETCHY * TEW_N)
+#define TEW_NZ (DBZ * STRETCHZ * TEW_N)
 
 static double Ewd_table[4][TEW_NX + 1][TEW_NY + 1][TEW_NZ + 1];
 static double Ewd_table_intp;
-
 
 /*! \brief Initializes Ewald correction force test.
  *
@@ -956,17 +936,17 @@ void forcetest_ewald_init(void)
   mpi_printf("FORCETEST: initialize high-res Ewald lookup table...\n");
 
 #ifdef LONG_X
-  if(LONG_X != (int) (LONG_X))
+  if(LONG_X != (int)(LONG_X))
     terminate("LONG_X must be an integer");
 #endif /* #ifdef LONG_X */
 
 #ifdef LONG_Y
-  if(LONG_Y != (int) (LONG_Y))
+  if(LONG_Y != (int)(LONG_Y))
     terminate("LONG_Y must be an integer");
 #endif /* #ifdef LONG_Y */
 
 #ifdef LONG_Z
-  if(LONG_Z != (int) (LONG_Z))
+  if(LONG_Z != (int)(LONG_Z))
     terminate("LONG_Z must be an integer");
 #endif /* #ifdef LONG_Z */
 
@@ -991,9 +971,9 @@ void forcetest_ewald_init(void)
             }
         }
 
-      double xx = 0.5 * DBX * STRETCHX * ((double) i) / TEW_NX * All.BoxSize;
-      double yy = 0.5 * DBY * STRETCHY * ((double) j) / TEW_NY * All.BoxSize;
-      double zz = 0.5 * DBZ * STRETCHZ * ((double) k) / TEW_NZ * All.BoxSize;
+      double xx = 0.5 * DBX * STRETCHX * ((double)i) / TEW_NX * All.BoxSize;
+      double yy = 0.5 * DBY * STRETCHY * ((double)j) / TEW_NY * All.BoxSize;
+      double zz = 0.5 * DBZ * STRETCHZ * ((double)k) / TEW_NZ * All.BoxSize;
 
       double fcorr[4];
       ewald_correction_force(xx, yy, zz, fcorr);
@@ -1002,8 +982,8 @@ void forcetest_ewald_init(void)
         Ewd_table[rep][i][j][k] = fcorr[rep];
     }
 
-  int *recvcnts = (int *) mymalloc("recvcnts", NTask * sizeof(int));
-  int *recvoffs = (int *) mymalloc("recvoffs", NTask * sizeof(int));
+  int *recvcnts = (int *)mymalloc("recvcnts", NTask * sizeof(int));
+  int *recvoffs = (int *)mymalloc("recvoffs", NTask * sizeof(int));
 
   for(int i = 0; i < NTask; i++)
     {
@@ -1026,7 +1006,6 @@ void forcetest_ewald_init(void)
   mpi_printf("FORCETEST: Initialization of high-res Ewald table finished, took %g sec.\n", timediff(t0, t1));
 }
 
-
 /*! \brief Looks up Ewald force from tabulated values.
  *
  *  \param[in] dx X position.
@@ -1045,7 +1024,7 @@ static void ewald_correction_force_table_lookup(double dx, double dy, double dz,
 
   if(dx < 0)
     {
-      dx = -dx;
+      dx    = -dx;
       signx = -1;
     }
   else
@@ -1053,7 +1032,7 @@ static void ewald_correction_force_table_lookup(double dx, double dy, double dz,
 
   if(dy < 0)
     {
-      dy = -dy;
+      dy    = -dy;
       signy = -1;
     }
   else
@@ -1061,24 +1040,24 @@ static void ewald_correction_force_table_lookup(double dx, double dy, double dz,
 
   if(dz < 0)
     {
-      dz = -dz;
+      dz    = -dz;
       signz = -1;
     }
   else
     signz = +1;
 
   u = dx * Ewd_table_intp;
-  i = (int) u;
+  i = (int)u;
   if(i >= TEW_NX)
     i = TEW_NX - 1;
   u -= i;
   v = dy * Ewd_table_intp;
-  j = (int) v;
+  j = (int)v;
   if(j >= TEW_NY)
     j = TEW_NY - 1;
   v -= j;
   w = dz * Ewd_table_intp;
-  k = (int) w;
+  k = (int)w;
   if(k >= TEW_NZ)
     k = TEW_NZ - 1;
   w -= k;
@@ -1094,21 +1073,16 @@ static void ewald_correction_force_table_lookup(double dx, double dy, double dz,
 
   for(int rep = 0; rep < 4; rep++)
     {
-      force[rep] = Ewd_table[rep][i][j][k] * f1 +
-        Ewd_table[rep][i][j][k + 1] * f2 +
-        Ewd_table[rep][i][j + 1][k] * f3 +
-        Ewd_table[rep][i][j + 1][k + 1] * f4 +
-        Ewd_table[rep][i + 1][j][k] * f5 + Ewd_table[rep][i + 1][j][k + 1] * f6 + Ewd_table[rep][i + 1][j + 1][k] * f7 + Ewd_table[rep][i + 1][j + 1][k + 1] * f8;
+      force[rep] = Ewd_table[rep][i][j][k] * f1 + Ewd_table[rep][i][j][k + 1] * f2 + Ewd_table[rep][i][j + 1][k] * f3 +
+                   Ewd_table[rep][i][j + 1][k + 1] * f4 + Ewd_table[rep][i + 1][j][k] * f5 + Ewd_table[rep][i + 1][j][k + 1] * f6 +
+                   Ewd_table[rep][i + 1][j + 1][k] * f7 + Ewd_table[rep][i + 1][j + 1][k + 1] * f8;
     }
 
   force[0] *= signx;
   force[1] *= signy;
   force[2] *= signz;
-
 }
 
-
 #endif /* #if !defined(FORCETEST_TESTFORCELAW) */
-
 
 #endif /* #ifdef FORCETEST */

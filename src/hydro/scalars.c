@@ -33,24 +33,20 @@
  * - 06.05.2018 Prepared file for public release -- Rainer Weinberger
  */
 
-
+#include <math.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <math.h>
-
 
 #include "../main/allvars.h"
 #include "../main/proto.h"
 #include "../mesh/voronoi/voronoi.h"
-
 
 #ifdef MAXSCALARS
 int N_Scalar = 0;
 struct scalar_elements scalar_elements[MAXSCALARS];
 struct scalar_index ScalarIndex;
 #endif /* #ifdef MAXSCALARS */
-
 
 /*! \brief Main routine to initialize passive scalar quantities.
  *
@@ -77,7 +73,6 @@ void init_scalars()
 #endif /* MAXSCALARS */
 }
 
-
 /*! \brief Initialize a specific scalar property.
  *
  *  \param[in] addr Pointer to (primitive) scalar in SphP[0] struct.
@@ -87,7 +82,7 @@ void init_scalars()
  *
  *  \return Number of scalars - 1
  */
-int scalar_init(MyFloat * addr, MyFloat * addr_mass, int type)
+int scalar_init(MyFloat *addr, MyFloat *addr_mass, int type)
 {
 #ifdef MAXSCALARS
   if(N_Scalar == MAXSCALARS)
@@ -97,15 +92,15 @@ int scalar_init(MyFloat * addr, MyFloat * addr_mass, int type)
     }
 
   /* save type and relative address */
-  scalar_elements[N_Scalar].type = type;
-  scalar_elements[N_Scalar].offset = ((char *) addr) - ((char *) &SphP[0]);
-  scalar_elements[N_Scalar].offset_mass = ((char *) addr_mass) - ((char *) &SphP[0]);
+  scalar_elements[N_Scalar].type        = type;
+  scalar_elements[N_Scalar].offset      = ((char *)addr) - ((char *)&SphP[0]);
+  scalar_elements[N_Scalar].offset_mass = ((char *)addr_mass) - ((char *)&SphP[0]);
 
   N_Scalar++;
 
   return N_Scalar - 1;
   /* note: gradients are initialized in init_gradients */
-#else /* #ifdef MAXSCALARS */
+#else  /* #ifdef MAXSCALARS */
   return -1;
 #endif /* #ifdef MAXSCALARS #else */
 }

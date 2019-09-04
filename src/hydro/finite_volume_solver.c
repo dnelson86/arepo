@@ -81,25 +81,22 @@
  *                void fvs_evaluate_statistics(struct fvs_stat *stat)
  *                void apply_spherical_source_terms()
  *                void add_spin_source_term_from_grid_movement()
- * 
- * 
+ *
+ *
  * \par Major modifications and contributions:
- * 
+ *
  * - DD.MM.YYYY Description
  * - 17.05.2018 Prepared file for public release -- Rainer Weinberger
  */
 
-
+#include <math.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <math.h>
-
 
 #include "../main/allvars.h"
 #include "../main/proto.h"
 #include "../mesh/voronoi/voronoi.h"
-
 
 /*! \brief Data needed for flux calculation.
  */
@@ -109,51 +106,41 @@ static struct flux_list_data
   double dM, dP[3];
 #ifdef MHD
   double dB[3];
-#endif                          /* #ifdef MHD */
+#endif /* #ifdef MHD */
 
 #ifndef ISOTHERM_EQS
   double dEnergy;
-#endif                          /* #ifndef ISOTHERM_EQS */
+#endif /* #ifndef ISOTHERM_EQS */
 #ifdef MAXSCALARS
   double dConservedScalars[MAXSCALARS];
-#endif                          /* #ifdef MAXSCALARS */
-}
- *FluxList;
-
+#endif /* #ifdef MAXSCALARS */
+} * FluxList;
 
 static int Nflux, MaxNflux;
-
 
 struct primexch *PrimExch;
 struct grad_data *GradExch;
 
-
 /*! state on a face determined by Riemann solver */
 struct state_face state_face;
-
 
 /*! flux through a face */
 struct fluxes fluxes;
 
-
 struct geometry geom;
-
 
 #ifdef ONEDIMS_SPHERICAL
 void apply_spherical_source_terms();
 #endif /* #ifdef ONEDIMS_SPHERICAL */
 
-
 static void face_add_extrapolation_with_check(struct state *st_face, struct state *delta, struct fvs_stat *stat);
 static void fvs_initialize_statistics(struct fvs_stat *stat);
 static void fvs_evaluate_statistics(struct fvs_stat *stat);
 
-
 #ifdef VORONOI_BACKUP_RESTORE_FACE_AREAS
-void backup_face_areas(tessellation * T);
-void restore_face_areas(tessellation * T);
+void backup_face_areas(tessellation *T);
+void restore_face_areas(tessellation *T);
 #endif /* #ifdef VORONOI_BACKUP_RESTORE_FACE_AREAS */
-
 
 /*! \brief Main routine to compute fluxes across interfaces given am mesh T.
  *
@@ -163,7 +150,7 @@ void restore_face_areas(tessellation * T);
  *
  *  \return void
  */
-void compute_interface_fluxes(tessellation * T)
+void compute_interface_fluxes(tessellation *T)
 {
 #ifdef NOHYDRO
   return;
@@ -194,10 +181,10 @@ void compute_interface_fluxes(tessellation * T)
   fvs_initialize_statistics(&stat);
 
   MaxNflux = T->Indi.AllocFacNflux;
-  Nflux = 0;
+  Nflux    = 0;
   FluxList = mymalloc_movable(&FluxList, "FluxList", MaxNflux * sizeof(struct flux_list_data));
 
-  face *VF = T->VF;
+  face *VF  = T->VF;
   point *DP = T->DP;
 
   for(i = 0; i < T->Nvf; i++)
@@ -205,7 +192,7 @@ void compute_interface_fluxes(tessellation * T)
       struct state state_L, state_center_L, delta_time_L, delta_space_L;
       struct state state_R, state_center_R, delta_time_R, delta_space_R;
 
-      face_dt = 0;              /* the default is that this face is not active */
+      face_dt = 0; /* the default is that this face is not active */
 
       /* calculate normal vectors */
       if(face_get_normals(T, i, &geom))
@@ -241,7 +228,7 @@ void compute_interface_fluxes(tessellation * T)
       if(All.ComovingIntegrationOn)
         for(j = 0; j < 3; j++)
           {
-            state_center_L.velVertex[j] /= atime;       /* convert vertex motion to peculiar velocity */
+            state_center_L.velVertex[j] /= atime; /* convert vertex motion to peculiar velocity */
             state_center_R.velVertex[j] /= atime;
           }
 
@@ -257,7 +244,9 @@ void compute_interface_fluxes(tessellation * T)
       cz = VF[i].cz - 0.5 * (DP[VF[i].p2].z + DP[VF[i].p1].z);
 
       facv = (cx * (state_center_L.velVertex[0] - state_center_R.velVertex[0]) +
-              cy * (state_center_L.velVertex[1] - state_center_R.velVertex[1]) + cz * (state_center_L.velVertex[2] - state_center_R.velVertex[2])) / geom.nn;
+              cy * (state_center_L.velVertex[1] - state_center_R.velVertex[1]) +
+              cz * (state_center_L.velVertex[2] - state_center_R.velVertex[2])) /
+             geom.nn;
 
       /* put in a limiter for highly distorted cells */
       double cc = sqrt(cx * cx + cy * cy + cz * cz);
@@ -325,7 +314,7 @@ void compute_interface_fluxes(tessellation * T)
           printf("area=%g lx=%g ly=%g   rx=%g ry=%g\n", VF[i].area, state_L.dx, state_L.dy, state_R.dx, state_R.dy);
           terminate("found crazy values");
         }
-#else /* #ifndef ISOTHERM_EQS */
+#else  /* #ifndef ISOTHERM_EQS */
       if(state_L.press < 0 || state_R.press < 0 || state_L.rho < 0 || state_R.rho < 0)
         {
           printf("i=%d rho_L=%g rho_R=%g\n", i, state_L.rho, state_R.rho);
@@ -359,7 +348,7 @@ void compute_interface_fluxes(tessellation * T)
 #else /* #ifdef RIEMANN_HLLC */
 #ifdef RIEMANN_HLLD
       press = godunov_flux_3d_hlld(&state_L, &state_R, vel_face_turned, &state_face, &fluxes);
-#else /* #ifdef RIEMANN_HLLD */
+#else  /* #ifdef RIEMANN_HLLD */
       press = godunov_flux_3d(&state_L, &state_R, &state_face); /* exact ideal gas solver */
 #endif /* #ifdef RIEMANN_HLLD #else */
 #endif /* #ifdef RIEMANN_HLLC #else */
@@ -370,8 +359,9 @@ void compute_interface_fluxes(tessellation * T)
 #ifdef GODUNOV_STATS
       get_mach_numbers(&state_L, &state_R, press);
       if(st_L.rho > 1.0e-6 && st_R.rho > 1.0e-6)
-        fprintf(fdstats, "%g %g %g   %g %g %g  %g %g %g  %g %g %g\n",
-                state_L.rho, state_L.velx, state_L.press, state_L.rho, state_L.velx, state_L.press, state_face.rho, state_face.velx, state_face.press, state_L.mach, state_R.mach, VF[i].area);
+        fprintf(fdstats, "%g %g %g   %g %g %g  %g %g %g  %g %g %g\n", state_L.rho, state_L.velx, state_L.press, state_L.rho,
+                state_L.velx, state_L.press, state_face.rho, state_face.velx, state_face.press, state_L.mach, state_R.mach,
+                VF[i].area);
 #endif /* GODUNOV_STATS */
 
 #endif /* #ifndef MESHRELAX */
@@ -387,7 +377,8 @@ void compute_interface_fluxes(tessellation * T)
 #ifndef MESHRELAX
 
 #if defined(RIEMANN_HLLC) || defined(RIEMANN_HLLD)
-      /* for non-exact Riemann solver, fluxes are already computed in the local frame, so convert to lab frame and turn momentum fluxes to the lab orientation  */
+      /* for non-exact Riemann solver, fluxes are already computed in the local frame, so convert to lab frame and turn momentum fluxes
+       * to the lab orientation  */
       flux_convert_to_lab_frame(&state_L, &state_R, vel_face_turned, &fluxes);
       face_turn_momentum_flux(&fluxes, &geom);
 
@@ -438,8 +429,10 @@ void compute_interface_fluxes(tessellation * T)
       if(!gsl_finite(fluxes.energy))
         {
           printf("i=%d eFlux-Bummer: %g %g %g\n", i, fluxes.energy, state_face.press, state_face.rho);
-          printf("rho_L=%g velx_L=%g vely_L=%g velz_L=%g press_L=%g\n", state_L.rho, state_L.velx, state_L.vely, state_L.velz, state_L.press);
-          printf("rho_R=%g velx_R=%g vely_R=%g velz_R=%g press_R=%g\n", state_R.rho, state_R.velx, state_R.vely, state_R.velz, state_R.press);
+          printf("rho_L=%g velx_L=%g vely_L=%g velz_L=%g press_L=%g\n", state_L.rho, state_L.velx, state_L.vely, state_L.velz,
+                 state_L.press);
+          printf("rho_R=%g velx_R=%g vely_R=%g velz_R=%g press_R=%g\n", state_R.rho, state_R.velx, state_R.vely, state_R.velz,
+                 state_R.press);
           print_particle_info(i);
           terminate("infinity encountered");
         }
@@ -447,7 +440,7 @@ void compute_interface_fluxes(tessellation * T)
 
       /* now apply the flux to update the conserved states of the cells */
 
-      if(face_dt > 0)           /* selects active faces */
+      if(face_dt > 0) /* selects active faces */
         {
           int k, p, q;
           double dir;
@@ -468,36 +461,36 @@ void compute_interface_fluxes(tessellation * T)
 #endif /* #if defined(REFLECTIVE_X) || defined(REFLECTIVE_Y) || defined(REFLECTIVE_Z) */
               if(k == 0)
                 {
-                  q = VF[i].p1;
-                  p = DP[q].index;
+                  q   = VF[i].p1;
+                  p   = DP[q].index;
                   dir = -fac;
 #if defined(REFLECTIVE_X) || defined(REFLECTIVE_Y) || defined(REFLECTIVE_Z)
                   qother = VF[i].p2;
 #endif /* #if defined(REFLECTIVE_X) || defined(REFLECTIVE_Y) || defined(REFLECTIVE_Z) */
 #if defined(MHD_POWELL)
                   state_center = &state_center_L;
-                  delta_time = &delta_time_L;
+                  delta_time   = &delta_time_L;
 #endif /* #if defined(MHD_POWELL) */
                 }
               else
                 {
-                  q = VF[i].p2;
-                  p = DP[q].index;
+                  q   = VF[i].p2;
+                  p   = DP[q].index;
                   dir = +fac;
 #if defined(REFLECTIVE_X) || defined(REFLECTIVE_Y) || defined(REFLECTIVE_Z)
                   qother = VF[i].p1;
 #endif /* #if defined(REFLECTIVE_X) || defined(REFLECTIVE_Y) || defined(REFLECTIVE_Z) */
 #if defined(MHD_POWELL)
                   state_center = &state_center_R;
-                  delta_time = &delta_time_R;
+                  delta_time   = &delta_time_R;
 #endif /* #if defined(MHD_POWELL) */
                 }
 
               if(DP[q].task == ThisTask)
                 {
-                  if(DP[q].index >= NumGas)     /* this is a local ghost point */
+                  if(DP[q].index >= NumGas) /* this is a local ghost point */
                     {
-                      if(DP[VF[i].p1].ID == DP[VF[i].p2].ID)    /* this may happen for reflective points */
+                      if(DP[VF[i].p1].ID == DP[VF[i].p2].ID) /* this may happen for reflective points */
                         continue;
                       p -= NumGas;
                     }
@@ -562,7 +555,7 @@ void compute_interface_fluxes(tessellation * T)
 #ifdef MAXSCALARS
                   for(m = 0; m < N_Scalar; m++)
                     {
-                      *(MyFloat *) (((char *) (&SphP[p])) + scalar_elements[m].offset_mass) += dir * fluxes.scalars[m];
+                      *(MyFloat *)(((char *)(&SphP[p])) + scalar_elements[m].offset_mass) += dir * fluxes.scalars[m];
                     }
 #endif /* #ifdef MAXSCALARS */
 
@@ -581,7 +574,8 @@ void compute_interface_fluxes(tessellation * T)
                       T->Indi.AllocFacNflux *= ALLOC_INCREASE_FACTOR;
                       MaxNflux = T->Indi.AllocFacNflux;
 #ifdef VERBOSE
-                      printf("Task=%d: increase memory allocation, MaxNflux=%d Indi.AllocFacNflux=%g\n", ThisTask, MaxNflux, T->Indi.AllocFacNflux);
+                      printf("Task=%d: increase memory allocation, MaxNflux=%d Indi.AllocFacNflux=%g\n", ThisTask, MaxNflux,
+                             T->Indi.AllocFacNflux);
 #endif /* #ifdef VERBOSE */
                       FluxList = myrealloc_movable(FluxList, MaxNflux * sizeof(struct flux_list_data));
 
@@ -589,7 +583,7 @@ void compute_interface_fluxes(tessellation * T)
                         terminate("Nflux >= MaxNflux");
                     }
 
-                  FluxList[Nflux].task = DP[q].task;
+                  FluxList[Nflux].task  = DP[q].task;
                   FluxList[Nflux].index = DP[q].originalindex;
 
                   FluxList[Nflux].dM = dir * fluxes.mass;
@@ -597,7 +591,7 @@ void compute_interface_fluxes(tessellation * T)
                   FluxList[Nflux].dP[0] = dir * fluxes.momentum[0];
                   FluxList[Nflux].dP[1] = dir * fluxes.momentum[1];
                   FluxList[Nflux].dP[2] = dir * fluxes.momentum[2];
-                    
+
 #if !defined(ISOTHERM_EQS)
                   FluxList[Nflux].dEnergy = dir * fluxes.energy;
 #endif /* #if !defined(ISOTHERM_EQS)  */
@@ -675,15 +669,15 @@ void compute_interface_fluxes(tessellation * T)
 
   myfree(FluxList);
 
-  double in[2] = { count, count_reduced }, out[2];
+  double in[2] = {count, count_reduced}, out[2];
   MPI_Reduce(in, out, 2, MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD);
   if(ThisTask == 0)
     {
-      tot_count = out[0];
+      tot_count         = out[0];
       tot_count_reduced = out[1];
 
-      printf("FLUX: exchanged fluxes over %g faces, with %g reduced (fraction %g), cumulative fraction %g\n",
-             tot_count, tot_count_reduced, tot_count_reduced / (tot_count + 1.0e-30), All.TotCountReducedFluxes / (All.TotCountFluxes + 1.0e-30));
+      printf("FLUX: exchanged fluxes over %g faces, with %g reduced (fraction %g), cumulative fraction %g\n", tot_count,
+             tot_count_reduced, tot_count_reduced / (tot_count + 1.0e-30), All.TotCountReducedFluxes / (All.TotCountFluxes + 1.0e-30));
       All.TotCountReducedFluxes += tot_count_reduced;
       All.TotCountFluxes += tot_count;
     }
@@ -697,8 +691,8 @@ void compute_interface_fluxes(tessellation * T)
         {
           terminate("negative mass reached for cell=%d mass=%g", P[i].ID, P[i].Mass);
 
-          P[i].Mass = 0;
-          SphP[i].Energy = 0;
+          P[i].Mass           = 0;
+          SphP[i].Energy      = 0;
           SphP[i].Momentum[0] = 0;
           SphP[i].Momentum[1] = 0;
           SphP[i].Momentum[2] = 0;
@@ -724,8 +718,8 @@ void compute_interface_fluxes(tessellation * T)
   MPI_Reduce(&All.Powell_Energy, &Powell_Energy, 1, MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD);
 
   if(ThisTask == 0)
-    printf("MHD_POWELL: Total ST contribution: Mom=%g,%g,%g   AngMom=%g,%g,%g   Energy=%g\n",
-           Powell_Momentum[0], Powell_Momentum[1], Powell_Momentum[2], Powell_Angular_Momentum[0], Powell_Angular_Momentum[1], Powell_Angular_Momentum[2], Powell_Energy);
+    printf("MHD_POWELL: Total ST contribution: Mom=%g,%g,%g   AngMom=%g,%g,%g   Energy=%g\n", Powell_Momentum[0], Powell_Momentum[1],
+           Powell_Momentum[2], Powell_Angular_Momentum[0], Powell_Angular_Momentum[1], Powell_Angular_Momentum[2], Powell_Energy);
 #endif /* #if defined(MHD_POWELL) && defined(VERBOSE) */
 
 #ifdef VORONOI_BACKUP_RESTORE_FACE_AREAS
@@ -735,7 +729,6 @@ void compute_interface_fluxes(tessellation * T)
   TIMER_STOP(CPU_FLUXES);
 }
 
-
 #ifdef VORONOI_BACKUP_RESTORE_FACE_AREAS
 /*! \brief Writes face areas to a backup variable.
  *
@@ -743,12 +736,11 @@ void compute_interface_fluxes(tessellation * T)
  *
  *  \return void
  */
-void backup_face_areas(tessellation * T)
+void backup_face_areas(tessellation *T)
 {
   for(int i = 0; i < T->Nvf; i++)
     T->VF[i].area_backup = T->VF[i].area;
 }
-
 
 /*! \brief Restores face areas from a backup variable.
  *
@@ -756,13 +748,12 @@ void backup_face_areas(tessellation * T)
  *
  *  \return void
  */
-void restore_face_areas(tessellation * T)
+void restore_face_areas(tessellation *T)
 {
   for(int i = 0; i < T->Nvf; i++)
     T->VF[i].area = T->VF[i].area_backup;
 }
 #endif /* #ifdef VORONOI_BACKUP_RESTORE_FACE_AREAS */
-
 
 /*! \brief Gets value of hydrodynamial quantities at face.
  *
@@ -773,7 +764,7 @@ void restore_face_areas(tessellation * T)
  *
  *  \return 0
  */
-int face_get_state(tessellation * T, int p, int i, struct state *st)
+int face_get_state(tessellation *T, int p, int i, struct state *st)
 {
   int particle;
 #if defined(MAXSCALARS)
@@ -782,7 +773,7 @@ int face_get_state(tessellation * T, int p, int i, struct state *st)
   double aBegin;
 
   point *DP = T->DP;
-  face *VF = T->VF;
+  face *VF  = T->VF;
 
   particle = DP[p].index;
 
@@ -806,7 +797,7 @@ int face_get_state(tessellation * T, int p, int i, struct state *st)
       st->dz = VF[i].cz - PrimExch[particle].Center[2];
     }
 
-  /* correct for periodicity */
+    /* correct for periodicity */
 #if !defined(REFLECTIVE_X) && !defined(ONEDIMS_SPHERICAL)
   if(st->dx < -boxHalf_X)
     st->dx += boxSize_X;
@@ -864,16 +855,16 @@ int face_get_state(tessellation * T, int p, int i, struct state *st)
 
 #ifdef MAXSCALARS
       for(j = 0; j < N_Scalar; j++)
-        st->scalars[j] = *(MyFloat *) (((char *) (&SphP[particle])) + scalar_elements[j].offset);
+        st->scalars[j] = *(MyFloat *)(((char *)(&SphP[particle])) + scalar_elements[j].offset);
 #endif /* #ifdef MAXSCALARS */
 
       aBegin = SphP[particle].TimeLastPrimUpdate;
 
-      st->oldmass = SphP[particle].OldMass;
+      st->oldmass     = SphP[particle].OldMass;
       st->surfacearea = SphP[particle].SurfaceArea;
-      st->activearea = SphP[particle].ActiveArea;
-      st->csnd = get_sound_speed(particle);
-      st->ID = P[particle].ID;
+      st->activearea  = SphP[particle].ActiveArea;
+      st->csnd        = get_sound_speed(particle);
+      st->ID          = P[particle].ID;
     }
   else
     {
@@ -891,7 +882,7 @@ int face_get_state(tessellation * T, int p, int i, struct state *st)
 
       st->grad = &GradExch[particle];
 
-      st->timeBin = PrimExch[particle].TimeBinHydro;    /* This is the hydro timestep */
+      st->timeBin = PrimExch[particle].TimeBinHydro; /* This is the hydro timestep */
 
       st->volume = PrimExch[particle].Volume;
 
@@ -911,11 +902,11 @@ int face_get_state(tessellation * T, int p, int i, struct state *st)
 
       aBegin = PrimExch[particle].TimeLastPrimUpdate;
 
-      st->oldmass = PrimExch[particle].OldMass;
+      st->oldmass     = PrimExch[particle].OldMass;
       st->surfacearea = PrimExch[particle].SurfaceArea;
-      st->activearea = PrimExch[particle].ActiveArea;
-      st->csnd = PrimExch[particle].Csnd;
-      st->ID = DP[p].ID;
+      st->activearea  = PrimExch[particle].ActiveArea;
+      st->csnd        = PrimExch[particle].Csnd;
+      st->ID          = DP[p].ID;
     }
 
   st->dtExtrapolation = All.Time - aBegin;
@@ -925,7 +916,6 @@ int face_get_state(tessellation * T, int p, int i, struct state *st)
 
   return 0;
 }
-
 
 /*! \brief Checks for boundary cells with non-periodic boundary conditions.
  *
@@ -939,7 +929,7 @@ int face_get_state(tessellation * T, int p, int i, struct state *st)
  *
  *  \return void
  */
-void face_boundary_check_vertex(tessellation * T, int p, MyFloat * velx, MyFloat * vely, MyFloat * velz)
+void face_boundary_check_vertex(tessellation *T, int p, MyFloat *velx, MyFloat *vely, MyFloat *velz)
 {
   /* check for reflecting or outflowing boundaries */
 #if defined(REFLECTIVE_X)
@@ -961,7 +951,6 @@ void face_boundary_check_vertex(tessellation * T, int p, MyFloat * velx, MyFloat
 #endif /* #ifdef ONEDIMS_SPHERICAL */
 }
 
-
 /*! \brief Checks for boundary cells with non-periodic boundary conditions.
  *
  *  \param[in] p Pointer to point.
@@ -971,7 +960,7 @@ void face_boundary_check_vertex(tessellation * T, int p, MyFloat * velx, MyFloat
  *
  *  \return void
  */
-void face_boundary_check(point * p, double *velx, double *vely, double *velz)
+void face_boundary_check(point *p, double *velx, double *vely, double *velz)
 {
   /* check for reflecting or outflowing boundaries */
 #if defined(REFLECTIVE_X)
@@ -993,7 +982,6 @@ void face_boundary_check(point * p, double *velx, double *vely, double *velz)
 #endif /* #ifdef ONEDIMS_SPHERICAL */
 }
 
-
 /*! \brief Checks whether local task is responsible for a face.
  *
  *  \param[in] T Pointer to tessellation.
@@ -1004,7 +992,7 @@ void face_boundary_check(point * p, double *velx, double *vely, double *velz)
  *
  *  \return -1 if not local responsibility, 0 if it is.
  */
-int face_check_responsibility_of_this_task(tessellation * T, int p1, int p2, struct state *st_L, struct state *st_R)
+int face_check_responsibility_of_this_task(tessellation *T, int p1, int p2, struct state *st_L, struct state *st_R)
 {
   int low_p, high_p;
   struct state *low_state, *high_state;
@@ -1013,16 +1001,16 @@ int face_check_responsibility_of_this_task(tessellation * T, int p1, int p2, str
 
   if(DP[p1].ID < DP[p2].ID)
     {
-      low_p = p1;
-      high_p = p2;
-      low_state = st_L;
+      low_p      = p1;
+      high_p     = p2;
+      low_state  = st_L;
       high_state = st_R;
     }
   else if(DP[p1].ID > DP[p2].ID)
     {
-      low_p = p2;
-      high_p = p1;
-      low_state = st_R;
+      low_p      = p2;
+      high_p     = p1;
+      low_state  = st_R;
       high_state = st_L;
     }
   else
@@ -1030,36 +1018,35 @@ int face_check_responsibility_of_this_task(tessellation * T, int p1, int p2, str
       /* equality of the IDs should only occur for reflective boundaries */
       if(DP[p1].task == ThisTask && DP[p1].index < NumGas)
         {
-          low_p = p1;
-          high_p = p2;
-          low_state = st_L;
+          low_p      = p1;
+          high_p     = p2;
+          low_state  = st_L;
           high_state = st_R;
         }
       else
         {
-          low_p = p2;
-          high_p = p1;
-          low_state = st_R;
+          low_p      = p2;
+          high_p     = p1;
+          low_state  = st_R;
           high_state = st_L;
         }
     }
 
-  if(TimeBinSynchronized[low_state->timeBin])   /* the one with the lower ID is active */
+  if(TimeBinSynchronized[low_state->timeBin]) /* the one with the lower ID is active */
     {
       /* we need to check whether the one with the lower ID is a local particle */
       if(DP[low_p].task == ThisTask && DP[low_p].index < NumGas)
         return 0;
     }
-  else if(TimeBinSynchronized[high_state->timeBin])     /* only the side with the higher ID is active */
+  else if(TimeBinSynchronized[high_state->timeBin]) /* only the side with the higher ID is active */
     {
       /* we need to check whether we hold the one with the higher ID, if yes, we'll do it */
       if(DP[high_p].task == ThisTask && DP[high_p].index < NumGas)
         return 0;
     }
 
-  return -1;                    /* we can skip this face on the local task */
+  return -1; /* we can skip this face on the local task */
 }
-
 
 /*! \brief Determines timestep of face.
  *
@@ -1087,20 +1074,20 @@ double face_timestep(struct state *state_L, struct state *state_R, double *hubbl
     timeBin = state_R->timeBin;
 
   /* compute the half-step prediction times */
-  state_L->dt_half = (All.Ti_Current + (((integertime) 1) << (timeBin - 1)) - ti_begin_L) * All.Timebase_interval;
-  state_R->dt_half = (All.Ti_Current + (((integertime) 1) << (timeBin - 1)) - ti_begin_R) * All.Timebase_interval;
+  state_L->dt_half = (All.Ti_Current + (((integertime)1) << (timeBin - 1)) - ti_begin_L) * All.Timebase_interval;
+  state_R->dt_half = (All.Ti_Current + (((integertime)1) << (timeBin - 1)) - ti_begin_R) * All.Timebase_interval;
 
   if(All.ComovingIntegrationOn)
     {
       /* calculate scale factor at middle of timestep */
-      *atime = All.TimeBegin * exp((All.Ti_Current + (((integertime) 1) << (timeBin - 1))) * All.Timebase_interval);
+      *atime    = All.TimeBegin * exp((All.Ti_Current + (((integertime)1) << (timeBin - 1))) * All.Timebase_interval);
       *hubble_a = hubble_function(*atime);
     }
   else
     *atime = *hubble_a = 1.0;
 
   /* set the actual time-step for the face */
-  face_dt = (((integertime) 1) << timeBin) * All.Timebase_interval;
+  face_dt = (((integertime)1) << timeBin) * All.Timebase_interval;
 
   if(All.ComovingIntegrationOn)
     {
@@ -1109,7 +1096,7 @@ double face_timestep(struct state *state_L, struct state *state_R, double *hubbl
       state_R->dt_half /= *hubble_a;
       face_dt /= *hubble_a;
 
-      face_dt /= *atime;        /* we need dt/a, the (1/a) takes care of the gradient in the cosmological euler equations */
+      face_dt /= *atime; /* we need dt/a, the (1/a) takes care of the gradient in the cosmological euler equations */
 
       state_L->dtExtrapolation /= *hubble_a;
       state_L->dtExtrapolation /= *atime;
@@ -1119,7 +1106,6 @@ double face_timestep(struct state *state_L, struct state *state_R, double *hubbl
 
   return face_dt;
 }
-
 
 /*! \brief Converts the velocities to local frame, compensating for the
  *         movement of the face.
@@ -1136,7 +1122,7 @@ void state_convert_to_local_frame(struct state *st, double *vel_face, double hub
 {
   if(All.ComovingIntegrationOn)
     {
-      st->velGas[0] /= atime;   /* convert to peculiar velocity */
+      st->velGas[0] /= atime; /* convert to peculiar velocity */
       st->velGas[1] /= atime;
       st->velGas[2] /= atime;
     }
@@ -1147,12 +1133,11 @@ void state_convert_to_local_frame(struct state *st, double *vel_face, double hub
 
   if(All.ComovingIntegrationOn)
     {
-      st->velx -= atime * hubble_a * st->dx;    /* need to get the physical velocity relative to the face */
+      st->velx -= atime * hubble_a * st->dx; /* need to get the physical velocity relative to the face */
       st->vely -= atime * hubble_a * st->dy;
       st->velz -= atime * hubble_a * st->dz;
     }
 }
-
 
 /*! \brief Extrapolates the state in time.
  *
@@ -1172,10 +1157,10 @@ void face_do_time_extrapolation(struct state *delta, struct state *st, double at
   if(st->rho <= 0)
     return;
 
-#if defined (MESHRELAX) || defined (DISABLE_TIME_EXTRAPOLATION)
+#if defined(MESHRELAX) || defined(DISABLE_TIME_EXTRAPOLATION)
   /* do not time extrapolation */
-  (void) st;
-  (void) atime;
+  (void)st;
+  (void)atime;
   memset(delta, 0, sizeof(struct state));
   return;
 #endif /* #if defined (MESHRELAX) || defined (DISABLE_TIME_EXTRAPOLATION) */
@@ -1187,50 +1172,60 @@ void face_do_time_extrapolation(struct state *delta, struct state *st, double at
   if(All.ComovingIntegrationOn)
     dt_half /= atime;
 
-  delta->rho = -dt_half * (st->velx * grad->drho[0] + st->rho * grad->dvel[0][0] + st->vely * grad->drho[1] + st->rho * grad->dvel[1][1] + st->velz * grad->drho[2] + st->rho * grad->dvel[2][2]);
+  delta->rho = -dt_half * (st->velx * grad->drho[0] + st->rho * grad->dvel[0][0] + st->vely * grad->drho[1] +
+                           st->rho * grad->dvel[1][1] + st->velz * grad->drho[2] + st->rho * grad->dvel[2][2]);
 
-  delta->velx = -dt_half * (1.0 / st->rho * grad->dpress[0] + st->velx * grad->dvel[0][0] + st->vely * grad->dvel[0][1] + st->velz * grad->dvel[0][2]);
+  delta->velx = -dt_half * (1.0 / st->rho * grad->dpress[0] + st->velx * grad->dvel[0][0] + st->vely * grad->dvel[0][1] +
+                            st->velz * grad->dvel[0][2]);
 
-  delta->vely = -dt_half * (1.0 / st->rho * grad->dpress[1] + st->velx * grad->dvel[1][0] + st->vely * grad->dvel[1][1] + st->velz * grad->dvel[1][2]);
+  delta->vely = -dt_half * (1.0 / st->rho * grad->dpress[1] + st->velx * grad->dvel[1][0] + st->vely * grad->dvel[1][1] +
+                            st->velz * grad->dvel[1][2]);
 
-  delta->velz = -dt_half * (1.0 / st->rho * grad->dpress[2] + st->velx * grad->dvel[2][0] + st->vely * grad->dvel[2][1] + st->velz * grad->dvel[2][2]);
+  delta->velz = -dt_half * (1.0 / st->rho * grad->dpress[2] + st->velx * grad->dvel[2][0] + st->vely * grad->dvel[2][1] +
+                            st->velz * grad->dvel[2][2]);
 
-  delta->press = -dt_half * (GAMMA * st->press * (grad->dvel[0][0] + grad->dvel[1][1] + grad->dvel[2][2]) + st->velx * grad->dpress[0] + st->vely * grad->dpress[1] + st->velz * grad->dpress[2]);
+  delta->press = -dt_half * (GAMMA * st->press * (grad->dvel[0][0] + grad->dvel[1][1] + grad->dvel[2][2]) +
+                             st->velx * grad->dpress[0] + st->vely * grad->dpress[1] + st->velz * grad->dpress[2]);
 
 #ifdef ONEDIMS_SPHERICAL
   delta->velx += dt_half * 2. * st->press / (st->rho * st->radius);
 #endif /* #ifdef ONEDIMS_SPHERICAL */
 
 #ifdef MHD
-  delta->velx += -dt_half * (1.0 / st->rho * (st->By * grad->dB[1][0] + st->Bz * grad->dB[2][0] - st->By * grad->dB[0][1] - st->Bz * grad->dB[0][2]) / atime);
+  delta->velx +=
+      -dt_half * (1.0 / st->rho *
+                  (st->By * grad->dB[1][0] + st->Bz * grad->dB[2][0] - st->By * grad->dB[0][1] - st->Bz * grad->dB[0][2]) / atime);
 
-  delta->vely += -dt_half * (1.0 / st->rho * (st->Bx * grad->dB[0][1] + st->Bz * grad->dB[2][1] - st->Bx * grad->dB[1][0] - st->Bz * grad->dB[1][2]) / atime);
+  delta->vely +=
+      -dt_half * (1.0 / st->rho *
+                  (st->Bx * grad->dB[0][1] + st->Bz * grad->dB[2][1] - st->Bx * grad->dB[1][0] - st->Bz * grad->dB[1][2]) / atime);
 
-  delta->velz += -dt_half * (1.0 / st->rho * (st->Bx * grad->dB[0][2] + st->By * grad->dB[1][2] - st->Bx * grad->dB[2][0] - st->By * grad->dB[2][1]) / atime);
+  delta->velz +=
+      -dt_half * (1.0 / st->rho *
+                  (st->Bx * grad->dB[0][2] + st->By * grad->dB[1][2] - st->Bx * grad->dB[2][0] - st->By * grad->dB[2][1]) / atime);
 
   delta->Bx =
-    -dt_half * (-st->velx * grad->dB[1][1] - grad->dvel[0][1] * st->By + st->vely * grad->dB[0][1] +
-                grad->dvel[1][1] * st->Bx + st->velz * grad->dB[0][2] + grad->dvel[2][2] * st->Bx - st->velx * grad->dB[2][2] - grad->dvel[0][2] * st->Bz);
+      -dt_half * (-st->velx * grad->dB[1][1] - grad->dvel[0][1] * st->By + st->vely * grad->dB[0][1] + grad->dvel[1][1] * st->Bx +
+                  st->velz * grad->dB[0][2] + grad->dvel[2][2] * st->Bx - st->velx * grad->dB[2][2] - grad->dvel[0][2] * st->Bz);
 
   delta->By =
-    -dt_half * (+st->velx * grad->dB[1][0] + grad->dvel[0][0] * st->By - st->vely * grad->dB[0][0] -
-                grad->dvel[1][0] * st->Bx - st->vely * grad->dB[2][2] - grad->dvel[1][2] * st->Bz + st->velz * grad->dB[1][2] + grad->dvel[2][2] * st->By);
+      -dt_half * (+st->velx * grad->dB[1][0] + grad->dvel[0][0] * st->By - st->vely * grad->dB[0][0] - grad->dvel[1][0] * st->Bx -
+                  st->vely * grad->dB[2][2] - grad->dvel[1][2] * st->Bz + st->velz * grad->dB[1][2] + grad->dvel[2][2] * st->By);
 
   delta->Bz =
-    -dt_half * (-st->velz * grad->dB[0][0] - grad->dvel[2][0] * st->Bx + st->velx * grad->dB[2][0] +
-                grad->dvel[0][0] * st->Bz + st->vely * grad->dB[2][1] + grad->dvel[1][1] * st->Bz - st->velz * grad->dB[1][1] - grad->dvel[2][1] * st->By);
+      -dt_half * (-st->velz * grad->dB[0][0] - grad->dvel[2][0] * st->Bx + st->velx * grad->dB[2][0] + grad->dvel[0][0] * st->Bz +
+                  st->vely * grad->dB[2][1] + grad->dvel[1][1] * st->Bz - st->velz * grad->dB[1][1] - grad->dvel[2][1] * st->By);
 #endif /* #ifdef MHD */
 
 #if defined(MAXSCALARS)
   int k;
   for(k = 0; k < N_Scalar; k++)
     {
-      delta->scalars[k] = -dt_half * (st->velx * grad->dscalars[k][0] + st->vely * grad->dscalars[k][1] + st->velz * grad->dscalars[k][2]);
+      delta->scalars[k] =
+          -dt_half * (st->velx * grad->dscalars[k][0] + st->vely * grad->dscalars[k][1] + st->velz * grad->dscalars[k][2]);
     }
 #endif /* #if defined(MAXSCALARS) */
-
 }
-
 
 /*! \brief Extrapolates the state in space.
  *
@@ -1287,11 +1282,11 @@ void face_do_spatial_extrapolation(struct state *delta, struct state *st, struct
   int k;
   for(k = 0; k < N_Scalar; k++)
     {
-      face_do_spatial_extrapolation_single_quantity(&delta->scalars[k], st->scalars[k], st_other->scalars[k], grad->dscalars[k], dx, r);
+      face_do_spatial_extrapolation_single_quantity(&delta->scalars[k], st->scalars[k], st_other->scalars[k], grad->dscalars[k], dx,
+                                                    r);
     }
 #endif /* #ifdef MAXSCALARS */
 }
-
 
 /*! \brief Extrapolates a single quantity in space.
  *
@@ -1306,14 +1301,13 @@ void face_do_spatial_extrapolation(struct state *delta, struct state *st, struct
  *
  *  \return void
  */
-void face_do_spatial_extrapolation_single_quantity(double *delta, double st, double st_other, MySingle * grad, double *dx, double *r)
+void face_do_spatial_extrapolation_single_quantity(double *delta, double st, double st_other, MySingle *grad, double *dx, double *r)
 {
-  (void) st;
-  (void) st_other;
-  (void) r;
+  (void)st;
+  (void)st_other;
+  (void)r;
   *delta = grad[0] * dx[0] + grad[1] * dx[1] + grad[2] * dx[2];
 }
-
 
 /*! \brief Adds space and time extrapolation to state.
  *
@@ -1344,7 +1338,6 @@ void face_add_extrapolations(struct state *st_face, struct state *delta_time, st
   face_add_extrapolation(st_face, delta_space, stat);
 #endif /* #if !defined(DISABLE_SPATIAL_EXTRAPOLATION) */
 }
-
 
 /*! \brief Adds an extrapolation to state.
  *
@@ -1378,20 +1371,18 @@ void face_add_extrapolation(struct state *st_face, struct state *delta, struct f
   for(k = 0; k < N_Scalar; k++)
     st_face->scalars[k] += delta->scalars[k];
 #endif /* #ifdef MAXSCALARS */
-
 }
 
-
- /*! \brief Adds an extrapolation to state.
-  *
-  *  But checks for positivity of density.
-  *
-  *  \param[in, out] st_face State that is modified.
-  *  \param[in] delta Change of state due to extrapolation.
-  *  \param[in, out] stat Structure that counts face value statistics.
-  *
-  *  \return void
-  */
+/*! \brief Adds an extrapolation to state.
+ *
+ *  But checks for positivity of density.
+ *
+ *  \param[in, out] st_face State that is modified.
+ *  \param[in] delta Change of state due to extrapolation.
+ *  \param[in, out] stat Structure that counts face value statistics.
+ *
+ *  \return void
+ */
 void face_add_extrapolation_with_check(struct state *st_face, struct state *delta, struct fvs_stat *stat)
 {
   stat->count_disable_extrapolation += 1;
@@ -1406,7 +1397,6 @@ void face_add_extrapolation_with_check(struct state *st_face, struct state *delt
 
   face_add_extrapolation(st_face, delta, stat);
 }
-
 
 /*! \brief Rotates velocities and magnetic field.
  *
@@ -1440,7 +1430,6 @@ void face_turn_velocities(struct state *st, struct geometry *geom)
 #endif /* #ifdef MHD */
 }
 
-
 /*! \brief Sets the state at the face to its upwind value.
  *
  *  \param[in] st_L Left hand side hydrodynamical state.
@@ -1457,22 +1446,21 @@ void solve_advection(struct state *st_L, struct state *st_R, struct state_face *
 
   if(ev < 0)
     {
-      st_face->rho = st_L->rho;
-      st_face->velx = st_L->velx;
-      st_face->vely = st_L->vely;
-      st_face->velz = st_L->velz;
+      st_face->rho   = st_L->rho;
+      st_face->velx  = st_L->velx;
+      st_face->vely  = st_L->vely;
+      st_face->velz  = st_L->velz;
       st_face->press = st_L->press;
     }
   else
     {
-      st_face->rho = st_R->rho;
-      st_face->velx = st_R->velx;
-      st_face->vely = st_R->vely;
-      st_face->velz = st_R->velz;
+      st_face->rho   = st_R->rho;
+      st_face->velx  = st_R->velx;
+      st_face->vely  = st_R->vely;
+      st_face->velz  = st_R->velz;
       st_face->press = st_R->press;
     }
 }
-
 
 /*! \brief Rotates velocities backwards.
  *
@@ -1495,7 +1483,6 @@ void face_turnback_velocities(struct state_face *st_face, struct geometry *geom)
   st_face->vely = velx * geom->ny + vely * geom->my + velz * geom->py;
   st_face->velz = velx * geom->nz + vely * geom->mz + velz * geom->pz;
 }
-
 
 /*! \brief Sets the scalar states compute the scalar flux from mass flux.
  *
@@ -1541,7 +1528,6 @@ void face_set_scalar_states_and_fluxes(struct state *st_L, struct state *st_R, s
 #endif /* #if defined(MAXSCALARS) */
 }
 
-
 #if defined(RIEMANN_HLLC) || defined(RIEMANN_HLLD)
 /*! \brief Converts flux from face frame to simulation box frame.
  *
@@ -1562,7 +1548,8 @@ void flux_convert_to_lab_frame(struct state *st_L, struct state *st_R, double *v
   flux->momentum[1] += vel_face[1] * flux->mass;
   flux->momentum[2] += vel_face[2] * flux->mass;
 
-  flux->energy += momx * vel_face[0] + momy * vel_face[1] + momz * vel_face[2] + 0.5 * flux->mass * (vel_face[0] * vel_face[0] + vel_face[1] * vel_face[1] + vel_face[2] * vel_face[2]);
+  flux->energy += momx * vel_face[0] + momy * vel_face[1] + momz * vel_face[2] +
+                  0.5 * flux->mass * (vel_face[0] * vel_face[0] + vel_face[1] * vel_face[1] + vel_face[2] * vel_face[2]);
 
 #ifdef MHD
   double Bx;
@@ -1574,7 +1561,6 @@ void flux_convert_to_lab_frame(struct state *st_L, struct state *st_R, double *v
 #endif /* #ifdef MHD */
 }
 #endif /* #if defined(RIEMANN_HLLC) || defined(RIEMANN_HLLD) */
-
 
 /*! \brief Rotates momenum flux and magnetic flux vector.
  *
@@ -1607,7 +1593,6 @@ void face_turn_momentum_flux(struct fluxes *flux, struct geometry *geom)
 #endif /* #ifdef MHD */
 }
 
-
 /*! \brief Calculates the flux from face states.
  *
  *  \param[in] st_L (unused)
@@ -1619,7 +1604,8 @@ void face_turn_momentum_flux(struct fluxes *flux, struct geometry *geom)
  *
  *  \return void
  */
-void face_get_fluxes(struct state *st_L, struct state *st_R, struct state_face *st_face, struct fluxes *flux, struct geometry *geom, double *vel_face)
+void face_get_fluxes(struct state *st_L, struct state *st_R, struct state_face *st_face, struct fluxes *flux, struct geometry *geom,
+                     double *vel_face)
 {
   double fac;
 
@@ -1633,15 +1619,14 @@ void face_get_fluxes(struct state *st_L, struct state *st_R, struct state_face *
   flux->momentum[1] = (st_face->rho * st_face->vely * fac + st_face->press * geom->ny);
   flux->momentum[2] = (st_face->rho * st_face->velz * fac + st_face->press * geom->nz);
 
-
 #ifndef ISOTHERM_EQS
-  flux->energy = (0.5 * st_face->rho * (st_face->velx * st_face->velx +
-                                        st_face->vely * st_face->vely +
-                                        st_face->velz * st_face->velz) +
-                  st_face->press / GAMMA_MINUS1) * fac + st_face->press * (st_face->velx * geom->nx + st_face->vely * geom->ny + st_face->velz * geom->nz);
+  flux->energy =
+      (0.5 * st_face->rho * (st_face->velx * st_face->velx + st_face->vely * st_face->vely + st_face->velz * st_face->velz) +
+       st_face->press / GAMMA_MINUS1) *
+          fac +
+      st_face->press * (st_face->velx * geom->nx + st_face->vely * geom->ny + st_face->velz * geom->nz);
 #endif /* #ifndef ISOTHERM_EQS */
 }
-
 
 /*! \brief Flux limiter.
  *
@@ -1659,7 +1644,8 @@ void face_get_fluxes(struct state *st_L, struct state *st_R, struct state_face *
  *
  *  \return void
  */
-void face_limit_fluxes(struct state *st_L, struct state *st_R, struct state *st_center_L, struct state *st_center_R, struct fluxes *flux, double dt, double *count, double *count_reduced)
+void face_limit_fluxes(struct state *st_L, struct state *st_R, struct state *st_center_L, struct state *st_center_R,
+                       struct fluxes *flux, double dt, double *count, double *count_reduced)
 {
   *count = *count + 1.0;
 
@@ -1670,16 +1656,16 @@ void face_limit_fluxes(struct state *st_L, struct state *st_R, struct state *st_
 
   if(flux->mass > 0)
     {
-      upwind_mass = st_L->oldmass;
-      upwind_activearea = st_L->activearea;
-      upwind_timebin = st_L->timeBin;
+      upwind_mass        = st_L->oldmass;
+      upwind_activearea  = st_L->activearea;
+      upwind_timebin     = st_L->timeBin;
       downstream_timebin = st_R->timeBin;
     }
   else
     {
-      upwind_mass = st_R->oldmass;
-      upwind_activearea = st_R->activearea;
-      upwind_timebin = st_R->timeBin;
+      upwind_mass        = st_R->oldmass;
+      upwind_activearea  = st_R->activearea;
+      upwind_timebin     = st_R->timeBin;
       downstream_timebin = st_L->timeBin;
     }
 
@@ -1706,7 +1692,6 @@ void face_limit_fluxes(struct state *st_L, struct state *st_R, struct state *st_
     }
 }
 
-
 /*! \brief Set flux vector entries to zero.
  *
  *  \param[out] flux Flux vector.
@@ -1715,18 +1700,17 @@ void face_limit_fluxes(struct state *st_L, struct state *st_R, struct state *st_
  */
 void face_clear_fluxes(struct fluxes *flux)
 {
-  flux->mass = 0;
+  flux->mass        = 0;
   flux->momentum[0] = 0;
   flux->momentum[1] = 0;
   flux->momentum[2] = 0;
-  flux->energy = 0;
+  flux->energy      = 0;
 #ifdef MHD
   flux->B[0] = 0;
   flux->B[1] = 0;
   flux->B[2] = 0;
 #endif /* #ifdef MHD */
 }
-
 
 /*! \brief Adds flux due to advection to flux vector.
  *
@@ -1747,9 +1731,10 @@ void face_add_fluxes_advection(struct state_face *st_face, struct fluxes *flux, 
   flux->momentum[1] += st_face->rho * st_face->vely * fac;
   flux->momentum[2] += st_face->rho * st_face->velz * fac;
 
-  flux->energy += 0.5 * st_face->rho * fac * (st_face->velx * st_face->velx + st_face->vely * st_face->vely + st_face->velz * st_face->velz) + st_face->press / GAMMA_MINUS1 * fac;
+  flux->energy +=
+      0.5 * st_face->rho * fac * (st_face->velx * st_face->velx + st_face->vely * st_face->vely + st_face->velz * st_face->velz) +
+      st_face->press / GAMMA_MINUS1 * fac;
 }
-
 
 /*! \brief Compares tasks of flux list data.
  *
@@ -1762,15 +1747,14 @@ void face_add_fluxes_advection(struct state_face *st_face, struct fluxes *flux, 
  */
 int flux_list_data_compare(const void *a, const void *b)
 {
-  if(((struct flux_list_data *) a)->task < (((struct flux_list_data *) b)->task))
+  if(((struct flux_list_data *)a)->task < (((struct flux_list_data *)b)->task))
     return -1;
 
-  if(((struct flux_list_data *) a)->task > (((struct flux_list_data *) b)->task))
+  if(((struct flux_list_data *)a)->task > (((struct flux_list_data *)b)->task))
     return +1;
 
   return 0;
 }
-
 
 /*! \brief Communicates flux list and applies fluxes to conserved hydro
  *         variables.
@@ -1810,7 +1794,7 @@ void apply_flux_list(void)
         }
     }
 
-  struct flux_list_data *FluxListGet = (struct flux_list_data *) mymalloc("FluxListGet", nimport * sizeof(struct flux_list_data));
+  struct flux_list_data *FluxListGet = (struct flux_list_data *)mymalloc("FluxListGet", nimport * sizeof(struct flux_list_data));
 
   /* exchange particle data */
   for(ngrp = 0; ngrp < (1 << PTask); ngrp++)
@@ -1822,10 +1806,9 @@ void apply_flux_list(void)
           if(Send_count[recvTask] > 0 || Recv_count[recvTask] > 0)
             {
               /* get the particles */
-              MPI_Sendrecv(&FluxList[Send_offset[recvTask]],
-                           Send_count[recvTask] * sizeof(struct flux_list_data), MPI_BYTE,
-                           recvTask, TAG_DENS_A,
-                           &FluxListGet[Recv_offset[recvTask]], Recv_count[recvTask] * sizeof(struct flux_list_data), MPI_BYTE, recvTask, TAG_DENS_A, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
+              MPI_Sendrecv(&FluxList[Send_offset[recvTask]], Send_count[recvTask] * sizeof(struct flux_list_data), MPI_BYTE, recvTask,
+                           TAG_DENS_A, &FluxListGet[Recv_offset[recvTask]], Recv_count[recvTask] * sizeof(struct flux_list_data),
+                           MPI_BYTE, recvTask, TAG_DENS_A, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
             }
         }
     }
@@ -1849,17 +1832,15 @@ void apply_flux_list(void)
 
 #ifdef MAXSCALARS
       for(k = 0; k < N_Scalar; k++)
-        *(MyFloat *) (((char *) (&SphP[p])) + scalar_elements[k].offset_mass) += FluxListGet[i].dConservedScalars[k];
+        *(MyFloat *)(((char *)(&SphP[p])) + scalar_elements[k].offset_mass) += FluxListGet[i].dConservedScalars[k];
 #endif /* #ifdef MAXSCALARS */
 
 #ifndef ISOTHERM_EQS
       SphP[p].Energy += FluxListGet[i].dEnergy;
 #endif /* #ifndef ISOTHERM_EQS */
-
     }
   myfree(FluxListGet);
 }
-
 
 /*! \brief Initializes statistics of finite volume solver.
  *
@@ -1867,11 +1848,7 @@ void apply_flux_list(void)
  *
  *  \return void
  */
-void fvs_initialize_statistics(struct fvs_stat *stat)
-{
-  stat->count_disable_extrapolation = 0;
-}
-
+void fvs_initialize_statistics(struct fvs_stat *stat) { stat->count_disable_extrapolation = 0; }
 
 /*! \brief Gathers statistics properties from all tasks and prints information.
  *
@@ -1888,7 +1865,6 @@ void fvs_evaluate_statistics(struct fvs_stat *stat)
 #endif /* #ifdef VERBOSE */
 }
 
-
 #ifdef ONEDIMS_SPHERICAL
 /*! \brief Applies source terms that occur due to spherical symmetry.
  *
@@ -1904,15 +1880,14 @@ void apply_spherical_source_terms()
       if(i < 0)
         continue;
 
-      double Pressure = SphP[i].Pressure;
+      double Pressure         = SphP[i].Pressure;
       double dt_Extrapolation = All.Time - SphP[i].TimeLastPrimUpdate;
-      struct grad_data *grad = &SphP[i].Grad;
+      struct grad_data *grad  = &SphP[i].Grad;
 
-      Pressure +=
-        -dt_Extrapolation * (GAMMA * Pressure * (grad->dvel[0][0] + grad->dvel[1][1] + grad->dvel[2][2]) + P[i].Vel[0] * grad->dpress[0] + P[i].Vel[1] * grad->dpress[1] +
-                             P[i].Vel[2] * grad->dpress[2]);
+      Pressure += -dt_Extrapolation * (GAMMA * Pressure * (grad->dvel[0][0] + grad->dvel[1][1] + grad->dvel[2][2]) +
+                                       P[i].Vel[0] * grad->dpress[0] + P[i].Vel[1] * grad->dpress[1] + P[i].Vel[2] * grad->dpress[2]);
 
-      double dt = 0.5 * (P[i].TimeBinHydro ? (((integertime) 1) << P[i].TimeBinHydro) : 0) * All.Timebase_interval;
+      double dt = 0.5 * (P[i].TimeBinHydro ? (((integertime)1) << P[i].TimeBinHydro) : 0) * All.Timebase_interval;
       SphP[i].Momentum[0] += dt * Pressure * (Mesh.VF[i + 1].area - Mesh.VF[i].area);
     }
 }

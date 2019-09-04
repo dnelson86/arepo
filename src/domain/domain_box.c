@@ -23,27 +23,25 @@
  * \details     contains files:
  *                void domain_findExtent(void)
  *                void do_box_wrapping(void)
- * 
- * 
+ *
+ *
  * \par Major modifications and contributions:
- * 
+ *
  * - DD.MM.YYYY Description
  * - 05.05.2018 Prepared file for public release -- Rainer Weinberger
  */
 
-
+#include <math.h>
 #include <mpi.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <strings.h>
-#include <math.h>
-
 
 #include "../main/allvars.h"
 #include "../main/proto.h"
-#include "domain.h"
 #include "../mesh/voronoi/voronoi.h"
+#include "domain.h"
 
 /*! \brief Move the coordinate in pos by the global displacement vector
  *
@@ -52,53 +50,52 @@
  *
  *  \return void
  */
-void domain_displacePosition( MyDouble *pos, enum domain_displace_mode mode )
+void domain_displacePosition(MyDouble *pos, enum domain_displace_mode mode)
 {
   if(mode == DISPLACE_POSITION_FORWARD)
     {
       double xtmp, ytmp, ztmp;
-      pos[0] = WRAP_X( pos[0] + All.GlobalDisplacementVector[0] );
-      pos[1] = WRAP_Y( pos[1] + All.GlobalDisplacementVector[1] );
-      pos[2] = WRAP_Z( pos[2] + All.GlobalDisplacementVector[2] );
+      pos[0] = WRAP_X(pos[0] + All.GlobalDisplacementVector[0]);
+      pos[1] = WRAP_Y(pos[1] + All.GlobalDisplacementVector[1]);
+      pos[2] = WRAP_Z(pos[2] + All.GlobalDisplacementVector[2]);
     }
   else if(mode == DISPLACE_POSITION_BACKWARD)
     {
       double xtmp, ytmp, ztmp;
-      pos[0] = WRAP_X( pos[0] - All.GlobalDisplacementVector[0] );
-      pos[1] = WRAP_Y( pos[1] - All.GlobalDisplacementVector[1] );
-      pos[2] = WRAP_Z( pos[2] - All.GlobalDisplacementVector[2] );
+      pos[0] = WRAP_X(pos[0] - All.GlobalDisplacementVector[0]);
+      pos[1] = WRAP_Y(pos[1] - All.GlobalDisplacementVector[1]);
+      pos[2] = WRAP_Z(pos[2] - All.GlobalDisplacementVector[2]);
     }
   else
-    terminate( "Unkown mode %d.", mode );
+    terminate("Unkown mode %d.", mode);
 }
 
-/*! \brief Move the coordinate for all positions by the global displacement vector 
+/*! \brief Move the coordinate for all positions by the global displacement vector
  *
  *  \param[in] mode displacement mode, either DISPLACE_POSITION_FORWARD or DISPLACE_POSITION_BACKWARD
  *
  *  \return void
  */
-static void domain_displacePositions( enum domain_displace_mode mode )
+static void domain_displacePositions(enum domain_displace_mode mode)
 {
   for(int i = 0; i < NumPart; i++)
     {
       if(P[i].ID == 0 && P[i].Mass == 0) /* derefined */
         continue;
-      
-      domain_displacePosition( P[i].Pos, mode );
-      
+
+      domain_displacePosition(P[i].Pos, mode);
+
       if(i < NumGas)
-        domain_displacePosition( SphP[i].Center, mode );
+        domain_displacePosition(SphP[i].Center, mode);
     }
 
 #ifdef PLACEHIGHRESREGION
-  domain_displacePosition( All.Xmintot[1], mode );
-  domain_displacePosition( All.Xmaxtot[1], mode );
-  domain_displacePosition( All.Corner[1], mode );
-  domain_displacePosition( All.UpperCorner[1], mode );
+  domain_displacePosition(All.Xmintot[1], mode);
+  domain_displacePosition(All.Xmaxtot[1], mode);
+  domain_displacePosition(All.Corner[1], mode);
+  domain_displacePosition(All.UpperCorner[1], mode);
 #endif
 }
-
 
 /*! \brief Finds the extent of the global domain grid.
  *
@@ -118,7 +115,7 @@ void domain_findExtent(void)
       xmin[j] = 0;
       xmax[j] = boxSize;
     }
-  // Take care of stretched box
+    // Take care of stretched box
 #ifdef LONG_X
   xmax[0] = boxSize_X;
 #endif /* #ifdef LONG_X */
@@ -164,11 +161,10 @@ void domain_findExtent(void)
       len = xmax_glob[j] - xmin_glob[j];
 
 #if defined(GRAVITY_NOT_PERIODIC) && !defined(ADDBACKGROUNDGRID)
-  len *= 1.2;                   /* enlarge box a bit to avoid triggering of an out of box recovery */
-#else /* #if defined(GRAVITY_NOT_PERIODIC) && !defined(ADDBACKGROUNDGRID) */
+  len *= 1.2; /* enlarge box a bit to avoid triggering of an out of box recovery */
+#else         /* #if defined(GRAVITY_NOT_PERIODIC) && !defined(ADDBACKGROUNDGRID) */
   len *= 1.00001;
-#endif /* #if defined(GRAVITY_NOT_PERIODIC) && !defined(ADDBACKGROUNDGRID) #else */
-
+#endif        /* #if defined(GRAVITY_NOT_PERIODIC) && !defined(ADDBACKGROUNDGRID) #else */
 
 #if defined(DO_NOT_RANDOMIZE_DOMAINCENTER) || !defined(GRAVITY_NOT_PERIODIC) || defined(ONEDIMS) || defined(TWODIMS)
   for(j = 0; j < 3; j++)
@@ -176,7 +172,7 @@ void domain_findExtent(void)
       DomainCenter[j] = 0.5 * (xmin_glob[j] + xmax_glob[j]);
       DomainCorner[j] = 0.5 * (xmin_glob[j] + xmax_glob[j]) - 0.5 * len;
     }
-#else /* #if defined(DO_NOT_RANDOMIZE_DOMAINCENTER) || !defined(GRAVITY_NOT_PERIODIC) || defined(ONEDIMS) || defined(TWODIMS) */
+#else  /* #if defined(DO_NOT_RANDOMIZE_DOMAINCENTER) || !defined(GRAVITY_NOT_PERIODIC) || defined(ONEDIMS) || defined(TWODIMS) */
   for(j = 0; j < 3; j++)
     {
       DomainCenter[j] = 0.5 * (xmin_glob[j] + xmax_glob[j]);
@@ -189,15 +185,15 @@ void domain_findExtent(void)
 
   for(j = 0; j < 3; j++)
     DomainCorner[j] = DomainCenter[j] - 0.5 * len;
-#endif /* #if defined(DO_NOT_RANDOMIZE_DOMAINCENTER) || !defined(GRAVITY_NOT_PERIODIC) || defined(ONEDIMS) || defined(TWODIMS) #else */
+#endif /* #if defined(DO_NOT_RANDOMIZE_DOMAINCENTER) || !defined(GRAVITY_NOT_PERIODIC) || defined(ONEDIMS) || defined(TWODIMS) #else \
+        */
 
   DomainLen = len;
 
   DomainInverseLen = 1.0 / DomainLen;
-  DomainFac = 1.0 / len * (((peanokey) 1) << (BITS_PER_DIMENSION));
-  DomainBigFac = (DomainLen / (((long long) 1) << 52));
+  DomainFac        = 1.0 / len * (((peanokey)1) << (BITS_PER_DIMENSION));
+  DomainBigFac     = (DomainLen / (((long long)1) << 52));
 }
-
 
 /*! \brief Makes sure all particles are within box.
  *
@@ -231,7 +227,7 @@ void do_box_wrapping(void)
 #endif /* #ifdef LONG_Z */
 
 #if !defined(GRAVITY_NOT_PERIODIC) && !defined(DO_NOT_RANDOMIZE_DOMAINCENTER) && defined(SELFGRAVITY) && (NUMDIMS > 2)
-  domain_displacePositions( DISPLACE_POSITION_BACKWARD );
+  domain_displacePositions(DISPLACE_POSITION_BACKWARD);
 
   if(ThisTask == 0)
     {
@@ -242,11 +238,12 @@ void do_box_wrapping(void)
       for(j = 0; j < 3; j++)
         All.GlobalDisplacementVector[j] = (get_random_number() - 0.5) * boxsize[j] * prefac;
     }
-  
-  mpi_printf("DOMAIN: New global displacement vector: %g, %g, %g\n", All.GlobalDisplacementVector[0], All.GlobalDisplacementVector[1], All.GlobalDisplacementVector[2]);
+
+  mpi_printf("DOMAIN: New global displacement vector: %g, %g, %g\n", All.GlobalDisplacementVector[0], All.GlobalDisplacementVector[1],
+             All.GlobalDisplacementVector[2]);
   MPI_Bcast(All.GlobalDisplacementVector, 3, MPI_DOUBLE, 0, MPI_COMM_WORLD);
-  
-  domain_displacePositions( DISPLACE_POSITION_FORWARD );
+
+  domain_displacePositions(DISPLACE_POSITION_FORWARD);
 #endif /* #if !defined(GRAVITY_NOT_PERIODIC) && !defined(DO_NOT_RANDOMIZE_DOMAINCENTER) && defined(SELFGRAVITY) && (NUMDIMS > 2) */
 
   int i;
@@ -275,7 +272,7 @@ void do_box_wrapping(void)
             trans_table[i].wrapped |= 2;
         }
 
-#else /* #if !defined(REFLECTIVE_X) */
+#else  /* #if !defined(REFLECTIVE_X) */
       if(P[i].Pos[0] < 0 || P[i].Pos[0] >= boxsize[0])
         {
           char buf[1000];
@@ -300,7 +297,7 @@ void do_box_wrapping(void)
             trans_table[i].wrapped |= 8;
         }
 
-#else /* #if !defined(REFLECTIVE_Y) */
+#else  /* #if !defined(REFLECTIVE_Y) */
       if(P[i].Pos[1] < 0 || P[i].Pos[1] >= boxsize[1])
         {
           char buf[1000];
@@ -325,7 +322,7 @@ void do_box_wrapping(void)
             trans_table[i].wrapped |= 32;
         }
 
-#else /* #if !defined(REFLECTIVE_Z) */
+#else  /* #if !defined(REFLECTIVE_Z) */
       if(P[i].Pos[2] < 0 || P[i].Pos[2] >= boxsize[2])
         {
           char buf[1000];
@@ -334,6 +331,5 @@ void do_box_wrapping(void)
           terminate(buf);
         }
 #endif /* #if !defined(REFLECTIVE_Z) #else */
-
     }
 }

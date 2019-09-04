@@ -41,33 +41,28 @@
  *                int density_isactive(int n)
  *
  * \par Major modifications and contributions:
- * 
+ *
  * - DD.MM.YYYY Description
  * - 04.05.2018 Prepared file for public release -- Rainer Weinberger
  */
 
-
+#include <gsl/gsl_math.h>
+#include <math.h>
 #include <mpi.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <math.h>
-#include <gsl/gsl_math.h>
 
-
+#include "../domain/domain.h"
 #include "../main/allvars.h"
 #include "../main/proto.h"
-#include "../domain/domain.h"
-
 
 static int density_evaluate(int target, int mode, int threadid);
-
 
 static MyFloat *NumNgb, *DhsmlDensityFactor;
 #ifdef FIX_SPH_PARTICLES_AT_IDENTICAL_COORDINATES
 static MyFloat *MinDist;
 #endif /* #ifdef FIX_SPH_PARTICLES_AT_IDENTICAL_COORDINATES */
-
 
 /*! \brief Local data structure for collecting particle/cell data that is sent
  *         to other processors if needed. Type called data_in and static
@@ -79,13 +74,12 @@ typedef struct
   MyFloat Hsml;
 #ifdef FIX_SPH_PARTICLES_AT_IDENTICAL_COORDINATES
   MyIDType ID;
-#endif                          /* #ifdef FIX_SPH_PARTICLES_AT_IDENTICAL_COORDINATES */
+#endif /* #ifdef FIX_SPH_PARTICLES_AT_IDENTICAL_COORDINATES */
 
   int Firstnode;
 } data_in;
 
 static data_in *DataIn, *DataGet;
-
 
 /*! \brief Routine that fills the relevant particle/cell data into the input
  *         structure defined above. Needed by generic_comm_helpers2.
@@ -96,12 +90,12 @@ static data_in *DataIn, *DataGet;
  *
  *  \return void
  */
-static void particle2in(data_in * in, int i, int firstnode)
+static void particle2in(data_in *in, int i, int firstnode)
 {
   in->Pos[0] = P[i].Pos[0];
   in->Pos[1] = P[i].Pos[1];
   in->Pos[2] = P[i].Pos[2];
-  in->Hsml = SphP[i].Hsml;
+  in->Hsml   = SphP[i].Hsml;
 #ifdef FIX_SPH_PARTICLES_AT_IDENTICAL_COORDINATES
   in->ID = P[i].ID;
 #endif /* #ifdef FIX_SPH_PARTICLES_AT_IDENTICAL_COORDINATES */
@@ -109,11 +103,10 @@ static void particle2in(data_in * in, int i, int firstnode)
   in->Firstnode = firstnode;
 }
 
-
- /*! \brief Local data structure that holds results acquired on remote
-  *         processors. Type called data_out and static pointers DataResult and
-  *         DataOut needed by generic_comm_helpers2.
-  */
+/*! \brief Local data structure that holds results acquired on remote
+ *         processors. Type called data_out and static pointers DataResult and
+ *         DataOut needed by generic_comm_helpers2.
+ */
 typedef struct
 {
   MyFloat Rho;
@@ -121,38 +114,37 @@ typedef struct
   MyFloat Ngb;
 #ifdef FIX_SPH_PARTICLES_AT_IDENTICAL_COORDINATES
   MyFloat MinDist;
-#endif                          /* #ifdef FIX_SPH_PARTICLES_AT_IDENTICAL_COORDINATES */
+#endif /* #ifdef FIX_SPH_PARTICLES_AT_IDENTICAL_COORDINATES */
 } data_out;
 
 static data_out *DataResult, *DataOut;
 
-
- /*! \brief Routine to store or combine result data. Needed by
-  *         generic_comm_helpers2.
-  *
-  *  \param[in] out Data to be moved to appropriate variables in global
-  *  particle and cell data arrays (P, SphP,...)
-  *  \param[in] i Index of particle in P and SphP arrays
-  *  \param[in] mode Mode of function: local particles or information that was
-  *  communicated from other tasks and has to be added locally?
-  *
-  *  \return void
-  */
-static void out2particle(data_out * out, int i, int mode)
+/*! \brief Routine to store or combine result data. Needed by
+ *         generic_comm_helpers2.
+ *
+ *  \param[in] out Data to be moved to appropriate variables in global
+ *  particle and cell data arrays (P, SphP,...)
+ *  \param[in] i Index of particle in P and SphP arrays
+ *  \param[in] mode Mode of function: local particles or information that was
+ *  communicated from other tasks and has to be added locally?
+ *
+ *  \return void
+ */
+static void out2particle(data_out *out, int i, int mode)
 {
-  if(mode == MODE_LOCAL_PARTICLES)      /* initial store */
+  if(mode == MODE_LOCAL_PARTICLES) /* initial store */
     {
       NumNgb[i] = out->Ngb;
       if(P[i].Type == 0)
         {
-          SphP[i].Density = out->Rho;
+          SphP[i].Density       = out->Rho;
           DhsmlDensityFactor[i] = out->DhsmlDensity;
 #ifdef FIX_SPH_PARTICLES_AT_IDENTICAL_COORDINATES
           MinDist[i] = out->MinDist;
 #endif /* #ifdef FIX_SPH_PARTICLES_AT_IDENTICAL_COORDINATES */
         }
     }
-  else                          /* combine */
+  else /* combine */
     {
       NumNgb[i] += out->Ngb;
       if(P[i].Type == 0)
@@ -167,9 +159,7 @@ static void out2particle(data_out * out, int i, int mode)
     }
 }
 
-
 #include "../utils/generic_comm_helpers2.h"
-
 
 /*! \brief Routine that defines what to do with local particles.
  *
@@ -207,7 +197,6 @@ static void kernel_local(void)
   }
 }
 
-
 /*! \brief Routine that defines what to do with imported particles.
  *
  *  Calls the *_evaluate function in MODE_IMPORTED_PARTICLES.
@@ -233,12 +222,10 @@ static void kernel_imported(void)
   }
 }
 
-
 static MyFloat *NumNgb, *DhsmlDensityFactor;
 #ifdef FIX_SPH_PARTICLES_AT_IDENTICAL_COORDINATES
 static MyFloat *MinDist;
 #endif /* #ifdef FIX_SPH_PARTICLES_AT_IDENTICAL_COORDINATES */
-
 
 /*! \brief Main function of SPH density calculation.
  *
@@ -261,13 +248,13 @@ void density(void)
 
   CPU_Step[CPU_MISC] += measure_time();
 
-  NumNgb = (MyFloat *) mymalloc("NumNgb", NumPart * sizeof(MyFloat));
-  DhsmlDensityFactor = (MyFloat *) mymalloc("DhsmlDensityFactor", NumPart * sizeof(MyFloat));
-  Left = (MyFloat *) mymalloc("Left", NumPart * sizeof(MyFloat));
-  Right = (MyFloat *) mymalloc("Right", NumPart * sizeof(MyFloat));
+  NumNgb             = (MyFloat *)mymalloc("NumNgb", NumPart * sizeof(MyFloat));
+  DhsmlDensityFactor = (MyFloat *)mymalloc("DhsmlDensityFactor", NumPart * sizeof(MyFloat));
+  Left               = (MyFloat *)mymalloc("Left", NumPart * sizeof(MyFloat));
+  Right              = (MyFloat *)mymalloc("Right", NumPart * sizeof(MyFloat));
 
 #ifdef FIX_SPH_PARTICLES_AT_IDENTICAL_COORDINATES
-  MinDist = (MyFloat *) mymalloc("MinDist", NumPart * sizeof(MyFloat));
+  MinDist = (MyFloat *)mymalloc("MinDist", NumPart * sizeof(MyFloat));
 #endif /* #ifdef FIX_SPH_PARTICLES_AT_IDENTICAL_COORDINATES */
 
   for(idx = 0; idx < TimeBinsHydro.NActiveParticles; idx++)
@@ -307,7 +294,7 @@ void density(void)
                   if(SphP[i].Density > 0)
                     {
                       DhsmlDensityFactor[i] *= SphP[i].Hsml / (NUMDIMS * SphP[i].Density);
-                      if(DhsmlDensityFactor[i] > -0.9)  /* note: this would be -1 if only a single particle at zero lag is found */
+                      if(DhsmlDensityFactor[i] > -0.9) /* note: this would be -1 if only a single particle at zero lag is found */
                         DhsmlDensityFactor[i] = 1 / (1 + DhsmlDensityFactor[i]);
                       else
                         DhsmlDensityFactor[i] = 1;
@@ -324,7 +311,7 @@ void density(void)
                       {
                         /* this one should be ok */
                         npleft--;
-                        P[i].TimeBinHydro = -P[i].TimeBinHydro - 1;     /* Mark as inactive */
+                        P[i].TimeBinHydro = -P[i].TimeBinHydro - 1; /* Mark as inactive */
                         continue;
                       }
 
@@ -343,8 +330,9 @@ void density(void)
 
                   if(iter >= MAXITER - 10)
                     {
-                      printf("i=%d task=%d ID=%d Hsml=%g Left=%g Right=%g Ngbs=%g Right-Left=%g\n   pos=(%g|%g|%g)\n",
-                             i, ThisTask, (int) P[i].ID, SphP[i].Hsml, Left[i], Right[i], (float) NumNgb[i], Right[i] - Left[i], P[i].Pos[0], P[i].Pos[1], P[i].Pos[2]);
+                      printf("i=%d task=%d ID=%d Hsml=%g Left=%g Right=%g Ngbs=%g Right-Left=%g\n   pos=(%g|%g|%g)\n", i, ThisTask,
+                             (int)P[i].ID, SphP[i].Hsml, Left[i], Right[i], (float)NumNgb[i], Right[i] - Left[i], P[i].Pos[0],
+                             P[i].Pos[1], P[i].Pos[2]);
                       myflush(stdout);
                     }
 
@@ -365,10 +353,9 @@ void density(void)
                           SphP[i].Hsml /= 1.26;
                         }
                     }
-
                 }
               else
-                P[i].TimeBinHydro = -P[i].TimeBinHydro - 1;     /* Mark as inactive */
+                P[i].TimeBinHydro = -P[i].TimeBinHydro - 1; /* Mark as inactive */
             }
         }
 
@@ -381,7 +368,8 @@ void density(void)
           iter++;
 
           if(iter > 0)
-            mpi_printf("DENSITY: ngb iteration %3d: need to repeat for %12lld particles. (took %g sec)\n", iter, ntot, timediff(t0, t1));
+            mpi_printf("DENSITY: ngb iteration %3d: need to repeat for %12lld particles. (took %g sec)\n", iter, ntot,
+                       timediff(t0, t1));
 
           if(iter > MAXITER)
             terminate("failed to converge in neighbour iteration in density()\n");
@@ -389,12 +377,11 @@ void density(void)
     }
   while(ntot > 0);
 
-
 #ifdef FIX_SPH_PARTICLES_AT_IDENTICAL_COORDINATES
 
 #if defined(REFLECTIVE_X) && defined(REFLECTIVE_Y) && defined(REFLECTIVE_Z)
 
-  int count2 = 0;
+  int count2    = 0;
   int countall2 = 0;
 
   for(i = 0; i < NumGas; i++)
@@ -415,7 +402,7 @@ void density(void)
           dir[2] = boxSize_Z * 0.5 - P[i].Pos[2];
 
           double n = sqrt(dir[0] * dir[0] + dir[1] * dir[1] + dir[2] * dir[2]);
-          //note: it's not possible that the operand of sqrt is zero here.
+          // note: it's not possible that the operand of sqrt is zero here.
 
           dir[0] /= n;
           dir[1] /= n;
@@ -447,7 +434,7 @@ void density(void)
         if(MinDist[i] < 0.001 * SphP[i].Hsml)
           {
             double theta = acos(2 * get_random_number() - 1);
-            double phi = 2 * M_PI * get_random_number();
+            double phi   = 2 * M_PI * get_random_number();
 
             P[i].Pos[0] += 0.1 * SphP[i].Hsml * sin(theta) * cos(phi);
             P[i].Pos[1] += 0.1 * SphP[i].Hsml * sin(theta) * sin(phi);
@@ -478,7 +465,6 @@ void density(void)
   /* collect some timing information */
   CPU_Step[CPU_INIT] += measure_time();
 }
-
 
 /*! \brief Inner function of the SPH density calculation
  *
@@ -516,7 +502,7 @@ static int density_evaluate(int target, int mode, int threadid)
       particle2in(&local, target, 0);
       target_data = &local;
 
-      numnodes = 1;
+      numnodes  = 1;
       firstnode = NULL;
     }
   else
@@ -527,16 +513,16 @@ static int density_evaluate(int target, int mode, int threadid)
     }
 
   pos = target_data->Pos;
-  h = target_data->Hsml;
+  h   = target_data->Hsml;
 #ifdef FIX_SPH_PARTICLES_AT_IDENTICAL_COORDINATES
   ID = target_data->ID;
 #endif /* #ifdef FIX_SPH_PARTICLES_AT_IDENTICAL_COORDINATES */
 
-  h2 = h * h;
+  h2   = h * h;
   hinv = 1.0 / h;
-#ifndef  TWODIMS
+#ifndef TWODIMS
   hinv3 = hinv * hinv * hinv;
-#else /* #ifndef  TWODIMS */
+#else  /* #ifndef  TWODIMS */
   hinv3 = hinv * hinv / boxSize_Z;
 #endif /* #ifndef  TWODIMS #else */
   hinv4 = hinv3 * hinv;
@@ -587,12 +573,12 @@ static int density_evaluate(int target, int mode, int threadid)
 
           if(u < 0.5)
             {
-              wk = hinv3 * (KERNEL_COEFF_1 + KERNEL_COEFF_2 * (u - 1) * u * u);
+              wk  = hinv3 * (KERNEL_COEFF_1 + KERNEL_COEFF_2 * (u - 1) * u * u);
               dwk = hinv4 * u * (KERNEL_COEFF_3 * u - KERNEL_COEFF_4);
             }
           else
             {
-              wk = hinv3 * KERNEL_COEFF_5 * (1.0 - u) * (1.0 - u) * (1.0 - u);
+              wk  = hinv3 * KERNEL_COEFF_5 * (1.0 - u) * (1.0 - u) * (1.0 - u);
               dwk = hinv4 * KERNEL_COEFF_6 * (1.0 - u) * (1.0 - u);
             }
 
@@ -600,7 +586,7 @@ static int density_evaluate(int target, int mode, int threadid)
 
           rho += FLT(mass_j * wk);
 
-          weighted_numngb += FLT(NORM_COEFF * wk / hinv3);      /* 4.0/3 * PI = 4.188790204786 */
+          weighted_numngb += FLT(NORM_COEFF * wk / hinv3); /* 4.0/3 * PI = 4.188790204786 */
 
           dhsmlrho += FLT(-mass_j * (NUMDIMS * hinv * wk + u * dwk));
 
@@ -611,8 +597,8 @@ static int density_evaluate(int target, int mode, int threadid)
         }
     }
 
-  out.Rho = rho;
-  out.Ngb = weighted_numngb;
+  out.Rho          = rho;
+  out.Ngb          = weighted_numngb;
   out.DhsmlDensity = dhsmlrho;
 #ifdef FIX_SPH_PARTICLES_AT_IDENTICAL_COORDINATES
   out.MinDist = mindist;
@@ -626,7 +612,6 @@ static int density_evaluate(int target, int mode, int threadid)
 
   return 0;
 }
-
 
 /* \brief Determines if a cell is active in current timestep.
  *

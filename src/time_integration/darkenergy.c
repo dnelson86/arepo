@@ -39,24 +39,21 @@
  *(Hubble_w(z_ini^new)*Omega_w(z_ini^new)^0.6)/(Hubble(z_ini)*Omega(z_ini)^0.6)
  *              where _w means the according functions including the terms for
  *              Dark Energy.
- * 
+ *
  * \par Major modifications and contributions:
- * 
+ *
  * - DD.MM.YYYY Description
  * - 04.05.2018 Prepared file for public release -- Rainer Weinberger
  */
 
-
+#include <math.h>
 #include <mpi.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <math.h>
-
 
 #include "../main/allvars.h"
 #include "../main/proto.h"
-
 
 /*! \brief Hubble function.
  *

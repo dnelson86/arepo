@@ -29,31 +29,27 @@
  *                  searchdata_input, int nn, int hsmlguess, int verbose)
  *                int ngbsearch_primary_cell_evaluate(int target, int mode,
  *                  int threadid)
- * 
+ *
  * \par Major modifications and contributions:
- * 
+ *
  * - DD.MM.YYYY Description
  * - 21.05.2018 Prepared file for public release -- Rainer Weinberger
  */
 
-
+#include <math.h>
 #include <mpi.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <math.h>
 #include <time.h>
-
 
 #include "../main/allvars.h"
 #include "../main/proto.h"
-
 
 /* temporary particle arrays */
 static MyDouble *ngbsearch_nearest_dist;
 static MyDouble *ngbsearch_hsml;
 static mesh_search_data *searchdata;
-
 
 /*! \brief Local data structure for collecting particle/cell data that is sent
  *         to other processors if needed. Type called data_in and static
@@ -61,15 +57,14 @@ static mesh_search_data *searchdata;
  */
 typedef struct
 {
-  MyDouble pos[3];              /* tracer particle position */
-  MyDouble hsml;                /* current search radius */
-  MyDouble distance;            /* nearest neighbor distance */
+  MyDouble pos[3];   /* tracer particle position */
+  MyDouble hsml;     /* current search radius */
+  MyDouble distance; /* nearest neighbor distance */
 
   int Firstnode;
 } data_in;
 
 static data_in *DataIn, *DataGet;
-
 
 /*! \brief Routine that fills the relevant particle/cell data into the input
  *         structure defined above. Needed by generic_comm_helpers2.
@@ -80,18 +75,17 @@ static data_in *DataIn, *DataGet;
  *
  *  \return void
  */
-static void particle2in(data_in * in, int i, int firstnode)
+static void particle2in(data_in *in, int i, int firstnode)
 {
   in->pos[0] = searchdata[i].Pos[0];
   in->pos[1] = searchdata[i].Pos[1];
   in->pos[2] = searchdata[i].Pos[2];
 
-  in->hsml = ngbsearch_hsml[i];
+  in->hsml     = ngbsearch_hsml[i];
   in->distance = ngbsearch_nearest_dist[i];
 
   in->Firstnode = firstnode;
 }
-
 
 /*! \brief Local data structure that holds results acquired on remote
  *         processors. Type called data_out and static pointers DataResult and
@@ -99,13 +93,12 @@ static void particle2in(data_in * in, int i, int firstnode)
  */
 typedef struct
 {
-  MyDouble Distance;            /* distance to closest cell on task */
+  MyDouble Distance; /* distance to closest cell on task */
   int Task;
   int Index;
 } data_out;
 
 static data_out *DataResult, *DataOut;
-
 
 /*! \brief Routine to store or combine result data. Needed by
  *         generic_comm_helpers2.
@@ -118,36 +111,33 @@ static data_out *DataResult, *DataOut;
  *
  *  \return void
  */
-static void out2particle(data_out * out, int i, int mode)
+static void out2particle(data_out *out, int i, int mode)
 {
-  if(mode == MODE_LOCAL_PARTICLES)      /* initial store */
+  if(mode == MODE_LOCAL_PARTICLES) /* initial store */
     {
       if(out->Index >= 0)
         {
           ngbsearch_nearest_dist[i] = out->Distance;
-          searchdata[i].Task = out->Task;
-          searchdata[i].u.Index = out->Index;
+          searchdata[i].Task        = out->Task;
+          searchdata[i].u.Index     = out->Index;
         }
     }
-  else                          /* combine */
+  else /* combine */
     {
       /* closer cell on other task? */
       if(out->Distance < ngbsearch_nearest_dist[i])
         {
           ngbsearch_nearest_dist[i] = out->Distance;
-          searchdata[i].Task = out->Task;
-          searchdata[i].u.Index = out->Index;
+          searchdata[i].Task        = out->Task;
+          searchdata[i].u.Index     = out->Index;
         }
     }
 }
 
-
 #include "../utils/generic_comm_helpers2.h"
-
 
 static int ngbsearch_primary_cell_evaluate(int target, int mode, int threadid);
 static int n;
-
 
 /*! \brief Routine that defines what to do with local particles.
  *
@@ -182,7 +172,6 @@ static void kernel_local(void)
   }
 }
 
-
 /*! \brief Routine that defines what to do with imported particles.
  *
  *  Calls the *_evaluate function in MODE_IMPORTED_PARTICLES.
@@ -207,7 +196,6 @@ static void kernel_imported(void)
   }
 }
 
-
 /*! \brief Searches the cells at the positions in searchdata.
  *
  *  This function searches the cells which are at the positions specified in
@@ -225,13 +213,13 @@ static void kernel_imported(void)
  *
  *  \return void
  */
-void find_nearest_meshpoint_global(mesh_search_data * searchdata_input, int nn, int hsmlguess, int verbose)
+void find_nearest_meshpoint_global(mesh_search_data *searchdata_input, int nn, int hsmlguess, int verbose)
 {
   int i;
-  n = nn;
+  n                      = nn;
   ngbsearch_nearest_dist = mymalloc("ngbsearch_nearest_dist", n * sizeof(MyDouble));
-  ngbsearch_hsml = mymalloc("ngbsearch_hsml", n * sizeof(MyDouble));
-  searchdata = searchdata_input;
+  ngbsearch_hsml         = mymalloc("ngbsearch_hsml", n * sizeof(MyDouble));
+  searchdata             = searchdata_input;
 
   for(i = 0; i < n; i++)
     {
@@ -242,7 +230,7 @@ void find_nearest_meshpoint_global(mesh_search_data * searchdata_input, int nn, 
       else
         ngbsearch_hsml[i] = 1e-6 * pow(All.MeanVolume, 1.0 / 3);
 
-      searchdata[i].Task = -1;  //None found yet
+      searchdata[i].Task = -1;  // None found yet
     }
 
   generic_set_MaxNexport();
@@ -266,8 +254,8 @@ void find_nearest_meshpoint_global(mesh_search_data * searchdata_input, int nn, 
 
               if(iter >= MAXITER - 10)
                 {
-                  printf("i=%d task=%d hsml=%g nearest dist=%g pos=(%g|%g|%g)\n", i, ThisTask,
-                         ngbsearch_hsml[i], ngbsearch_nearest_dist[i], searchdata[i].Pos[0], searchdata[i].Pos[1], searchdata[i].Pos[2]);
+                  printf("i=%d task=%d hsml=%g nearest dist=%g pos=(%g|%g|%g)\n", i, ThisTask, ngbsearch_hsml[i],
+                         ngbsearch_nearest_dist[i], searchdata[i].Pos[0], searchdata[i].Pos[1], searchdata[i].Pos[2]);
                   myflush(stdout);
                 }
               if(iter > MAXITER)
@@ -277,7 +265,7 @@ void find_nearest_meshpoint_global(mesh_search_data * searchdata_input, int nn, 
 
       /* sum up the left overs */
       MPI_Allreduce(&npleft, &ntot, 1, MPI_INT, MPI_SUM, MPI_COMM_WORLD);
-      if(ntot > 0)              /* ok, we need to repeat for a few particles */
+      if(ntot > 0) /* ok, we need to repeat for a few particles */
         {
           iter++;
           if(iter > 0 && ThisTask == 0 && verbose)
@@ -295,7 +283,6 @@ void find_nearest_meshpoint_global(mesh_search_data * searchdata_input, int nn, 
   myfree(ngbsearch_hsml);
   myfree(ngbsearch_nearest_dist);
 }
-
 
 /*! \brief Performs the neighbor search.
  *
@@ -324,7 +311,7 @@ int ngbsearch_primary_cell_evaluate(int target, int mode, int threadid)
       particle2in(&local, target, 0);
       target_data = &local;
 
-      numnodes = 1;
+      numnodes  = 1;
       firstnode = NULL;
     }
   else
@@ -334,8 +321,8 @@ int ngbsearch_primary_cell_evaluate(int target, int mode, int threadid)
       generic_get_numnodes(target, &numnodes, &firstnode);
     }
 
-  pos = target_data->pos;
-  h = target_data->hsml;
+  pos     = target_data->pos;
+  h       = target_data->hsml;
   distmax = target_data->distance;
 
   int numngb = ngb_treefind_variable_threads(pos, h, target, mode, threadid, numnodes, firstnode);
@@ -365,19 +352,19 @@ int ngbsearch_primary_cell_evaluate(int target, int mode, int threadid)
       if(r < distmax && r < h && P[j].ID != 0 && P[j].Mass > 0)
         {
           distmax = r;
-          index = j;
+          index   = j;
         }
     }
 
   out.Distance = distmax;
-  out.Task = ThisTask;
-  out.Index = index;
+  out.Task     = ThisTask;
+  out.Index    = index;
 
   if(index < 0)
     {
       out.Distance = MAX_REAL_NUMBER;
-      out.Task = -1;
-      out.Index = -1;
+      out.Task     = -1;
+      out.Index    = -1;
     }
 
   if(mode == MODE_LOCAL_PARTICLES)

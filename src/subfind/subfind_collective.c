@@ -56,74 +56,66 @@
  *                  long long head, long long tail, int len, long long next)
  *                int subfind_compare_densities(const void *a, const void *b)
  *
- * 
+ *
  * \par Major modifications and contributions:
- * 
+ *
  * - DD.MM.YYYY Description
  * - 15.05.2018 Prepared file for public release -- Rainer Weinberger
  */
 
-
+#include <gsl/gsl_math.h>
+#include <math.h>
 #include <mpi.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <math.h>
-#include <gsl/gsl_math.h>
 #include <sys/stat.h>
 #include <sys/types.h>
 
-
 #include "../main/allvars.h"
 #include "../main/proto.h"
-
 
 #ifdef SUBFIND
 #include "../fof/fof.h"
 #include "subfind.h"
 
+#define TAG_POLLING_DONE 201
+#define TAG_SET_ALL 202
+#define TAG_GET_NGB_INDICES 204
+#define TAG_GET_TAILANDLEN 205
+#define TAG_GET_TAILANDLEN_DATA 206
+#define TAG_SET_TAILANDLEN 207
+#define TAG_SET_HEADANDNEXT 209
+#define TAG_SETHEADGETNEXT_DATA 210
+#define TAG_SET_NEXT 211
+#define TAG_SETHEADGETNEXT 213
+#define TAG_GET_NEXT 215
+#define TAG_GET_NEXT_DATA 216
+#define TAG_GET_HEAD 217
+#define TAG_GET_HEAD_DATA 218
+#define TAG_ADD_PARTICLE 219
+#define TAG_ADDBOUND 220
+#define TAG_NID 222
+#define TAG_NID_DATA 223
+#define TAG_SETRANK 224
+#define TAG_SETRANK_OUT 226
+#define TAG_GET_RANK 227
+#define TAG_GET_RANK_DATA 228
+#define TAG_MARK_PARTICLE 229
+#define TAG_SET_NEWTAIL 230
+#define TAG_GET_OLDTAIL 231
+#define TAG_GET_TWOHEADS 232
+#define TAG_GET_TWOHEADS_DATA 233
 
-#define TAG_POLLING_DONE         201
-#define TAG_SET_ALL              202
-#define TAG_GET_NGB_INDICES      204
-#define TAG_GET_TAILANDLEN       205
-#define TAG_GET_TAILANDLEN_DATA  206
-#define TAG_SET_TAILANDLEN       207
-#define TAG_SET_HEADANDNEXT      209
-#define TAG_SETHEADGETNEXT_DATA  210
-#define TAG_SET_NEXT             211
-#define TAG_SETHEADGETNEXT       213
-#define TAG_GET_NEXT             215
-#define TAG_GET_NEXT_DATA        216
-#define TAG_GET_HEAD             217
-#define TAG_GET_HEAD_DATA        218
-#define TAG_ADD_PARTICLE         219
-#define TAG_ADDBOUND             220
-#define TAG_NID                  222
-#define TAG_NID_DATA             223
-#define TAG_SETRANK              224
-#define TAG_SETRANK_OUT          226
-#define TAG_GET_RANK             227
-#define TAG_GET_RANK_DATA        228
-#define TAG_MARK_PARTICLE        229
-#define TAG_SET_NEWTAIL          230
-#define TAG_GET_OLDTAIL          231
-#define TAG_GET_TWOHEADS         232
-#define TAG_GET_TWOHEADS_DATA    233
-
-
-#define MASK ((((long long)1)<< 32)-1)
+#define MASK ((((long long)1) << 32) - 1)
 #define HIGHBIT (1 << 30)
-
 
 static long long *Head, *Next, *Tail;
 static int *Len;
 static int LocalLen;
 static int count_cand, max_coll_candidates;
 
-
 static struct unbind_data *ud;
-
 
 /*! \brief Data structure for sorting density data.
  */
@@ -131,11 +123,9 @@ static struct sort_density_data
 {
   MyFloat density;
   int ngbcount;
-  long long index;              /* this will store the task in the upper word */
+  long long index; /* this will store the task in the upper word */
   long long ngb_index1, ngb_index2;
-}
- *sd;
-
+} * sd;
 
 /*! \brief Processes a group collectively on all MPI tasks.
  *
@@ -161,9 +151,10 @@ void subfind_process_group_collectively(int nsubgroups_cat)
 
   if(SubThisTask == 0)
     {
-      printf("SUBFIND-COLLECTIVE, root-task=%d: Collectively doing halo %d of length  %d  on  %d  processors.\n", ThisTask, Group[0].GrNr, Group[0].Len, SubNTask);
+      printf("SUBFIND-COLLECTIVE, root-task=%d: Collectively doing halo %d of length  %d  on  %d  processors.\n", ThisTask,
+             Group[0].GrNr, Group[0].Len, SubNTask);
 
-      GrNr = Group[0].GrNr;
+      GrNr         = Group[0].GrNr;
       totgrouplen2 = Group[0].Len;
       for(int j = 0; j < 3; j++)
         GrCM[j] = Group[0].CM[j];
@@ -183,7 +174,7 @@ void subfind_process_group_collectively(int nsubgroups_cat)
 
   /* sanity check that we actually have all the right particles on the processor subset */
   if(totgrouplen1 != totgrouplen2)
-    terminate("totgrouplen1=%d != totgrouplen2=%d", totgrouplen1, totgrouplen2);        /* inconsistency */
+    terminate("totgrouplen1=%d != totgrouplen2=%d", totgrouplen1, totgrouplen2); /* inconsistency */
 
   /* do a domain decomposition just for this halo */
   subfind_coll_domain_decomposition();
@@ -192,13 +183,13 @@ void subfind_process_group_collectively(int nsubgroups_cat)
   subfind_loctree_copyExtent();
 
   /* now let us sort according to GrNr and Density. This step will temporarily break the association with SphP[] and other arrays! */
-  submp = (struct submp_data *) mymalloc("submp", sizeof(struct submp_data) * NumPart);
+  submp = (struct submp_data *)mymalloc("submp", sizeof(struct submp_data) * NumPart);
   for(int i = 0; i < NumPart; i++)
     {
-      PS[i].SubNr = TotNgroups + 1;     /* set a default that is larger than reasonable group number */
-      PS[i].OldIndex = i;
-      submp[i].index = i;
-      submp[i].GrNr = PS[i].GrNr;
+      PS[i].SubNr         = TotNgroups + 1; /* set a default that is larger than reasonable group number */
+      PS[i].OldIndex      = i;
+      submp[i].index      = i;
+      submp[i].GrNr       = PS[i].GrNr;
       submp[i].DM_Density = PS[i].Density;
     }
   qsort(submp, NumPart, sizeof(struct submp_data), subfind_compare_submp_GrNr_DM_Density);
@@ -223,7 +214,7 @@ void subfind_process_group_collectively(int nsubgroups_cat)
 #ifdef SUBFIND_EXTENDED_PROPERTIES
   // calculate binding energy of full fof group
   {
-    struct unbind_data *ud = (struct unbind_data *) mymalloc_movable(&ud, "ud", NumPartGroup * sizeof(struct unbind_data));
+    struct unbind_data *ud = (struct unbind_data *)mymalloc_movable(&ud, "ud", NumPartGroup * sizeof(struct unbind_data));
 
     NumPartGroup = 0;
     for(int i = 0; i < NumPart; i++)
@@ -258,19 +249,19 @@ void subfind_process_group_collectively(int nsubgroups_cat)
   /* determine the radius that encloses a certain number of link particles */
   subfind_find_linkngb();
 
-  sd = (struct sort_density_data *) mymalloc_movable(&sd, "sd", NumPartGroup * sizeof(struct sort_density_data));
+  sd = (struct sort_density_data *)mymalloc_movable(&sd, "sd", NumPartGroup * sizeof(struct sort_density_data));
 
   /* determine the indices of the nearest two denser neighbours within the link region */
-  NgbLoc = (struct nearest_ngb_data *) mymalloc("NgbLoc", NumPartGroup * sizeof(struct nearest_ngb_data));
-  R2Loc = (struct nearest_r2_data *) mymalloc("R2Loc", NumPartGroup * sizeof(struct nearest_r2_data));
+  NgbLoc = (struct nearest_ngb_data *)mymalloc("NgbLoc", NumPartGroup * sizeof(struct nearest_ngb_data));
+  R2Loc  = (struct nearest_r2_data *)mymalloc("R2Loc", NumPartGroup * sizeof(struct nearest_r2_data));
 
   subfind_find_nearesttwo();
 
   for(i = 0; i < NumPartGroup; i++)
     {
-      sd[i].density = PS[i].Density;
-      sd[i].ngbcount = NgbLoc[i].count;
-      sd[i].index = (((long long) SubThisTask) << 32) + i;
+      sd[i].density    = PS[i].Density;
+      sd[i].ngbcount   = NgbLoc[i].count;
+      sd[i].index      = (((long long)SubThisTask) << 32) + i;
       sd[i].ngb_index1 = NgbLoc[i].index[0];
       sd[i].ngb_index2 = NgbLoc[i].index[1];
     }
@@ -293,21 +284,22 @@ void subfind_process_group_collectively(int nsubgroups_cat)
     }
 
   /* allocate and initialize distributed link list */
-  Head = (long long *) mymalloc_movable(&Head, "Head", NumPartGroup * sizeof(long long));
-  Next = (long long *) mymalloc_movable(&Next, "Next", NumPartGroup * sizeof(long long));
-  Tail = (long long *) mymalloc_movable(&Tail, "Tail", NumPartGroup * sizeof(long long));
-  Len = (int *) mymalloc_movable(&Len, "Len", NumPartGroup * sizeof(int));
+  Head = (long long *)mymalloc_movable(&Head, "Head", NumPartGroup * sizeof(long long));
+  Next = (long long *)mymalloc_movable(&Next, "Next", NumPartGroup * sizeof(long long));
+  Tail = (long long *)mymalloc_movable(&Tail, "Tail", NumPartGroup * sizeof(long long));
+  Len  = (int *)mymalloc_movable(&Len, "Len", NumPartGroup * sizeof(int));
 
   for(i = 0; i < NumPartGroup; i++)
     {
       Head[i] = Next[i] = Tail[i] = -1;
-      Len[i] = 0;
+      Len[i]                      = 0;
     }
 
   /* allocate a list to store subhalo coll_candidates */
   max_coll_candidates = imax((NumPartGroup / 50), 200);
-  coll_candidates = (struct coll_cand_dat *) mymalloc_movable(&coll_candidates, "coll_candidates", max_coll_candidates * sizeof(struct coll_cand_dat));
-  count_cand = 0;
+  coll_candidates     = (struct coll_cand_dat *)mymalloc_movable(&coll_candidates, "coll_candidates",
+                                                             max_coll_candidates * sizeof(struct coll_cand_dat));
+  count_cand          = 0;
 
   subfind_col_find_coll_candidates(totgrouplen1);
 
@@ -333,13 +325,13 @@ void subfind_process_group_collectively(int nsubgroups_cat)
          We identify them with those coll_candidates that have no embedded other candidate */
       t0 = second();
       if(SubThisTask == 0)
-        tmp_coll_candidates = (struct coll_cand_dat *) mymalloc("tmp_coll_candidates", totcand * sizeof(struct coll_cand_dat));
+        tmp_coll_candidates = (struct coll_cand_dat *)mymalloc("tmp_coll_candidates", totcand * sizeof(struct coll_cand_dat));
 
       count = count_cand;
       count *= sizeof(struct coll_cand_dat);
 
-      countlist = (int *) mymalloc("countlist", SubNTask * sizeof(int));
-      offset = (int *) mymalloc("offset", SubNTask * sizeof(int));
+      countlist = (int *)mymalloc("countlist", SubNTask * sizeof(int));
+      offset    = (int *)mymalloc("offset", SubNTask * sizeof(int));
 
       MPI_Allgather(&count, 1, MPI_INT, countlist, 1, MPI_INT, SubComm);
 
@@ -352,7 +344,7 @@ void subfind_process_group_collectively(int nsubgroups_cat)
         {
           for(k = 0; k < totcand; k++)
             {
-              tmp_coll_candidates[k].nsub = k;
+              tmp_coll_candidates[k].nsub  = k;
               tmp_coll_candidates[k].subnr = k;
             }
 
@@ -368,17 +360,19 @@ void subfind_process_group_collectively(int nsubgroups_cat)
                       if(tmp_coll_candidates[j].rank > tmp_coll_candidates[k].rank + tmp_coll_candidates[k].len)
                         break;
 
-                      if(tmp_coll_candidates[j].parent < 0)     /* ignore these */
+                      if(tmp_coll_candidates[j].parent < 0) /* ignore these */
                         continue;
 
-                      if(tmp_coll_candidates[k].rank + tmp_coll_candidates[k].len >= tmp_coll_candidates[j].rank + tmp_coll_candidates[j].len)
+                      if(tmp_coll_candidates[k].rank + tmp_coll_candidates[k].len >=
+                         tmp_coll_candidates[j].rank + tmp_coll_candidates[j].len)
                         {
-                          tmp_coll_candidates[k].parent++;      /* we here count the number of subhalos that are enclosed */
+                          tmp_coll_candidates[k].parent++; /* we here count the number of subhalos that are enclosed */
                         }
                       else
                         {
-                          terminate("k=%d|%d has rank=%d and len=%d.  j=%d has rank=%d and len=%d\n",
-                                    k, totcand, (int) tmp_coll_candidates[k].rank, (int) tmp_coll_candidates[k].len, j, (int) tmp_coll_candidates[j].rank, (int) tmp_coll_candidates[j].len);
+                          terminate("k=%d|%d has rank=%d and len=%d.  j=%d has rank=%d and len=%d\n", k, totcand,
+                                    (int)tmp_coll_candidates[k].rank, (int)tmp_coll_candidates[k].len, j,
+                                    (int)tmp_coll_candidates[j].rank, (int)tmp_coll_candidates[j].len);
                         }
                     }
                 }
@@ -401,9 +395,9 @@ void subfind_process_group_collectively(int nsubgroups_cat)
             if(coll_candidates[i].len > max_loc_length)
               max_loc_length = coll_candidates[i].len;
 
-            if(coll_candidates[i].len > 0.20 * All.TotNumPart / NTask)  /* seems large, let's rather do it collectively */
+            if(coll_candidates[i].len > 0.20 * All.TotNumPart / NTask) /* seems large, let's rather do it collectively */
               {
-                coll_candidates[i].parent++;    /* this will ensure that it is not considered in this round */
+                coll_candidates[i].parent++; /* this will ensure that it is not considered in this round */
               }
             else
               {
@@ -416,9 +410,10 @@ void subfind_process_group_collectively(int nsubgroups_cat)
 
       t1 = second();
       if(SubThisTask == 0)
-        printf
-          ("SUBFIND-COLLECTIVE, root-task=%d: number of subhalo coll_candidates that can be done independently=%d. (Largest size %d, finding took %g sec)\n",
-           ThisTask, tot_count_leaves, max_length, timediff(t0, t1));
+        printf(
+            "SUBFIND-COLLECTIVE, root-task=%d: number of subhalo coll_candidates that can be done independently=%d. (Largest size %d, "
+            "finding took %g sec)\n",
+            ThisTask, tot_count_leaves, max_length, timediff(t0, t1));
 
       if(tot_count_leaves <= 0) /* if there are none left, we break and do the reset collectively */
         {
@@ -432,16 +427,16 @@ void subfind_process_group_collectively(int nsubgroups_cat)
       for(i = 0; i < NumPart; i++)
         {
           PS[i].origintask = PS[i].TargetTask = SubThisTask;
-          PS[i].originindex = i;
-          PS[i].submark = HIGHBIT;
+          PS[i].originindex                   = i;
+          PS[i].submark                       = HIGHBIT;
           if(i < NumPartGroup)
-            if(Tail[i] >= 0)    /* this means this particle is already bound to a substructure */
+            if(Tail[i] >= 0) /* this means this particle is already bound to a substructure */
               PS[i].origintask |= HIGHBIT;
         }
 
       /* we now mark the particles that are in subhalo coll_candidates that can be processed independently in parallel */
       nsubs = 0;
-      t0 = second();
+      t0    = second();
       for(master = 0; master < SubNTask; master++)
         {
           ncand = count_cand;
@@ -452,8 +447,8 @@ void subfind_process_group_collectively(int nsubgroups_cat)
             {
               if(SubThisTask == master)
                 {
-                  len = coll_candidates[k].len;
-                  parent = coll_candidates[k].parent;   /* this is here actually the daughter count */
+                  len    = coll_candidates[k].len;
+                  parent = coll_candidates[k].parent; /* this is here actually the daughter count */
                 }
 
               MPI_Bcast(&len, sizeof(len), MPI_BYTE, master, SubComm);
@@ -496,10 +491,10 @@ void subfind_process_group_collectively(int nsubgroups_cat)
         }
 
       for(i = 0; i < NumPart; i++)
-        PS[i].TargetIndex = PS[i].submark;      /* this will make sure that the particles are grouped by submark on the target task */
+        PS[i].TargetIndex = PS[i].submark; /* this will make sure that the particles are grouped by submark on the target task */
 
       t0 = second();
-      subfind_distribute_particles(SubComm);    /* assemble the particles on individual processors */
+      subfind_distribute_particles(SubComm); /* assemble the particles on individual processors */
       t1 = second();
       if(SubThisTask == 0)
         {
@@ -523,13 +518,13 @@ void subfind_process_group_collectively(int nsubgroups_cat)
 
       for(i = 0; i < NumPart; i++)
         {
-          PS[i].origintask &= (HIGHBIT - 1);    /* clear high bit if set */
-          PS[i].TargetTask = PS[i].origintask;
+          PS[i].origintask &= (HIGHBIT - 1); /* clear high bit if set */
+          PS[i].TargetTask  = PS[i].origintask;
           PS[i].TargetIndex = PS[i].originindex;
         }
 
       t0 = second();
-      subfind_distribute_particles(SubComm);    /* bring them back to their original processor */
+      subfind_distribute_particles(SubComm); /* bring them back to their original processor */
 
       t1 = second();
       if(SubThisTask == 0)
@@ -541,7 +536,7 @@ void subfind_process_group_collectively(int nsubgroups_cat)
       /* now mark the bound particles */
       for(i = 0; i < NumPartGroup; i++)
         if(PS[i].submark >= 0 && PS[i].submark < nsubs)
-          Tail[i] = PS[i].submark;      /* we use this to flag bound parts of substructures */
+          Tail[i] = PS[i].submark; /* we use this to flag bound parts of substructures */
 
       for(i = 0; i < count_cand; i++)
         if(coll_candidates[i].parent == 0)
@@ -550,7 +545,7 @@ void subfind_process_group_collectively(int nsubgroups_cat)
   while(tot_count_leaves > 0);
 
   /**** now we do the collective unbinding of the subhalo coll_candidates that contain other subhalo coll_candidates ****/
-  ud = (struct unbind_data *) mymalloc_movable(&ud, "ud", NumPartGroup * sizeof(struct unbind_data));
+  ud = (struct unbind_data *)mymalloc_movable(&ud, "ud", NumPartGroup * sizeof(struct unbind_data));
 
   t0 = second();
   for(master = 0, nr = 0; master < SubNTask; master++)
@@ -563,9 +558,9 @@ void subfind_process_group_collectively(int nsubgroups_cat)
         {
           if(SubThisTask == master)
             {
-              len = coll_candidates[k].len;
-              nsubs = coll_candidates[k].nsub;
-              parent = coll_candidates[k].parent;       /* this is here actually the daughter count */
+              len    = coll_candidates[k].len;
+              nsubs  = coll_candidates[k].nsub;
+              parent = coll_candidates[k].parent; /* this is here actually the daughter count */
             }
 
           MPI_Bcast(&parent, sizeof(parent), MPI_BYTE, master, SubComm);
@@ -578,7 +573,8 @@ void subfind_process_group_collectively(int nsubgroups_cat)
 
               if(SubThisTask == 0)
                 {
-                  printf("SUBFIND-COLLECTIVE, root-task=%d: collective unbinding of nr=%d (%d) of length=%d\n", ThisTask, nr, nremaining, (int) len);
+                  printf("SUBFIND-COLLECTIVE, root-task=%d: collective unbinding of nr=%d (%d) of length=%d\n", ThisTask, nr,
+                         nremaining, (int)len);
                   fflush(stdout);
                 }
 
@@ -625,7 +621,7 @@ void subfind_process_group_collectively(int nsubgroups_cat)
                   /* ok, we found a substructure */
 
                   for(i = 0; i < LocalLen; i++)
-                    Tail[ud[i].index] = nsubs;  /* we use this to flag the substructures */
+                    Tail[ud[i].index] = nsubs; /* we use this to flag the substructures */
 
                   if(SubThisTask == master)
                     {
@@ -646,7 +642,8 @@ void subfind_process_group_collectively(int nsubgroups_cat)
 
   if(SubThisTask == 0)
     {
-      printf("SUBFIND-COLLECTIVE, root-task=%d: the collective unbinding of remaining halos took %g sec\n", ThisTask, timediff(t0, t1));
+      printf("SUBFIND-COLLECTIVE, root-task=%d: the collective unbinding of remaining halos took %g sec\n", ThisTask,
+             timediff(t0, t1));
       fflush(stdout);
     }
 
@@ -663,7 +660,8 @@ void subfind_process_group_collectively(int nsubgroups_cat)
 
   if(SubThisTask == 0)
     {
-      printf("SUBFIND-COLLECTIVE, root-task=%d: found %d bound substructures in FoF group of length %d\n", ThisTask, countall, totgrouplen1);
+      printf("SUBFIND-COLLECTIVE, root-task=%d: found %d bound substructures in FoF group of length %d\n", ThisTask, countall,
+             totgrouplen1);
       fflush(stdout);
     }
 
@@ -672,13 +670,13 @@ void subfind_process_group_collectively(int nsubgroups_cat)
   parallel_sort_comm(coll_candidates, count_cand, sizeof(struct coll_cand_dat), subfind_compare_coll_candidates_boundlength, SubComm);
 
   if(SubThisTask == 0)
-    tmp_coll_candidates = (struct coll_cand_dat *) mymalloc("tmp_coll_candidates", totcand * sizeof(struct coll_cand_dat));
+    tmp_coll_candidates = (struct coll_cand_dat *)mymalloc("tmp_coll_candidates", totcand * sizeof(struct coll_cand_dat));
 
   count = count_cand;
   count *= sizeof(struct coll_cand_dat);
 
-  countlist = (int *) mymalloc("countlist", SubNTask * sizeof(int));
-  offset = (int *) mymalloc("offset", SubNTask * sizeof(int));
+  countlist = (int *)mymalloc("countlist", SubNTask * sizeof(int));
+  offset    = (int *)mymalloc("offset", SubNTask * sizeof(int));
 
   MPI_Allgather(&count, 1, MPI_INT, countlist, 1, MPI_INT, SubComm);
 
@@ -691,7 +689,7 @@ void subfind_process_group_collectively(int nsubgroups_cat)
     {
       for(k = 0; k < totcand; k++)
         {
-          tmp_coll_candidates[k].subnr = k;
+          tmp_coll_candidates[k].subnr  = k;
           tmp_coll_candidates[k].parent = 0;
         }
 
@@ -711,9 +709,10 @@ void subfind_process_group_collectively(int nsubgroups_cat)
                 }
               else
                 {
-                  terminate("k=%d|%d has rank=%d and len=%d.  j=%d has rank=%d and len=%d bound=%d\n",
-                            k, countall, (int) tmp_coll_candidates[k].rank, (int) tmp_coll_candidates[k].len,
-                            (int) tmp_coll_candidates[k].bound_length, (int) tmp_coll_candidates[j].rank, (int) tmp_coll_candidates[j].len, (int) tmp_coll_candidates[j].bound_length);
+                  terminate("k=%d|%d has rank=%d and len=%d.  j=%d has rank=%d and len=%d bound=%d\n", k, countall,
+                            (int)tmp_coll_candidates[k].rank, (int)tmp_coll_candidates[k].len,
+                            (int)tmp_coll_candidates[k].bound_length, (int)tmp_coll_candidates[j].rank,
+                            (int)tmp_coll_candidates[j].len, (int)tmp_coll_candidates[j].bound_length);
                 }
             }
         }
@@ -732,7 +731,8 @@ void subfind_process_group_collectively(int nsubgroups_cat)
   t1 = second();
   if(SubThisTask == 0)
     {
-      printf("SUBFIND-COLLECTIVE, root-task=%d: determination of parent subhalo took %g sec (presently allocated %g MB)\n", ThisTask, timediff(t0, t1), AllocatedBytes / (1024.0 * 1024.0));
+      printf("SUBFIND-COLLECTIVE, root-task=%d: determination of parent subhalo took %g sec (presently allocated %g MB)\n", ThisTask,
+             timediff(t0, t1), AllocatedBytes / (1024.0 * 1024.0));
       fflush(stdout);
     }
 
@@ -750,8 +750,8 @@ void subfind_process_group_collectively(int nsubgroups_cat)
         {
           if(SubThisTask == master)
             {
-              len = coll_candidates[k].bound_length;
-              nsubs = coll_candidates[k].nsub;
+              len    = coll_candidates[k].bound_length;
+              nsubs  = coll_candidates[k].nsub;
               parent = coll_candidates[k].parent;
             }
 
@@ -806,8 +806,8 @@ void subfind_process_group_collectively(int nsubgroups_cat)
                         Group[grindex].Pos[j] = SubGroup[Nsubgroups].Pos[j];
                     }
 
-                  SubGroup[Nsubgroups].GrNr = GrNr;
-                  SubGroup[Nsubgroups].SubNr = subnr;
+                  SubGroup[Nsubgroups].GrNr      = GrNr;
+                  SubGroup[Nsubgroups].SubNr     = subnr;
                   SubGroup[Nsubgroups].SubParent = parent;
 
                   Nsubgroups++;
@@ -825,7 +825,8 @@ void subfind_process_group_collectively(int nsubgroups_cat)
   t1 = second();
   if(SubThisTask == 0)
     {
-      printf("SUBFIND-COLLECTIVE, root-task=%d: determining substructure properties took %g sec (presently allocated %g MB)\n", ThisTask, timediff(t0, t1), AllocatedBytes / (1024.0 * 1024.0));
+      printf("SUBFIND-COLLECTIVE, root-task=%d: determining substructure properties took %g sec (presently allocated %g MB)\n",
+             ThisTask, timediff(t0, t1), AllocatedBytes / (1024.0 * 1024.0));
       fflush(stdout);
     }
 
@@ -842,17 +843,16 @@ void subfind_process_group_collectively(int nsubgroups_cat)
   subfind_coll_domain_free();
 
   /* undo local rearrangement that made group consecutive. After that, the association of SphP[] will be correct again */
-  submp = (struct submp_data *) mymalloc("submp", sizeof(struct submp_data) * NumPart);
+  submp = (struct submp_data *)mymalloc("submp", sizeof(struct submp_data) * NumPart);
   for(int i = 0; i < NumPart; i++)
     {
-      submp[i].index = i;
+      submp[i].index    = i;
       submp[i].OldIndex = PS[i].OldIndex;
     }
   qsort(submp, NumPart, sizeof(struct submp_data), subfind_compare_submp_OldIndex);
   subfind_reorder_according_to_submp();
   myfree(submp);
 }
-
 
 #ifdef SUBFIND_EXTENDED_PROPERTIES
 /*! \brief Calculates angualar momentum collectively on all MPI tasks.
@@ -872,7 +872,7 @@ void subfind_fof_calc_am_collective(int snapnr, int ngroups_cat)
   double gr_Jtot[3], gr_Jdm[3], gr_Jgas[3], gr_Jstars[3], jpart[3];
   double gr_CMFrac, gr_CMFracType[NTYPES];
   int gr_len_dm;
-  double gr_mass, gr_mass_gas, gr_mass_stars;   //gr_mass_dm,
+  double gr_mass, gr_mass_gas, gr_mass_stars;  // gr_mass_dm,
   double gr_Ekin, gr_Ethr;
 
   /* make a sanity check: We should have exactly 1 group, stored on the root of the processor subset */
@@ -889,7 +889,8 @@ void subfind_fof_calc_am_collective(int snapnr, int ngroups_cat)
 
   if(SubThisTask == 0)
     {
-      printf("SUBFIND-COLLECTIVE, root-task=%d: Collectively doing AM of halo %d of length %d on %d processors.\n", ThisTask, Group[0].GrNr, Group[0].Len, SubNTask);
+      printf("SUBFIND-COLLECTIVE, root-task=%d: Collectively doing AM of halo %d of length %d on %d processors.\n", ThisTask,
+             Group[0].GrNr, Group[0].Len, SubNTask);
 
       totgrouplen2 = Group[0].Len;
     }
@@ -906,7 +907,7 @@ void subfind_fof_calc_am_collective(int snapnr, int ngroups_cat)
 
   /* sanity check that we actually have all the right particles on the processor subset */
   if(totgrouplen1 != totgrouplen2)
-    terminate("totgrouplen1 != totgrouplen2");  /* inconsistency */
+    terminate("totgrouplen1 != totgrouplen2"); /* inconsistency */
 
   /* do a domain decomposition just for this halo */
   subfind_coll_domain_decomposition();
@@ -915,12 +916,12 @@ void subfind_fof_calc_am_collective(int snapnr, int ngroups_cat)
   subfind_loctree_copyExtent();
 
   /* now let us sort according to GrNr and Density. This step will temporarily break the association with SphP[] and other arrays! */
-  submp = (struct submp_data *) mymalloc("submp", sizeof(struct submp_data) * NumPart);
+  submp = (struct submp_data *)mymalloc("submp", sizeof(struct submp_data) * NumPart);
   for(i = 0; i < NumPart; i++)
     {
-      PS[i].OldIndex = i;
-      submp[i].index = i;
-      submp[i].GrNr = PS[i].GrNr;
+      PS[i].OldIndex      = i;
+      submp[i].index      = i;
+      submp[i].GrNr       = PS[i].GrNr;
       submp[i].DM_Density = PS[i].Density;
     }
   qsort(submp, NumPart, sizeof(struct submp_data), subfind_compare_submp_GrNr_DM_Density);
@@ -930,13 +931,12 @@ void subfind_fof_calc_am_collective(int snapnr, int ngroups_cat)
   /* note: now we have the particles of the group at the beginning, but SPH particles are not aligned.
      They can however be accessed via SphP[PS[i].OldIndex] */
 
-
   /* re-determine the number of local group particles, which has changed due to domain decomposition */
   for(i = 0, NumPartGroup = 0; i < NumPart; i++)
     if(PS[i].GrNr == GrNr)
       NumPartGroup++;
 
-  ud = (struct unbind_data *) mymalloc("ud", NumPartGroup * sizeof(struct unbind_data));
+  ud  = (struct unbind_data *)mymalloc("ud", NumPartGroup * sizeof(struct unbind_data));
   len = NumPartGroup;
 
   // pick my particles
@@ -945,13 +945,13 @@ void subfind_fof_calc_am_collective(int snapnr, int ngroups_cat)
 
   // initialize
   gr_CMFrac = 0;
-  gr_Ekin = 0;
-  gr_Ethr = 0;
+  gr_Ekin   = 0;
+  gr_Ethr   = 0;
   for(k = 0; k < 3; k++)
     {
-      gr_Jtot[k] = 0;
-      gr_Jdm[k] = 0;
-      gr_Jgas[k] = 0;
+      gr_Jtot[k]   = 0;
+      gr_Jdm[k]    = 0;
+      gr_Jgas[k]   = 0;
       gr_Jstars[k] = 0;
     }
   for(k = 0; k < NTYPES; k++)
@@ -997,25 +997,24 @@ void subfind_fof_calc_am_collective(int snapnr, int ngroups_cat)
       gr_Jtot[1] += P[index].Mass * (Pos_pbc[2] * Vel_tot[0] - Pos_pbc[0] * Vel_tot[2]);
       gr_Jtot[2] += P[index].Mass * (Pos_pbc[0] * Vel_tot[1] - Pos_pbc[1] * Vel_tot[0]);
 
-      if(ptype == 1)            // dm illustris
+      if(ptype == 1)  // dm illustris
         {
           gr_Jdm[0] += P[index].Mass * (Pos_pbc[1] * Vel_tot[2] - Pos_pbc[2] * Vel_tot[1]);
           gr_Jdm[1] += P[index].Mass * (Pos_pbc[2] * Vel_tot[0] - Pos_pbc[0] * Vel_tot[2]);
           gr_Jdm[2] += P[index].Mass * (Pos_pbc[0] * Vel_tot[1] - Pos_pbc[1] * Vel_tot[0]);
         }
-      if(ptype == 0)            // gas (incl. winds)
+      if(ptype == 0)  // gas (incl. winds)
         {
           gr_Jgas[0] += P[index].Mass * (Pos_pbc[1] * Vel_tot[2] - Pos_pbc[2] * Vel_tot[1]);
           gr_Jgas[1] += P[index].Mass * (Pos_pbc[2] * Vel_tot[0] - Pos_pbc[0] * Vel_tot[2]);
           gr_Jgas[2] += P[index].Mass * (Pos_pbc[0] * Vel_tot[1] - Pos_pbc[1] * Vel_tot[0]);
         }
-      if(ptype == 4)            // stars
+      if(ptype == 4)  // stars
         {
           gr_Jstars[0] += P[index].Mass * (Pos_pbc[1] * Vel_tot[2] - Pos_pbc[2] * Vel_tot[1]);
           gr_Jstars[1] += P[index].Mass * (Pos_pbc[2] * Vel_tot[0] - Pos_pbc[0] * Vel_tot[2]);
           gr_Jstars[2] += P[index].Mass * (Pos_pbc[0] * Vel_tot[1] - Pos_pbc[1] * Vel_tot[0]);
         }
-
     }
 
   MPI_Allreduce(MPI_IN_PLACE, gr_Jtot, 3, MPI_DOUBLE, MPI_SUM, SubComm);
@@ -1032,9 +1031,9 @@ void subfind_fof_calc_am_collective(int snapnr, int ngroups_cat)
       Group[grindex].Ethr = gr_Ethr;
       for(i = 0; i < 3; i++)
         {
-          Group[grindex].J[i] = gr_Jtot[i];
-          Group[grindex].JDM[i] = gr_Jdm[i];
-          Group[grindex].JGas[i] = gr_Jgas[i];
+          Group[grindex].J[i]      = gr_Jtot[i];
+          Group[grindex].JDM[i]    = gr_Jdm[i];
+          Group[grindex].JGas[i]   = gr_Jgas[i];
           Group[grindex].JStars[i] = gr_Jstars[i];
         }
     }
@@ -1055,7 +1054,7 @@ void subfind_fof_calc_am_collective(int snapnr, int ngroups_cat)
         Pos_pbc[i] = fof_periodic(Pos_pbc[i]);
 
       for(i = 0; i < 3; i++)
-        Pos_pbc[i] = Pos_pbc[i] * All.cf_atime; // units: phys kpc/h
+        Pos_pbc[i] = Pos_pbc[i] * All.cf_atime;  // units: phys kpc/h
 
       for(i = 0; i < 3; i++)
         Vel_tot[i] = P[index].Vel[i] / All.cf_atime - gr_vel[i] / All.cf_atime + All.cf_Hrate * Pos_pbc[i];
@@ -1066,21 +1065,21 @@ void subfind_fof_calc_am_collective(int snapnr, int ngroups_cat)
 
       gr_mass += P[index].Mass;
       if((gr_Jtot[0] * jpart[0] + gr_Jtot[1] * jpart[1] + gr_Jtot[2] * jpart[2]) < 0.)
-        gr_CMFrac += P[index].Mass;     // / gr_mass;
+        gr_CMFrac += P[index].Mass;  // / gr_mass;
 
-      if(ptype == 1)            // dm illustris
+      if(ptype == 1)  // dm illustris
         {
           gr_len_dm++;
           if((gr_Jdm[0] * jpart[0] + gr_Jdm[1] * jpart[1] + gr_Jdm[2] * jpart[2]) < 0.)
-            gr_CMFracType[1]++; //= P[index].Mass / gr_mass_dm;
+            gr_CMFracType[1]++;  //= P[index].Mass / gr_mass_dm;
         }
-      if(ptype == 0)            // gas (incl. winds)
+      if(ptype == 0)  // gas (incl. winds)
         {
           gr_mass_gas += P[index].Mass;
           if((gr_Jgas[0] * jpart[0] + gr_Jgas[1] * jpart[1] + gr_Jgas[2] * jpart[2]) < 0.)
             gr_CMFracType[0] += P[index].Mass;  // / gr_mass_gas;
         }
-      if(ptype == 4)            // stars
+      if(ptype == 4)  // stars
         {
           gr_mass_stars += P[index].Mass;
           if((gr_Jstars[0] * jpart[0] + gr_Jstars[1] * jpart[1] + gr_Jstars[2] * jpart[2]) < 0.)
@@ -1116,10 +1115,10 @@ void subfind_fof_calc_am_collective(int snapnr, int ngroups_cat)
   subfind_coll_domain_free();
 
   /* undo local rearrangement that made group consecutive. After that, the association of SphP[] will be correct again */
-  submp = (struct submp_data *) mymalloc("submp", sizeof(struct submp_data) * NumPart);
+  submp = (struct submp_data *)mymalloc("submp", sizeof(struct submp_data) * NumPart);
   for(i = 0; i < NumPart; i++)
     {
-      submp[i].index = i;
+      submp[i].index    = i;
       submp[i].OldIndex = PS[i].OldIndex;
     }
   qsort(submp, NumPart, sizeof(struct submp_data), subfind_compare_submp_OldIndex);
@@ -1127,7 +1126,6 @@ void subfind_fof_calc_am_collective(int snapnr, int ngroups_cat)
   myfree(submp);
 }
 #endif /* #ifdef SUBFIND_EXTENDED_PROPERTIES */
-
 
 /*! \brief Finds candidates for subfind collective.
  *
@@ -1145,7 +1143,8 @@ void subfind_col_find_coll_candidates(int totgrouplen)
 
   if(SubThisTask == 0)
     {
-      printf("SUBFIND-COLLECTIVE, root-task=%d: building distributed linked list. (presently allocated %g MB)\n", ThisTask, AllocatedBytes / (1024.0 * 1024.0));
+      printf("SUBFIND-COLLECTIVE, root-task=%d: building distributed linked list. (presently allocated %g MB)\n", ThisTask,
+             AllocatedBytes / (1024.0 * 1024.0));
       fflush(stdout);
     }
 
@@ -1160,97 +1159,101 @@ void subfind_col_find_coll_candidates(int totgrouplen)
         {
           for(k = 0; k < NumPartGroup; k++)
             {
-              ngbcount = sd[k].ngbcount;
+              ngbcount   = sd[k].ngbcount;
               ngb_index1 = sd[k].ngb_index1;
               ngb_index2 = sd[k].ngb_index2;
 
-              switch (ngbcount) /* treat the different possible cases */
+              switch(ngbcount) /* treat the different possible cases */
                 {
-                case 0:        /* this appears to be a lonely maximum -> new group */
-                  subfind_distlinklist_set_all(sd[k].index, sd[k].index, sd[k].index, 1, -1);
-                  break;
+                  case 0: /* this appears to be a lonely maximum -> new group */
+                    subfind_distlinklist_set_all(sd[k].index, sd[k].index, sd[k].index, 1, -1);
+                    break;
 
-                case 1:        /* the particle is attached to exactly one group */
-                  head = subfind_distlinklist_get_head(ngb_index1);
+                  case 1: /* the particle is attached to exactly one group */
+                    head = subfind_distlinklist_get_head(ngb_index1);
 
-                  if(head == -1)
-                    terminate("We have a problem!  head=%d/%d for k=%d on task=%d\n", (int) (head >> 32), (int) head, k, SubThisTask);
+                    if(head == -1)
+                      terminate("We have a problem!  head=%d/%d for k=%d on task=%d\n", (int)(head >> 32), (int)head, k, SubThisTask);
 
-                  retcode = subfind_distlinklist_get_tail_set_tail_increaselen(head, &tail, sd[k].index);
+                    retcode = subfind_distlinklist_get_tail_set_tail_increaselen(head, &tail, sd[k].index);
 
-                  if(!(retcode & 1))
-                    subfind_distlinklist_set_headandnext(sd[k].index, head, -1);
-                  if(!(retcode & 2))
-                    subfind_distlinklist_set_next(tail, sd[k].index);
-                  break;
+                    if(!(retcode & 1))
+                      subfind_distlinklist_set_headandnext(sd[k].index, head, -1);
+                    if(!(retcode & 2))
+                      subfind_distlinklist_set_next(tail, sd[k].index);
+                    break;
 
-                case 2:        /* the particle merges two groups together */
-                  if((ngb_index1 >> 32) == (ngb_index2 >> 32))
-                    {
-                      subfind_distlinklist_get_two_heads(ngb_index1, ngb_index2, &head, &head_attach);
-                    }
-                  else
-                    {
-                      head = subfind_distlinklist_get_head(ngb_index1);
-                      head_attach = subfind_distlinklist_get_head(ngb_index2);
-                    }
+                  case 2: /* the particle merges two groups together */
+                    if((ngb_index1 >> 32) == (ngb_index2 >> 32))
+                      {
+                        subfind_distlinklist_get_two_heads(ngb_index1, ngb_index2, &head, &head_attach);
+                      }
+                    else
+                      {
+                        head        = subfind_distlinklist_get_head(ngb_index1);
+                        head_attach = subfind_distlinklist_get_head(ngb_index2);
+                      }
 
-                  if(head == -1 || head_attach == -1)
-                    terminate("We have a problem!  head=%d/%d head_attach=%d/%d for k=%d on task=%d\n", (int) (head >> 32), (int) head, (int) (head_attach >> 32), (int) head_attach, k, SubThisTask);
+                    if(head == -1 || head_attach == -1)
+                      terminate("We have a problem!  head=%d/%d head_attach=%d/%d for k=%d on task=%d\n", (int)(head >> 32), (int)head,
+                                (int)(head_attach >> 32), (int)head_attach, k, SubThisTask);
 
-                  if(head != head_attach)
-                    {
-                      subfind_distlinklist_get_tailandlen(head, &tail, &len);
-                      subfind_distlinklist_get_tailandlen(head_attach, &tail_attach, &len_attach);
+                    if(head != head_attach)
+                      {
+                        subfind_distlinklist_get_tailandlen(head, &tail, &len);
+                        subfind_distlinklist_get_tailandlen(head_attach, &tail_attach, &len_attach);
 
-                      if(len_attach > len || (len_attach == len && head_attach < head)) /* other group is longer, swap them. for equal length, take the larger head value */
-                        {
-                          tmp = head;
-                          head = head_attach;
-                          head_attach = tmp;
-                          tmp = tail;
-                          tail = tail_attach;
-                          tail_attach = tmp;
-                          tmp = len;
-                          len = len_attach;
-                          len_attach = tmp;
-                        }
+                        if(len_attach > len ||
+                           (len_attach == len &&
+                            head_attach < head)) /* other group is longer, swap them. for equal length, take the larger head value */
+                          {
+                            tmp         = head;
+                            head        = head_attach;
+                            head_attach = tmp;
+                            tmp         = tail;
+                            tail        = tail_attach;
+                            tail_attach = tmp;
+                            tmp         = len;
+                            len         = len_attach;
+                            len_attach  = tmp;
+                          }
 
-                      /* only in case the attached group is long enough we bother to register it 
-                         as a subhalo candidate */
+                        /* only in case the attached group is long enough we bother to register it
+                           as a subhalo candidate */
 
-                      if(len_attach >= All.DesLinkNgb)
-                        {
-                          if(count_cand < max_coll_candidates)
-                            {
-                              coll_candidates[count_cand].len = len_attach;
-                              coll_candidates[count_cand].head = head_attach;
-                              count_cand++;
-                            }
-                          else
-                            terminate("Task %d: count=%d, max=%d, npartgroup=%d\n", SubThisTask, count_cand, max_coll_candidates, NumPartGroup);
-                        }
+                        if(len_attach >= All.DesLinkNgb)
+                          {
+                            if(count_cand < max_coll_candidates)
+                              {
+                                coll_candidates[count_cand].len  = len_attach;
+                                coll_candidates[count_cand].head = head_attach;
+                                count_cand++;
+                              }
+                            else
+                              terminate("Task %d: count=%d, max=%d, npartgroup=%d\n", SubThisTask, count_cand, max_coll_candidates,
+                                        NumPartGroup);
+                          }
 
-                      /* now join the two groups */
-                      subfind_distlinklist_set_tailandlen(head, tail_attach, len + len_attach);
-                      subfind_distlinklist_set_next(tail, head_attach);
+                        /* now join the two groups */
+                        subfind_distlinklist_set_tailandlen(head, tail_attach, len + len_attach);
+                        subfind_distlinklist_set_next(tail, head_attach);
 
-                      ss = head_attach;
-                      do
-                        {
-                          ss = subfind_distlinklist_set_head_get_next(ss, head);
-                        }
-                      while(ss >= 0);
-                    }
+                        ss = head_attach;
+                        do
+                          {
+                            ss = subfind_distlinklist_set_head_get_next(ss, head);
+                          }
+                        while(ss >= 0);
+                      }
 
-                  /* finally, attach the particle to 'head' */
-                  retcode = subfind_distlinklist_get_tail_set_tail_increaselen(head, &tail, sd[k].index);
+                    /* finally, attach the particle to 'head' */
+                    retcode = subfind_distlinklist_get_tail_set_tail_increaselen(head, &tail, sd[k].index);
 
-                  if(!(retcode & 1))
-                    subfind_distlinklist_set_headandnext(sd[k].index, head, -1);
-                  if(!(retcode & 2))
-                    subfind_distlinklist_set_next(tail, sd[k].index);
-                  break;
+                    if(!(retcode & 1))
+                      subfind_distlinklist_set_headandnext(sd[k].index, head, -1);
+                    if(!(retcode & 2))
+                      subfind_distlinklist_set_next(tail, sd[k].index);
+                    break;
                 }
             }
 
@@ -1284,7 +1287,7 @@ void subfind_col_find_coll_candidates(int totgrouplen)
         {
           for(i = 0; i < NumPartGroup; i++)
             {
-              index = (((long long) SubThisTask) << 32) + i;
+              index = (((long long)SubThisTask) << 32) + i;
 
               if(Head[i] == index)
                 {
@@ -1318,7 +1321,7 @@ void subfind_col_find_coll_candidates(int totgrouplen)
     {
       if(count_cand < max_coll_candidates)
         {
-          coll_candidates[count_cand].len = totgrouplen;
+          coll_candidates[count_cand].len  = totgrouplen;
           coll_candidates[count_cand].head = head;
           count_cand++;
         }
@@ -1338,7 +1341,7 @@ void subfind_col_find_coll_candidates(int totgrouplen)
     subfind_poll_for_requests();
   else
     {
-      p = head;
+      p    = head;
       rank = 0;
 
       while(p >= 0)
@@ -1353,7 +1356,7 @@ void subfind_col_find_coll_candidates(int totgrouplen)
     }
 
   MPI_Barrier(SubComm);
-  MPI_Bcast(&rank, sizeof(rank), MPI_BYTE, master, SubComm);    /* just for testing */
+  MPI_Bcast(&rank, sizeof(rank), MPI_BYTE, master, SubComm); /* just for testing */
 
   /* for each candidate, we now pull out the rank of its head */
   for(master = 0; master < SubNTask; master++)
@@ -1376,12 +1379,11 @@ void subfind_col_find_coll_candidates(int totgrouplen)
   t1 = second();
   if(SubThisTask == 0)
     printf("SUBFIND-COLLECTIVE, root-task=%d: establishing of rank order took %g sec  (p=%d, grouplen=%d) presently allocated %g MB\n",
-           ThisTask, timediff(t0, t1), (int) rank, totgrouplen, AllocatedBytes / (1024.0 * 1024.0));
+           ThisTask, timediff(t0, t1), (int)rank, totgrouplen, AllocatedBytes / (1024.0 * 1024.0));
 
-  if(((int) rank) != totgrouplen)
+  if(((int)rank) != totgrouplen)
     terminate("mismatch\n");
 }
-
 
 /*! \brief Unbinding for independent subgroups.
  *
@@ -1393,7 +1395,7 @@ void subfind_unbind_independent_ones(int count_cand)
 {
   int i, j, k, len, nsubs, len_non_gas;
 
-  ud = (struct unbind_data *) mymalloc("ud", NumPart * sizeof(struct unbind_data));
+  ud = (struct unbind_data *)mymalloc("ud", NumPart * sizeof(struct unbind_data));
 
   subfind_loctree_treeallocate(All.TreeAllocFactor * NumPart, NumPart);
 
@@ -1411,12 +1413,13 @@ void subfind_unbind_independent_ones(int count_cand)
 
         if(PS[i].submark >= 0 && PS[i].submark < HIGHBIT)
           {
-            len = 0;
+            len   = 0;
             nsubs = PS[i].submark;
 
             if(nsubs != coll_candidates[k].nsub)
               {
-                terminate("TASK=%d i=%d k=%d nsubs=%d coll_candidates[k].nsub=%d\n", SubThisTask, i, k, nsubs, coll_candidates[k].nsub);
+                terminate("TASK=%d i=%d k=%d nsubs=%d coll_candidates[k].nsub=%d\n", SubThisTask, i, k, nsubs,
+                          coll_candidates[k].nsub);
               }
 
             while(i < NumPart)
@@ -1444,7 +1447,7 @@ void subfind_unbind_independent_ones(int count_cand)
                 coll_candidates[k].bound_length = len;
 
                 for(j = 0; j < len; j++)
-                  PS[ud[j].index].submark = nsubs;      /* we use this to flag the substructures */
+                  PS[ud[j].index].submark = nsubs; /* we use this to flag the substructures */
               }
             else
               coll_candidates[k].bound_length = 0;
@@ -1455,7 +1458,6 @@ void subfind_unbind_independent_ones(int count_cand)
 
   myfree(ud);
 }
-
 
 /*! \brief Unbinding for subfind collective.
  *
@@ -1487,9 +1489,9 @@ int subfind_col_unbind(struct unbind_data *d, int num, int *num_non_gas)
   boxsize = All.BoxSize;
 
   vel_to_phys = 1.0 / All.cf_atime;
-  atime = All.cf_atime;
+  atime       = All.cf_atime;
 
-  phaseflag = 0;                /* this means we will recompute the potential for all particles */
+  phaseflag = 0; /* this means we will recompute the potential for all particles */
 
   do
     {
@@ -1501,7 +1503,7 @@ int subfind_col_unbind(struct unbind_data *d, int num, int *num_non_gas)
 
       if(phaseflag == 0)
         {
-          potlist = (MyFloat *) mymalloc("potlist", SubNTask * sizeof(MyFloat));
+          potlist = (MyFloat *)mymalloc("potlist", SubNTask * sizeof(MyFloat));
 
           for(i = 0, minindex = -1, minpot = 1.0e30; i < num; i++)
             {
@@ -1510,7 +1512,7 @@ int subfind_col_unbind(struct unbind_data *d, int num, int *num_non_gas)
 
               if(PS[d[i].index].Potential < minpot || minindex == -1)
                 {
-                  minpot = PS[d[i].index].Potential;
+                  minpot   = PS[d[i].index].Potential;
                   minindex = d[i].index;
                 }
             }
@@ -1580,7 +1582,7 @@ int subfind_col_unbind(struct unbind_data *d, int num, int *num_non_gas)
 
       for(j = 0; j < 3; j++)
         {
-          s[j] /= mass;         /* center of mass */
+          s[j] /= mass; /* center of mass */
           v[j] /= mass;
 
           s[j] += pos[j];
@@ -1591,7 +1593,7 @@ int subfind_col_unbind(struct unbind_data *d, int num, int *num_non_gas)
             s[j] -= boxsize;
         }
 
-      bnd_energy = (double *) mymalloc("bnd_energy", num * sizeof(double));
+      bnd_energy = (double *)mymalloc("bnd_energy", num * sizeof(double));
 
       for(i = 0; i < num; i++)
         {
@@ -1612,7 +1614,8 @@ int subfind_col_unbind(struct unbind_data *d, int num, int *num_non_gas)
             }
 
           PS[part_index].BindingEnergy = PS[part_index].Potential + 0.5 * (dv[0] * dv[0] + dv[1] * dv[1] + dv[2] * dv[2]);
-          PS[part_index].BindingEnergy += All.G / All.cf_atime * P[part_index].Mass / (All.ForceSoftening[P[part_index].SofteningType] / 2.8);  /* add self-energy */
+          PS[part_index].BindingEnergy += All.G / All.cf_atime * P[part_index].Mass /
+                                          (All.ForceSoftening[P[part_index].SofteningType] / 2.8); /* add self-energy */
 
           if(P[part_index].Type == 0)
             PS[part_index].BindingEnergy += PS[part_index].Utherm;
@@ -1622,9 +1625,9 @@ int subfind_col_unbind(struct unbind_data *d, int num, int *num_non_gas)
 
       parallel_sort_comm(bnd_energy, num, sizeof(double), subfind_compare_binding_energy, SubComm);
 
-      npart = (int *) mymalloc("npart", SubNTask * sizeof(int));
-      nbu_count = (int *) mymalloc("nbu_count", SubNTask * sizeof(int));
-      offset = (int *) mymalloc("offset", SubNTask * sizeof(int));
+      npart     = (int *)mymalloc("npart", SubNTask * sizeof(int));
+      nbu_count = (int *)mymalloc("nbu_count", SubNTask * sizeof(int));
+      offset    = (int *)mymalloc("offset", SubNTask * sizeof(int));
 
       MPI_Allgather(&num, 1, MPI_INT, npart, 1, MPI_INT, SubComm);
       MPI_Allreduce(&num, &numleft, 1, MPI_INT, MPI_SUM, SubComm);
@@ -1632,7 +1635,7 @@ int subfind_col_unbind(struct unbind_data *d, int num, int *num_non_gas)
       for(i = 1, offset[0] = 0; i < SubNTask; i++)
         offset[i] = offset[i - 1] + npart[i - 1];
 
-      j = (int) (0.25 * numleft);       /* index of limiting energy value */
+      j = (int)(0.25 * numleft); /* index of limiting energy value */
 
       task = 0;
       while(j >= npart[task])
@@ -1711,7 +1714,7 @@ int subfind_col_unbind(struct unbind_data *d, int num, int *num_non_gas)
         {
           if(totunbound == 0)
             {
-              phaseflag = 0;    /* this will make us repeat everything once more for all particles */
+              phaseflag  = 0; /* this will make us repeat everything once more for all particles */
               totunbound = 1;
             }
         }
@@ -1722,7 +1725,6 @@ int subfind_col_unbind(struct unbind_data *d, int num, int *num_non_gas)
 
   return num;
 }
-
 
 /*! \brief Gets new request from other task.
  *
@@ -1742,167 +1744,164 @@ void subfind_poll_for_requests(void)
       MPI_Probe(MPI_ANY_SOURCE, MPI_ANY_TAG, SubComm, &status);
 
       source = status.MPI_SOURCE;
-      tag = status.MPI_TAG;
+      tag    = status.MPI_TAG;
 
       /* MPI_Get_count(&status, MPI_BYTE, &count); */
-      switch (tag)
+      switch(tag)
         {
-        case TAG_GET_TWOHEADS:
-          MPI_Recv(ibuf, 2, MPI_INT, source, TAG_GET_TWOHEADS, SubComm, MPI_STATUS_IGNORE);
-          buf[0] = Head[ibuf[0]];
-          buf[1] = Head[ibuf[1]];
-          MPI_Send(buf, 2 * sizeof(long long), MPI_BYTE, source, TAG_GET_TWOHEADS_DATA, SubComm);
-          break;
-        case TAG_SET_NEWTAIL:
-          MPI_Recv(buf, 2 * sizeof(long long), MPI_BYTE, source, TAG_SET_NEWTAIL, SubComm, MPI_STATUS_IGNORE);
-          index = buf[0];
-          newtail = buf[1];
-          oldtail = Tail[index];        /* return old tail */
-          Tail[index] = newtail;
-          Len[index]++;
+          case TAG_GET_TWOHEADS:
+            MPI_Recv(ibuf, 2, MPI_INT, source, TAG_GET_TWOHEADS, SubComm, MPI_STATUS_IGNORE);
+            buf[0] = Head[ibuf[0]];
+            buf[1] = Head[ibuf[1]];
+            MPI_Send(buf, 2 * sizeof(long long), MPI_BYTE, source, TAG_GET_TWOHEADS_DATA, SubComm);
+            break;
+          case TAG_SET_NEWTAIL:
+            MPI_Recv(buf, 2 * sizeof(long long), MPI_BYTE, source, TAG_SET_NEWTAIL, SubComm, MPI_STATUS_IGNORE);
+            index       = buf[0];
+            newtail     = buf[1];
+            oldtail     = Tail[index]; /* return old tail */
+            Tail[index] = newtail;
+            Len[index]++;
 
-          task_newtail = (newtail >> 32);
-          if(task_newtail == SubThisTask)
-            {
-              i_newtail = (newtail & MASK);
-              Head[i_newtail] = (((long long) SubThisTask) << 32) + index;
-              Next[i_newtail] = -1;
-            }
-          task_oldtail = (oldtail >> 32);
-          if(task_oldtail == SubThisTask)
-            {
-              i_oldtail = (oldtail & MASK);
-              Next[i_oldtail] = newtail;
-            }
+            task_newtail = (newtail >> 32);
+            if(task_newtail == SubThisTask)
+              {
+                i_newtail       = (newtail & MASK);
+                Head[i_newtail] = (((long long)SubThisTask) << 32) + index;
+                Next[i_newtail] = -1;
+              }
+            task_oldtail = (oldtail >> 32);
+            if(task_oldtail == SubThisTask)
+              {
+                i_oldtail       = (oldtail & MASK);
+                Next[i_oldtail] = newtail;
+              }
 
-          buf[0] = oldtail;
-          MPI_Send(buf, 1 * sizeof(long long), MPI_BYTE, source, TAG_GET_OLDTAIL, SubComm);
-          break;
-        case TAG_SET_ALL:
-          MPI_Recv(buf, 5 * sizeof(long long), MPI_BYTE, source, TAG_SET_ALL, SubComm, MPI_STATUS_IGNORE);
-          index = buf[0];
-          Head[index] = buf[1];
-          Tail[index] = buf[2];
-          Len[index] = buf[3];
-          Next[index] = buf[4];
-          break;
-        case TAG_GET_TAILANDLEN:
-          MPI_Recv(&index, 1, MPI_INT, source, tag, SubComm, &status);
-          buf[0] = Tail[index];
-          buf[1] = Len[index];
-          MPI_Send(buf, 2 * sizeof(long long), MPI_BYTE, source, TAG_GET_TAILANDLEN_DATA, SubComm);
-          break;
-        case TAG_SET_TAILANDLEN:
-          MPI_Recv(buf, 3 * sizeof(long long), MPI_BYTE, source, TAG_SET_TAILANDLEN, SubComm, MPI_STATUS_IGNORE);
-          index = buf[0];
-          Tail[index] = buf[1];
-          Len[index] = buf[2];
-          break;
-        case TAG_SET_HEADANDNEXT:
-          MPI_Recv(buf, 3 * sizeof(long long), MPI_BYTE, source, TAG_SET_HEADANDNEXT, SubComm, MPI_STATUS_IGNORE);
-          index = buf[0];
-          Head[index] = buf[1];
-          Next[index] = buf[2];
-          break;
-        case TAG_SET_NEXT:
-          MPI_Recv(buf, 2 * sizeof(long long), MPI_BYTE, source, TAG_SET_NEXT, SubComm, MPI_STATUS_IGNORE);
-          index = buf[0];
-          Next[index] = buf[1];
-          break;
-        case TAG_SETHEADGETNEXT:
-          MPI_Recv(buf, 2 * sizeof(long long), MPI_BYTE, source, TAG_SETHEADGETNEXT, SubComm, MPI_STATUS_IGNORE);
-          index = buf[0];
-          head = buf[1];
-          do
-            {
-              Head[index] = head;
-              next = Next[index];
-              task = (next >> 32);
-              index = (next & MASK);
-            }
-          while(next >= 0 && task == SubThisTask);
-          MPI_Send(&next, 1 * sizeof(long long), MPI_BYTE, source, TAG_SETHEADGETNEXT_DATA, SubComm);
-          break;
-        case TAG_GET_NEXT:
-          MPI_Recv(&index, 1, MPI_INT, source, tag, SubComm, &status);
-          MPI_Send(&Next[index], 1 * sizeof(long long), MPI_BYTE, source, TAG_GET_NEXT_DATA, SubComm);
-          break;
-        case TAG_GET_HEAD:
-          MPI_Recv(&index, 1, MPI_INT, source, tag, SubComm, &status);
-          MPI_Send(&Head[index], 1 * sizeof(long long), MPI_BYTE, source, TAG_GET_HEAD_DATA, SubComm);
-          break;
-        case TAG_ADD_PARTICLE:
-          MPI_Recv(&index, 1, MPI_INT, source, tag, SubComm, &status);
-          if(Tail[index] < 0)   /* consider only particles not already in substructures */
-            {
-              ud[LocalLen].index = index;
-              if(index >= NumPartGroup)
-                {
-                  sprintf(msg, "What: index=%d NumPartGroup=%d\n", index, NumPartGroup);
-                  terminate(msg);
-                }
-              LocalLen++;
-            }
-          break;
-        case TAG_MARK_PARTICLE:
-          MPI_Recv(ibuf, 3, MPI_INT, source, TAG_MARK_PARTICLE, SubComm, MPI_STATUS_IGNORE);
-          index = ibuf[0];
-          target = ibuf[1];
-          submark = ibuf[2];
+            buf[0] = oldtail;
+            MPI_Send(buf, 1 * sizeof(long long), MPI_BYTE, source, TAG_GET_OLDTAIL, SubComm);
+            break;
+          case TAG_SET_ALL:
+            MPI_Recv(buf, 5 * sizeof(long long), MPI_BYTE, source, TAG_SET_ALL, SubComm, MPI_STATUS_IGNORE);
+            index       = buf[0];
+            Head[index] = buf[1];
+            Tail[index] = buf[2];
+            Len[index]  = buf[3];
+            Next[index] = buf[4];
+            break;
+          case TAG_GET_TAILANDLEN:
+            MPI_Recv(&index, 1, MPI_INT, source, tag, SubComm, &status);
+            buf[0] = Tail[index];
+            buf[1] = Len[index];
+            MPI_Send(buf, 2 * sizeof(long long), MPI_BYTE, source, TAG_GET_TAILANDLEN_DATA, SubComm);
+            break;
+          case TAG_SET_TAILANDLEN:
+            MPI_Recv(buf, 3 * sizeof(long long), MPI_BYTE, source, TAG_SET_TAILANDLEN, SubComm, MPI_STATUS_IGNORE);
+            index       = buf[0];
+            Tail[index] = buf[1];
+            Len[index]  = buf[2];
+            break;
+          case TAG_SET_HEADANDNEXT:
+            MPI_Recv(buf, 3 * sizeof(long long), MPI_BYTE, source, TAG_SET_HEADANDNEXT, SubComm, MPI_STATUS_IGNORE);
+            index       = buf[0];
+            Head[index] = buf[1];
+            Next[index] = buf[2];
+            break;
+          case TAG_SET_NEXT:
+            MPI_Recv(buf, 2 * sizeof(long long), MPI_BYTE, source, TAG_SET_NEXT, SubComm, MPI_STATUS_IGNORE);
+            index       = buf[0];
+            Next[index] = buf[1];
+            break;
+          case TAG_SETHEADGETNEXT:
+            MPI_Recv(buf, 2 * sizeof(long long), MPI_BYTE, source, TAG_SETHEADGETNEXT, SubComm, MPI_STATUS_IGNORE);
+            index = buf[0];
+            head  = buf[1];
+            do
+              {
+                Head[index] = head;
+                next        = Next[index];
+                task        = (next >> 32);
+                index       = (next & MASK);
+              }
+            while(next >= 0 && task == SubThisTask);
+            MPI_Send(&next, 1 * sizeof(long long), MPI_BYTE, source, TAG_SETHEADGETNEXT_DATA, SubComm);
+            break;
+          case TAG_GET_NEXT:
+            MPI_Recv(&index, 1, MPI_INT, source, tag, SubComm, &status);
+            MPI_Send(&Next[index], 1 * sizeof(long long), MPI_BYTE, source, TAG_GET_NEXT_DATA, SubComm);
+            break;
+          case TAG_GET_HEAD:
+            MPI_Recv(&index, 1, MPI_INT, source, tag, SubComm, &status);
+            MPI_Send(&Head[index], 1 * sizeof(long long), MPI_BYTE, source, TAG_GET_HEAD_DATA, SubComm);
+            break;
+          case TAG_ADD_PARTICLE:
+            MPI_Recv(&index, 1, MPI_INT, source, tag, SubComm, &status);
+            if(Tail[index] < 0) /* consider only particles not already in substructures */
+              {
+                ud[LocalLen].index = index;
+                if(index >= NumPartGroup)
+                  {
+                    sprintf(msg, "What: index=%d NumPartGroup=%d\n", index, NumPartGroup);
+                    terminate(msg);
+                  }
+                LocalLen++;
+              }
+            break;
+          case TAG_MARK_PARTICLE:
+            MPI_Recv(ibuf, 3, MPI_INT, source, TAG_MARK_PARTICLE, SubComm, MPI_STATUS_IGNORE);
+            index   = ibuf[0];
+            target  = ibuf[1];
+            submark = ibuf[2];
 
-          if(PS[index].submark != HIGHBIT)
-            terminate("TasK=%d i=%d P[i].submark=%d?\n", SubThisTask, index, PS[index].submark);
+            if(PS[index].submark != HIGHBIT)
+              terminate("TasK=%d i=%d P[i].submark=%d?\n", SubThisTask, index, PS[index].submark);
 
-          PS[index].TargetTask = target;
-          PS[index].submark = submark;
-          break;
-        case TAG_ADDBOUND:
-          MPI_Recv(ibuf, 2, MPI_INT, source, TAG_ADDBOUND, SubComm, &status);
-          index = ibuf[0];
-          nsub = ibuf[1];
-          if(Tail[index] == nsub)       /* consider only particles in this substructure */
-            {
-              ud[LocalLen].index = index;
-              LocalLen++;
-            }
-          break;
-        case TAG_SETRANK:
-          MPI_Recv(buf, 2 * sizeof(long long), MPI_BYTE, source, TAG_SETRANK, SubComm, MPI_STATUS_IGNORE);
-          index = buf[0];
-          rank = buf[1];
-          do
-            {
-              Len[index] = rank++;
-              next = Next[index];
-              if(next < 0)
-                break;
-              index = (next & MASK);
-            }
-          while((next >> 32) == SubThisTask);
-          buf[0] = next;
-          buf[1] = rank;
-          MPI_Send(buf, 2 * sizeof(long long), MPI_BYTE, source, TAG_SETRANK_OUT, SubComm);
-          break;
-        case TAG_GET_RANK:
-          MPI_Recv(&index, 1, MPI_INT, source, tag, SubComm, &status);
-          rank = Len[index];
-          MPI_Send(&rank, 1 * sizeof(long long), MPI_BYTE, source, TAG_GET_RANK_DATA, SubComm);
-          break;
+            PS[index].TargetTask = target;
+            PS[index].submark    = submark;
+            break;
+          case TAG_ADDBOUND:
+            MPI_Recv(ibuf, 2, MPI_INT, source, TAG_ADDBOUND, SubComm, &status);
+            index = ibuf[0];
+            nsub  = ibuf[1];
+            if(Tail[index] == nsub) /* consider only particles in this substructure */
+              {
+                ud[LocalLen].index = index;
+                LocalLen++;
+              }
+            break;
+          case TAG_SETRANK:
+            MPI_Recv(buf, 2 * sizeof(long long), MPI_BYTE, source, TAG_SETRANK, SubComm, MPI_STATUS_IGNORE);
+            index = buf[0];
+            rank  = buf[1];
+            do
+              {
+                Len[index] = rank++;
+                next       = Next[index];
+                if(next < 0)
+                  break;
+                index = (next & MASK);
+              }
+            while((next >> 32) == SubThisTask);
+            buf[0] = next;
+            buf[1] = rank;
+            MPI_Send(buf, 2 * sizeof(long long), MPI_BYTE, source, TAG_SETRANK_OUT, SubComm);
+            break;
+          case TAG_GET_RANK:
+            MPI_Recv(&index, 1, MPI_INT, source, tag, SubComm, &status);
+            rank = Len[index];
+            MPI_Send(&rank, 1 * sizeof(long long), MPI_BYTE, source, TAG_GET_RANK_DATA, SubComm);
+            break;
 
-        case TAG_POLLING_DONE:
-          MPI_Recv(&index, 1, MPI_INT, source, tag, SubComm, &status);
-          break;
+          case TAG_POLLING_DONE:
+            MPI_Recv(&index, 1, MPI_INT, source, tag, SubComm, &status);
+            break;
 
-        default:
-          terminate("tag not present in the switch");
-          break;
+          default:
+            terminate("tag not present in the switch");
+            break;
         }
-
     }
   while(tag != TAG_POLLING_DONE);
-
 }
-
 
 /*! \brief Sets rank in global linked list and gets next entry.
  *
@@ -1918,13 +1917,13 @@ long long subfind_distlinklist_setrank_and_get_next(long long index, long long *
   long long buf[2];
 
   task = (index >> 32);
-  i = (index & MASK);
+  i    = (index & MASK);
 
   if(SubThisTask == task)
     {
       Len[i] = *rank;
-      *rank = *rank + 1;
-      next = Next[i];
+      *rank  = *rank + 1;
+      next   = Next[i];
     }
   else
     {
@@ -1933,12 +1932,11 @@ long long subfind_distlinklist_setrank_and_get_next(long long index, long long *
 
       MPI_Send(buf, 2 * sizeof(long long), MPI_BYTE, task, TAG_SETRANK, SubComm);
       MPI_Recv(buf, 2 * sizeof(long long), MPI_BYTE, task, TAG_SETRANK_OUT, SubComm, MPI_STATUS_IGNORE);
-      next = buf[0];
+      next  = buf[0];
       *rank = buf[1];
     }
   return next;
 }
-
 
 /*! \brief Sets head in global linked list and gets next
  *
@@ -1954,12 +1952,12 @@ long long subfind_distlinklist_set_head_get_next(long long index, long long head
   long long next;
 
   task = (index >> 32);
-  i = (index & MASK);
+  i    = (index & MASK);
 
   if(SubThisTask == task)
     {
       Head[i] = head;
-      next = Next[i];
+      next    = Next[i];
     }
   else
     {
@@ -1971,7 +1969,6 @@ long long subfind_distlinklist_set_head_get_next(long long index, long long head
 
   return next;
 }
-
 
 /*! \brief Sets next value in global linked list.
  *
@@ -1986,7 +1983,7 @@ void subfind_distlinklist_set_next(long long index, long long next)
   long long buf[2];
 
   task = (index >> 32);
-  i = (index & MASK);
+  i    = (index & MASK);
 
   if(SubThisTask == task)
     {
@@ -2000,7 +1997,6 @@ void subfind_distlinklist_set_next(long long index, long long next)
     }
 }
 
-
 /*! \brief Adds particle to 'ud' list if not already in substructure.
  *
  *  \param[in] index Index in global linked list.
@@ -2013,11 +2009,11 @@ void subfind_distlinklist_add_particle(long long index)
   char msg[200];
 
   task = (index >> 32);
-  i = (index & MASK);
+  i    = (index & MASK);
 
   if(SubThisTask == task)
     {
-      if(Tail[i] < 0)           /* consider only particles not already in substructures */
+      if(Tail[i] < 0) /* consider only particles not already in substructures */
         {
           ud[LocalLen].index = i;
           if(i >= NumPartGroup)
@@ -2035,7 +2031,6 @@ void subfind_distlinklist_add_particle(long long index)
     }
 }
 
-
 /*! \brief Sets target task and submark field in 'PS' structure.
  *
  *  \param[in] index Index in global linked list
@@ -2049,7 +2044,7 @@ void subfind_distlinklist_mark_particle(long long index, int target, int submark
   int task, i, ibuf[3];
 
   task = (index >> 32);
-  i = (index & MASK);
+  i    = (index & MASK);
 
   if(SubThisTask == task)
     {
@@ -2057,7 +2052,7 @@ void subfind_distlinklist_mark_particle(long long index, int target, int submark
         terminate("Tas=%d i=%d P[i].submark=%d?\n", SubThisTask, i, PS[i].submark);
 
       PS[i].TargetTask = target;
-      PS[i].submark = submark;
+      PS[i].submark    = submark;
     }
   else
     {
@@ -2067,7 +2062,6 @@ void subfind_distlinklist_mark_particle(long long index, int target, int submark
       MPI_Send(ibuf, 3, MPI_INT, task, TAG_MARK_PARTICLE, SubComm);
     }
 }
-
 
 /*! \brief Add bound particle to 'ud' array.
  *
@@ -2082,11 +2076,11 @@ void subfind_distlinklist_add_bound_particles(long long index, int nsub)
   int task, i, ibuf[2];
 
   task = (index >> 32);
-  i = (index & MASK);
+  i    = (index & MASK);
 
   if(SubThisTask == task)
     {
-      if(Tail[i] == nsub)       /* consider only particles not already in substructures */
+      if(Tail[i] == nsub) /* consider only particles not already in substructures */
         {
           ud[LocalLen].index = i;
           LocalLen++;
@@ -2100,7 +2094,6 @@ void subfind_distlinklist_add_bound_particles(long long index, int nsub)
     }
 }
 
-
 /*! \brief Get Next value from global linked list.
  *
  *  \param[in] index Index in global linked list.
@@ -2113,7 +2106,7 @@ long long subfind_distlinklist_get_next(long long index)
   long long next;
 
   task = (index >> 32);
-  i = (index & MASK);
+  i    = (index & MASK);
 
   if(SubThisTask == task)
     {
@@ -2128,7 +2121,6 @@ long long subfind_distlinklist_get_next(long long index)
   return next;
 }
 
-
 /*! \brief Get rank value from global linked list.
  *
  *  \param[in] index Index in global linked list.
@@ -2141,7 +2133,7 @@ long long subfind_distlinklist_get_rank(long long index)
   long long rank;
 
   task = (index >> 32);
-  i = (index & MASK);
+  i    = (index & MASK);
 
   if(SubThisTask == task)
     {
@@ -2156,7 +2148,6 @@ long long subfind_distlinklist_get_rank(long long index)
   return rank;
 }
 
-
 /*! \brief Get the head value of global linked list.
  *
  *  \param[in] index Index in the global linked list.
@@ -2169,7 +2160,7 @@ long long subfind_distlinklist_get_head(long long index)
   long long head;
 
   task = (index >> 32);
-  i = (index & MASK);
+  i    = (index & MASK);
 
   if(SubThisTask == task)
     {
@@ -2183,7 +2174,6 @@ long long subfind_distlinklist_get_head(long long index)
 
   return head;
 }
-
 
 /*! \brief Gets the head value of two entries in linked list.
  *
@@ -2200,12 +2190,12 @@ void subfind_distlinklist_get_two_heads(long long ngb_index1, long long ngb_inde
   long long buf[2];
 
   task = (ngb_index1 >> 32);
-  i1 = (ngb_index1 & MASK);
-  i2 = (ngb_index2 & MASK);
+  i1   = (ngb_index1 & MASK);
+  i2   = (ngb_index2 & MASK);
 
   if(SubThisTask == task)
     {
-      *head = Head[i1];
+      *head        = Head[i1];
       *head_attach = Head[i2];
     }
   else
@@ -2214,11 +2204,10 @@ void subfind_distlinklist_get_two_heads(long long ngb_index1, long long ngb_inde
       ibuf[1] = i2;
       MPI_Send(ibuf, 2, MPI_INT, task, TAG_GET_TWOHEADS, SubComm);
       MPI_Recv(buf, 2 * sizeof(long long), MPI_BYTE, task, TAG_GET_TWOHEADS_DATA, SubComm, MPI_STATUS_IGNORE);
-      *head = buf[0];
+      *head        = buf[0];
       *head_attach = buf[1];
     }
 }
-
 
 /*! \brief Sets Head and Next entries in global linked list.
  *
@@ -2234,7 +2223,7 @@ void subfind_distlinklist_set_headandnext(long long index, long long head, long 
   long long buf[3];
 
   task = (index >> 32);
-  i = (index & MASK);
+  i    = (index & MASK);
 
   if(SubThisTask == task)
     {
@@ -2249,7 +2238,6 @@ void subfind_distlinklist_set_headandnext(long long index, long long head, long 
       MPI_Send(buf, 3 * sizeof(long long), MPI_BYTE, task, TAG_SET_HEADANDNEXT, SubComm);
     }
 }
-
 
 /*! \brief Returns old tail, sets a new tail, increases length of linked list.
  *
@@ -2266,7 +2254,7 @@ int subfind_distlinklist_get_tail_set_tail_increaselen(long long index, long lon
   long long buf[2];
 
   task = (index >> 32);
-  i = (index & MASK);
+  i    = (index & MASK);
 
   retcode = 0;
 
@@ -2280,7 +2268,7 @@ int subfind_distlinklist_get_tail_set_tail_increaselen(long long index, long lon
       task_newtail = (newtail >> 32);
       if(task_newtail == SubThisTask)
         {
-          i_newtail = (newtail & MASK);
+          i_newtail       = (newtail & MASK);
           Head[i_newtail] = index;
           Next[i_newtail] = -1;
           retcode |= 1;
@@ -2288,7 +2276,7 @@ int subfind_distlinklist_get_tail_set_tail_increaselen(long long index, long lon
       task_oldtail = (oldtail >> 32);
       if(task_oldtail == SubThisTask)
         {
-          i_oldtail = (oldtail & MASK);
+          i_oldtail       = (oldtail & MASK);
           Next[i_oldtail] = newtail;
           retcode |= 2;
         }
@@ -2310,7 +2298,6 @@ int subfind_distlinklist_get_tail_set_tail_increaselen(long long index, long lon
   return retcode;
 }
 
-
 /*! \brief Set tail and len in global linked list.
  *
  *  \param[in] index Index in global linked list.
@@ -2325,12 +2312,12 @@ void subfind_distlinklist_set_tailandlen(long long index, long long tail, int le
   long long buf[3];
 
   task = (index >> 32);
-  i = (index & MASK);
+  i    = (index & MASK);
 
   if(SubThisTask == task)
     {
       Tail[i] = tail;
-      Len[i] = len;
+      Len[i]  = len;
     }
   else
     {
@@ -2340,7 +2327,6 @@ void subfind_distlinklist_set_tailandlen(long long index, long long tail, int le
       MPI_Send(buf, 3 * sizeof(long long), MPI_BYTE, task, TAG_SET_TAILANDLEN, SubComm);
     }
 }
-
 
 /*! \brief Get tail and len in global linked list.
  *
@@ -2356,22 +2342,21 @@ void subfind_distlinklist_get_tailandlen(long long index, long long *tail, int *
   long long buf[2];
 
   task = (index >> 32);
-  i = (index & MASK);
+  i    = (index & MASK);
 
   if(SubThisTask == task)
     {
       *tail = Tail[i];
-      *len = Len[i];
+      *len  = Len[i];
     }
   else
     {
       MPI_Send(&i, 1, MPI_INT, task, TAG_GET_TAILANDLEN, SubComm);
       MPI_Recv(buf, 2 * sizeof(long long), MPI_BYTE, task, TAG_GET_TAILANDLEN_DATA, SubComm, MPI_STATUS_IGNORE);
       *tail = buf[0];
-      *len = buf[1];
+      *len  = buf[1];
     }
 }
-
 
 /*! \brief Sets head, tail, len and next in global linked list
  *
@@ -2389,13 +2374,13 @@ void subfind_distlinklist_set_all(long long index, long long head, long long tai
   long long buf[5];
 
   task = (index >> 32);
-  i = (index & MASK);
+  i    = (index & MASK);
 
   if(SubThisTask == task)
     {
       Head[i] = head;
       Tail[i] = tail;
-      Len[i] = len;
+      Len[i]  = len;
       Next[i] = next;
     }
   else
@@ -2409,7 +2394,6 @@ void subfind_distlinklist_set_all(long long index, long long head, long long tai
     }
 }
 
-
 /*! \brief Comparison function of sort_density_data objects.
  *
  *  Compares element density.
@@ -2419,16 +2403,15 @@ void subfind_distlinklist_set_all(long long index, long long head, long long tai
  *
  *  \return (-1,0,1); -1 if a > b
  */
-int subfind_compare_densities(const void *a, const void *b)     /* largest density first */
+int subfind_compare_densities(const void *a, const void *b) /* largest density first */
 {
-  if(((struct sort_density_data *) a)->density > (((struct sort_density_data *) b)->density))
+  if(((struct sort_density_data *)a)->density > (((struct sort_density_data *)b)->density))
     return -1;
 
-  if(((struct sort_density_data *) a)->density < (((struct sort_density_data *) b)->density))
+  if(((struct sort_density_data *)a)->density < (((struct sort_density_data *)b)->density))
     return +1;
 
   return 0;
 }
-
 
 #endif

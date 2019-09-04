@@ -39,25 +39,21 @@
  *                void mpi_distribute_items_to_tasks(void *data,
  *                  int task_offset, int *n_items, int *max_n, int item_size,
  *                  int commtag)
- * 
- * 
+ *
+ *
  * \par Major modifications and contributions:
- * 
+ *
  * - DD.MM.YYYY Description
  * - 24.05.2018 Prepared file for public release -- Rainer Weinberger
  */
 
-
 #include <mpi.h>
 #include <string.h>
-
 
 #include "../main/allvars.h"
 #include "../main/proto.h"
 
-
 static char *SaveData2;
-
 
 /*! \brief Implements the common idiom of exchanging buffers with every other
  *         MPI task.
@@ -77,7 +73,8 @@ static char *SaveData2;
  *
  *  \return void
  */
-void mpi_exchange_buffers(void *send_buf, int *send_count, int *send_offset, void *recv_buf, int *recv_count, int *recv_offset, int item_size, int commtag, int include_self)
+void mpi_exchange_buffers(void *send_buf, int *send_count, int *send_offset, void *recv_buf, int *recv_count, int *recv_offset,
+                          int item_size, int commtag, int include_self)
 {
   int ngrp;
   // this loop goes from 0 in some cases, but that doesn't make sense
@@ -91,15 +88,13 @@ void mpi_exchange_buffers(void *send_buf, int *send_count, int *send_offset, voi
           if(send_count[recvTask] > 0 || recv_count[recvTask] > 0)
             {
               /* exchange data */
-              MPI_Sendrecv((char *) send_buf + (size_t) send_offset[recvTask] * item_size,
-                           (size_t) send_count[recvTask] * item_size, MPI_BYTE,
-                           recvTask, commtag,
-                           (char *) recv_buf + (size_t) recv_offset[recvTask] * item_size, (size_t) recv_count[recvTask] * item_size, MPI_BYTE, recvTask, commtag, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
+              MPI_Sendrecv((char *)send_buf + (size_t)send_offset[recvTask] * item_size, (size_t)send_count[recvTask] * item_size,
+                           MPI_BYTE, recvTask, commtag, (char *)recv_buf + (size_t)recv_offset[recvTask] * item_size,
+                           (size_t)recv_count[recvTask] * item_size, MPI_BYTE, recvTask, commtag, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
             }
         }
     }
 }
-
 
 /*! \brief Calculates offsets for MPI communication.
  *
@@ -123,7 +118,7 @@ int mpi_calculate_offsets(int *send_count, int *send_offset, int *recv_count, in
   // Exchange the send/receive counts
   MPI_Alltoall(send_count, 1, MPI_INT, recv_count, 1, MPI_INT, MPI_COMM_WORLD);
 
-  int nimport = 0;
+  int nimport    = 0;
   recv_offset[0] = 0;
   send_offset[0] = 0;
   int j;
@@ -140,7 +135,6 @@ int mpi_calculate_offsets(int *send_count, int *send_offset, int *recv_count, in
   return nimport;
 }
 
-
 /*! \brief Comparison function used to sort the mesh_search data by task.
  *
  *  \param[in] a First object.
@@ -150,15 +144,14 @@ int mpi_calculate_offsets(int *send_count, int *send_offset, int *recv_count, in
  */
 int mesh_search_compare_task(const void *a, const void *b)
 {
-  if((*(mesh_search_data **) a)->Task < (*(mesh_search_data **) b)->Task)
+  if((*(mesh_search_data **)a)->Task < (*(mesh_search_data **)b)->Task)
     return -1;
 
-  if((*(mesh_search_data **) a)->Task > (*(mesh_search_data **) b)->Task)
+  if((*(mesh_search_data **)a)->Task > (*(mesh_search_data **)b)->Task)
     return +1;
 
   return 0;
 }
-
 
 /*! \brief Comparison function used to sort an array of int pointers into order
  *         of the pointer targets.
@@ -170,15 +163,14 @@ int mesh_search_compare_task(const void *a, const void *b)
  */
 int intpointer_compare(const void *a, const void *b)
 {
-  if((**(int **) a) < (**(int **) b))
+  if((**(int **)a) < (**(int **)b))
     return -1;
 
-  if((**(int **) a) > (**(int **) b))
+  if((**(int **)a) > (**(int **)b))
     return +1;
 
   return 0;
 }
-
 
 /*! \brief  Sort an opaque array according to the order implied by sorting the
  *  search array by task. Returns a sorted copy of the data array,
@@ -197,13 +189,13 @@ int intpointer_compare(const void *a, const void *b)
  *
  *  \return Pointer to sorted data.
  */
-void *sort_based_on_mesh_search(mesh_search_data * search, void *data, int n_items, int item_size)
+void *sort_based_on_mesh_search(mesh_search_data *search, void *data, int n_items, int item_size)
 {
   int i;
   char *data2;
   mesh_search_data **perm;
 
-  data2 = mymalloc_movable(&SaveData2, "data2", (size_t) n_items * item_size);
+  data2 = mymalloc_movable(&SaveData2, "data2", (size_t)n_items * item_size);
 
   SaveData2 = data2;
 
@@ -218,14 +210,13 @@ void *sort_based_on_mesh_search(mesh_search_data * search, void *data, int n_ite
   for(i = 0; i < n_items; ++i)
     {
       size_t orig_pos = perm[i] - search;
-      memcpy(data2 + item_size * (size_t) i, (char *) data + item_size * orig_pos, item_size);
+      memcpy(data2 + item_size * (size_t)i, (char *)data + item_size * orig_pos, item_size);
     }
 
   myfree(perm);
 
-  return (void *) data2;
+  return (void *)data2;
 }
-
 
 /*! \brief  Sort an opaque array into increasing order of an int field, given
  *  by the specified offset. (This would typically be field indicating
@@ -251,30 +242,29 @@ void *sort_based_on_field(void *data, int field_offset, int n_items, int item_si
   char *data2;
   int **perm;
 
-  data2 = mymalloc_movable(&SaveData2, "data2", (size_t) n_items * item_size);
+  data2 = mymalloc_movable(&SaveData2, "data2", (size_t)n_items * item_size);
 
   SaveData2 = data2;
 
   perm = mymalloc("perm", n_items * sizeof(*perm));
 
   for(i = 0; i < n_items; ++i)
-    perm[i] = (int *) ((char *) data + (size_t) i * item_size + field_offset);
+    perm[i] = (int *)((char *)data + (size_t)i * item_size + field_offset);
 
   mysort(perm, n_items, sizeof(*perm), intpointer_compare);
 
   // reorder data into data2
   for(i = 0; i < n_items; ++i)
     {
-      size_t orig_pos = ((char *) perm[i] - ((char *) data + field_offset)) / item_size;
-      myassert(((char *) perm[i] - ((char *) data + field_offset)) % item_size == 0);
-      memcpy(data2 + item_size * (size_t) i, (char *) data + item_size * orig_pos, item_size);
+      size_t orig_pos = ((char *)perm[i] - ((char *)data + field_offset)) / item_size;
+      myassert(((char *)perm[i] - ((char *)data + field_offset)) % item_size == 0);
+      memcpy(data2 + item_size * (size_t)i, (char *)data + item_size * orig_pos, item_size);
     }
 
   myfree(perm);
 
-  return (void *) data2;
+  return (void *)data2;
 }
-
 
 /*! \brief  This function takes a mesh_search structure and exchanges the
  *  members in an associated structure based on the index and task in
@@ -296,7 +286,8 @@ void *sort_based_on_field(void *data, int field_offset, int n_items, int item_si
  *
  *  \return void
  */
-void mpi_distribute_items_from_search(mesh_search_data * search, void *data, int *n_items, int *max_n, int item_size, int commtag, int task_offset, int cell_offset)
+void mpi_distribute_items_from_search(mesh_search_data *search, void *data, int *n_items, int *max_n, int item_size, int commtag,
+                                      int task_offset, int cell_offset)
 {
   int i;
 
@@ -311,19 +302,18 @@ void mpi_distribute_items_from_search(mesh_search_data * search, void *data, int
 
       // copy task/index into data array, if applicable
       if(task_offset >= 0)
-        *(int *) ((char *) data + (size_t) i * item_size + task_offset) = task;
+        *(int *)((char *)data + (size_t)i * item_size + task_offset) = task;
       if(cell_offset >= 0)
-        *(int *) ((char *) data + (size_t) i * item_size + cell_offset) = search[i].u.Index;
+        *(int *)((char *)data + (size_t)i * item_size + cell_offset) = search[i].u.Index;
     }
 
   void *data2 = sort_based_on_mesh_search(search, data, *n_items, item_size);
 
-  int nimport = mpi_calculate_offsets(Send_count, Send_offset,
-                                      Recv_count, Recv_offset, 0);
+  int nimport = mpi_calculate_offsets(Send_count, Send_offset, Recv_count, Recv_offset, 0);
 
   if(*max_n < nimport)
     {
-      data = myrealloc_movable(data, (size_t) nimport * item_size);
+      data   = myrealloc_movable(data, (size_t)nimport * item_size);
       *max_n = nimport;
     }
 
@@ -335,7 +325,6 @@ void mpi_distribute_items_from_search(mesh_search_data * search, void *data, int
 
   *n_items = nimport;
 }
-
 
 /*! \brief This function distributes the members in an opaque structure to
  *  the tasks based on a task field given by a specified offset into
@@ -361,20 +350,18 @@ void mpi_distribute_items_to_tasks(void *data, int task_offset, int *n_items, in
 
   for(i = 0; i < *n_items; i++)
     {
-      int task = *(int *) ((char *) data + (size_t) i * item_size + task_offset);
+      int task = *(int *)((char *)data + (size_t)i * item_size + task_offset);
       myassert(task >= 0 && task < NTask);
       Send_count[task]++;
     }
 
-  void *data2 = sort_based_on_field(data, task_offset,
-                                    *n_items, item_size);
+  void *data2 = sort_based_on_field(data, task_offset, *n_items, item_size);
 
-  int nimport = mpi_calculate_offsets(Send_count, Send_offset,
-                                      Recv_count, Recv_offset, 0);
+  int nimport = mpi_calculate_offsets(Send_count, Send_offset, Recv_count, Recv_offset, 0);
 
   if(*max_n < nimport)
     {
-      data = myrealloc_movable(data, (size_t) nimport * item_size);
+      data   = myrealloc_movable(data, (size_t)nimport * item_size);
       *max_n = nimport;
     }
 

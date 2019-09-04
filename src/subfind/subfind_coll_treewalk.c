@@ -30,33 +30,28 @@
  *                  *darg, int phasearg, double weakly_bound_limit_arg)
  *                static int subfind_force_treeevaluate_potential(int target,
  *                  int mode, int threadid)
- * 
- * 
+ *
+ *
  * \par Major modifications and contributions:
- * 
+ *
  * - DD.MM.YYYY Description
  * - 15.05.2018 Prepared file for public release -- Rainer Weinberger
  */
 
-
+#include <math.h>
 #include <mpi.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <math.h>
-
 
 #include "../main/allvars.h"
 #include "../main/proto.h"
-
 
 #ifdef SUBFIND
 #include "../fof/fof.h"
 #include "subfind.h"
 
-
 static int subfind_force_treeevaluate_potential(int target, int mode, int threadid);
-
 
 /*! \brief Local data structure for collecting particle/cell data that is sent
  *         to other processors if needed. Type called data_in and static
@@ -72,7 +67,6 @@ typedef struct
 
 static data_in *DataIn, *DataGet;
 
-
 /*! \brief Routine that fills the relevant particle/cell data into the input
  *         structure defined above. Needed by generic_comm_helpers2.
  *
@@ -82,7 +76,7 @@ static data_in *DataIn, *DataGet;
  *
  *  \return void
  */
-static void particle2in(data_in * in, int i, int firstnode)
+static void particle2in(data_in *in, int i, int firstnode)
 {
 #ifdef CELL_CENTER_GRAVITY
   if(P[i].Type == 0)
@@ -102,7 +96,6 @@ static void particle2in(data_in * in, int i, int firstnode)
   in->Firstnode = firstnode;
 }
 
-
 /*! \brief Local data structure that holds results acquired on remote
  *         processors. Type called data_out and static pointers DataResult and
  *         DataOut needed by generic_comm_helpers2.
@@ -113,7 +106,6 @@ typedef struct
 } data_out;
 
 static data_out *DataResult, *DataOut;
-
 
 /*! \brief Routine to store or combine result data. Needed by
  *         generic_comm_helpers2.
@@ -126,28 +118,25 @@ static data_out *DataResult, *DataOut;
  *
  *  \return void
  */
-static void out2particle(data_out * out, int i, int mode)
+static void out2particle(data_out *out, int i, int mode)
 {
-  if(mode == MODE_LOCAL_PARTICLES)      /* initial store */
+  if(mode == MODE_LOCAL_PARTICLES) /* initial store */
     {
       PS[i].Potential = out->Potential;
     }
-  else                          /* combine */
+  else /* combine */
     {
       PS[i].Potential += out->Potential;
     }
 }
 
-
 #define USE_SUBCOMM_COMMUNICATOR
 #include "../utils/generic_comm_helpers2.h"
-
 
 static int Num;
 static struct unbind_data *d;
 static int phase;
 static double weakly_bound_limit;
-
 
 /*! \brief Routine that defines what to do with local particles.
  *
@@ -184,9 +173,7 @@ static void kernel_local(void)
         subfind_force_treeevaluate_potential(i, MODE_LOCAL_PARTICLES, threadid);
       }
   }
-
 }
-
 
 /*! \brief Routine that defines what to do with imported particles.
  *
@@ -213,7 +200,6 @@ static void kernel_imported(void)
   }
 }
 
-
 /*! \brief Computes potential energy.
  *
  *  \param[in] num Number of elements.
@@ -228,9 +214,9 @@ void subfind_potential_compute(int num, struct unbind_data *darg, int phasearg, 
 {
   generic_set_MaxNexport();
 
-  Num = num;
-  d = darg;
-  phase = phasearg;
+  Num                = num;
+  d                  = darg;
+  phase              = phasearg;
   weakly_bound_limit = weakly_bound_limit_arg;
 
   generic_comm_pattern(Num, kernel_local, kernel_imported);
@@ -251,7 +237,6 @@ void subfind_potential_compute(int num, struct unbind_data *darg, int phasearg, 
       PS[d[i].index].Potential *= All.G / atime;
     }
 }
-
 
 /*! \brief Evaluate function of potential calculation.
  *
@@ -282,7 +267,7 @@ static int subfind_force_treeevaluate_potential(int target, int mode, int thread
       particle2in(&local, target, 0);
       in = &local;
 
-      numnodes = 1;
+      numnodes  = 1;
       firstnode = NULL;
     }
   else
@@ -295,26 +280,26 @@ static int subfind_force_treeevaluate_potential(int target, int mode, int thread
   pos_x = in->Pos[0];
   pos_y = in->Pos[1];
   pos_z = in->Pos[2];
-  h_i = All.ForceSoftening[in->SofteningType];
+  h_i   = All.ForceSoftening[in->SofteningType];
 
   double pot = 0;
 
   for(k = 0; k < numnodes; k++)
     {
       if(mode == MODE_LOCAL_PARTICLES)
-        no = SubTree_MaxPart;   /* root node */
+        no = SubTree_MaxPart; /* root node */
       else
         {
           no = firstnode[k];
-          no = SubNodes[no].u.d.nextnode;       /* open it */
+          no = SubNodes[no].u.d.nextnode; /* open it */
         }
 
       while(no >= 0)
         {
 #ifdef MULTIPLE_NODE_SOFTENING
           int indi_flag1 = -1, indi_flag2 = 0;
-#endif /* #ifdef MULTIPLE_NODE_SOFTENING */
-          if(no < SubTree_MaxPart)      /* single particle */
+#endif                             /* #ifdef MULTIPLE_NODE_SOFTENING */
+          if(no < SubTree_MaxPart) /* single particle */
             {
               dx = GRAVITY_NEAREST_X(SubTree_Pos_list[3 * no + 0] - pos_x);
               dy = GRAVITY_NEAREST_Y(SubTree_Pos_list[3 * no + 1] - pos_y);
@@ -332,15 +317,16 @@ static int subfind_force_treeevaluate_potential(int target, int mode, int thread
 
               no = SubNextnode[no];
             }
-          else if(no < SubTree_MaxPart + SubTree_MaxNodes)      /* internal node */
+          else if(no < SubTree_MaxPart + SubTree_MaxNodes) /* internal node */
             {
               if(mode == MODE_IMPORTED_PARTICLES)
                 {
-                  if(no < SubTree_FirstNonTopLevelNode) /* we reached a top-level node again, which means that we are done with the branch */
+                  if(no < SubTree_FirstNonTopLevelNode) /* we reached a top-level node again, which means that we are done with the
+                                                           branch */
                     break;
                 }
 
-              nop = &SubNodes[no];
+              nop  = &SubNodes[no];
               mass = nop->u.d.mass;
 
               dx = GRAVITY_NEAREST_X(nop->u.d.s[0] - pos_x);
@@ -377,7 +363,7 @@ static int subfind_force_treeevaluate_potential(int target, int mode, int thread
 #endif /* #ifdef ADAPTIVE_HYDRO_SOFTENING */
                   indi_flag1 = 0;
                   indi_flag2 = NSOFTTYPES;
-#else /* #ifdef MULTIPLE_NODE_SOFTENING */
+#else  /* #ifdef MULTIPLE_NODE_SOFTENING */
                   if(r2 < h_j * h_j)
                     {
                       /* open cell */
@@ -390,13 +376,13 @@ static int subfind_force_treeevaluate_potential(int target, int mode, int thread
               else
                 hmax = h_i;
 
-              /* node can be used */
+                /* node can be used */
 #ifdef MULTIPLE_NODE_SOFTENING
               extnop = &SubExtNodes[no];
 #endif /* #ifdef MULTIPLE_NODE_SOFTENING */
               no = nop->u.d.sibling;
             }
-          else if(no >= SubTree_ImportedNodeOffset)     /* point from imported nodelist */
+          else if(no >= SubTree_ImportedNodeOffset) /* point from imported nodelist */
             {
               terminate("this is not expected here");
             }
@@ -470,6 +456,5 @@ static int subfind_force_treeevaluate_potential(int target, int mode, int thread
 
   return 0;
 }
-
 
 #endif /* #ifdef SUBFIND */

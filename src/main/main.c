@@ -23,30 +23,26 @@
  * \details     contains functions:
  *                int main(int argc, char **argv)
  *                void endrun()
- * 
+ *
  * \par Major modifications and contributions:
- * 
+ *
  * - DD.MM.YYYY Description
  * - 06.05.2018 Prepared file for public release -- Rainer Weinberger
  */
 
-
+#include <gsl/gsl_math.h>
+#include <math.h>
 #include <mpi.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <math.h>
-#include <gsl/gsl_math.h>
-
 
 #include "../main/allvars.h"
 #include "../main/proto.h"
 
-
 #ifdef HAVE_HDF5
 #include <hdf5.h>
 #endif /* #ifdef HAVE_HDF5 */
-
 
 /*! \brief The entry point of the program.
  *
@@ -94,7 +90,8 @@ int main(int argc, char **argv)
   Argc = argc;
   Argv = argv;
 
-  for(PTask = 0; NTask > (1 << PTask); PTask++);
+  for(PTask = 0; NTask > (1 << PTask); PTask++)
+    ;
 
   begrun0();
 
@@ -110,7 +107,9 @@ int main(int argc, char **argv)
           printf("       1          Read restart files and resume simulation\n");
           printf("       2          Restart from specified snapshot dump and resume simulation\n");
           printf("       3          Run FOF and optionally SUBFIND: [<SubboxSnapNum> for SUBBOX_SNAPSHOTS]\n");
-          printf("       6          Convert snapshot file to different format [input=ICFormat  output=SnapFormat   NOTE: derived quantities have round-off errors!\n");
+          printf(
+              "       6          Convert snapshot file to different format [input=ICFormat  output=SnapFormat   NOTE: derived "
+              "quantities have round-off errors!\n");
           printf("      14          Write out the Voronoi mesh: <SnapNum>\n");
           printf("      17          Write out snapshot dump with measured gradients\n");
           printf("      18          Recalculate gravitational potential values for specified snaphot dump: <snapnum>\n");
@@ -155,7 +154,7 @@ int main(int argc, char **argv)
       char runningfname[MAXLEN_PATH];
 
       sprintf(runningfname, "./running");
-      if((fd = fopen(runningfname, "r")))       /* Is the running-file present? If yes, interrupt the run. */
+      if((fd = fopen(runningfname, "r"))) /* Is the running-file present? If yes, interrupt the run. */
         {
           fclose(fd);
           printf("running-file detected. stopping.\n");
@@ -165,7 +164,7 @@ int main(int argc, char **argv)
   MPI_Bcast(&runningflag, 1, MPI_INT, 0, MPI_COMM_WORLD);
   if(runningflag)
     {
-      MPI_Finalize();           /* do not call endrun() */
+      MPI_Finalize(); /* do not call endrun() */
       return 0;
     }
   else
@@ -188,7 +187,7 @@ int main(int argc, char **argv)
     }
 #endif /* #ifdef RUNNING_SAFETY_FILE */
 
-  begrun1();                    /* set-up run  */
+  begrun1(); /* set-up run  */
 
   /* see if we are loading a restart file or an IC file */
   if(RestartFlag == 1)
@@ -200,7 +199,6 @@ int main(int argc, char **argv)
 
       if(RestartFlag >= 2 && RestartSnapNum >= 0)
         {
-
           if(All.NumFilesPerSnapshot > 1)
             sprintf(fname, "%s/snapdir_%03d/%s_%03d", All.OutputDir, RestartSnapNum, All.SnapshotFileBase, RestartSnapNum);
           else
@@ -209,11 +207,11 @@ int main(int argc, char **argv)
       else
         strcpy(fname, All.InitCondFile);
 
-      /* now we can load the file */
+        /* now we can load the file */
 
 #ifdef READ_DM_AS_GAS
       read_ic(fname, (RestartFlag == 14) ? 0x02 : LOAD_TYPES);
-#else /* #ifdef READ_DM_AS_GAS */
+#else  /* #ifdef READ_DM_AS_GAS */
       read_ic(fname, (RestartFlag == 14) ? 0x01 : LOAD_TYPES);
 #endif /* #ifdef READ_DM_AS_GAS #else */
 
@@ -230,7 +228,7 @@ int main(int argc, char **argv)
             }
           set_softenings();
           All.TopNodeAllocFactor = 0.08;
-          All.TreeAllocFactor = 0.7;
+          All.TreeAllocFactor    = 0.7;
           All.NgbTreeAllocFactor = 0.7;
 
           sprintf(All.SnapshotFileBase, "%s_converted", All.SnapshotFileBase);
@@ -253,13 +251,12 @@ int main(int argc, char **argv)
 
   begrun2();
 
-  run();                        /* main simulation loop */
+  run(); /* main simulation loop */
 
-  endrun();                     /* clean up & finalize MPI */
+  endrun(); /* clean up & finalize MPI */
 
   return 0;
 }
-
 
 /*! \brief This function ends the simulations in case of no error.
  *

@@ -24,29 +24,25 @@
  *                void init_gradients()
  *                void gradient_init(MyFloat * addr, MyFloat * addr_exch,
  *                  MySingle * addr_grad, int type)
- * 
+ *
  * \par Major modifications and contributions:
- * 
+ *
  * - DD.MM.YYYY Description
  * - 05.05.2018 Prepared file for public release -- Rainer Weinberger
  */
 
-
+#include <math.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <math.h>
-
 
 #include "../main/allvars.h"
 #include "../main/proto.h"
 #include "../mesh/voronoi/voronoi.h"
 
-
 int N_Grad = 0;
 
 struct grad_elements grad_elements[MAXGRADIENTS], *GDensity, *GVelx, *GVely, *GVelz, *GPressure, *GUtherm;
-
 
 /*! \brief Initializes all gradient fields.
  *
@@ -80,14 +76,13 @@ void init_gradients()
 
   for(k = 0; k < N_Scalar; k++)
     {
-      addr = (MyFloat *) (((char *) (&SphP[0])) + scalar_elements[k].offset);
+      addr = (MyFloat *)(((char *)(&SphP[0])) + scalar_elements[k].offset);
       gradient_init(addr, &PrimExch[0].Scalars[k], SphP[0].Grad.dscalars[k], GRADIENT_TYPE_NORMAL);
     }
 #endif /* #ifdef MAXSCALARS */
 
   mpi_printf("INIT: %d/%d Gradients used.\n", N_Grad, MAXGRADIENTS);
 }
-
 
 /*! \brief Initialize a gradient field.
  *
@@ -101,7 +96,7 @@ void init_gradients()
  *
  *  \return void
  */
-void gradient_init(MyFloat * addr, MyFloat * addr_exch, MySingle * addr_grad, int type)
+void gradient_init(MyFloat *addr, MyFloat *addr_exch, MySingle *addr_grad, int type)
 {
   if(N_Grad == MAXGRADIENTS)
     {
@@ -114,39 +109,39 @@ void gradient_init(MyFloat * addr, MyFloat * addr_exch, MySingle * addr_grad, in
   if((type == GRADIENT_TYPE_VELX) || (type == GRADIENT_TYPE_VELY) || (type == GRADIENT_TYPE_VELZ))
     {
       /* basic structure is P */
-      grad_elements[N_Grad].offset = ((char *) addr) - ((char *) &P[0]);
+      grad_elements[N_Grad].offset = ((char *)addr) - ((char *)&P[0]);
     }
   else
     {
       /* basic structure is SphP */
-      grad_elements[N_Grad].offset = ((char *) addr) - ((char *) &SphP[0]);
+      grad_elements[N_Grad].offset = ((char *)addr) - ((char *)&SphP[0]);
     }
 
-  grad_elements[N_Grad].offset_exch = ((char *) addr_exch) - ((char *) &PrimExch[0]);
-  grad_elements[N_Grad].offset_grad = ((char *) addr_grad) - ((char *) &(SphP[0].Grad));
+  grad_elements[N_Grad].offset_exch = ((char *)addr_exch) - ((char *)&PrimExch[0]);
+  grad_elements[N_Grad].offset_grad = ((char *)addr_grad) - ((char *)&(SphP[0].Grad));
 
-  switch (type)
+  switch(type)
     {
-    case GRADIENT_TYPE_VELX:
-      GVelx = &grad_elements[N_Grad];
-      break;
-    case GRADIENT_TYPE_VELY:
-      GVely = &grad_elements[N_Grad];
-      break;
-    case GRADIENT_TYPE_VELZ:
-      GVelz = &grad_elements[N_Grad];
-      break;
-    case GRADIENT_TYPE_DENSITY:
-      GDensity = &grad_elements[N_Grad];
-      break;
-    case GRADIENT_TYPE_PRESSURE:
-      GPressure = &grad_elements[N_Grad];
-      break;
-    case GRADIENT_TYPE_UTHERM:
-      GUtherm = &grad_elements[N_Grad];
-      break;
-    default:
-      break;
+      case GRADIENT_TYPE_VELX:
+        GVelx = &grad_elements[N_Grad];
+        break;
+      case GRADIENT_TYPE_VELY:
+        GVely = &grad_elements[N_Grad];
+        break;
+      case GRADIENT_TYPE_VELZ:
+        GVelz = &grad_elements[N_Grad];
+        break;
+      case GRADIENT_TYPE_DENSITY:
+        GDensity = &grad_elements[N_Grad];
+        break;
+      case GRADIENT_TYPE_PRESSURE:
+        GPressure = &grad_elements[N_Grad];
+        break;
+      case GRADIENT_TYPE_UTHERM:
+        GUtherm = &grad_elements[N_Grad];
+        break;
+      default:
+        break;
     }
 
   N_Grad++;

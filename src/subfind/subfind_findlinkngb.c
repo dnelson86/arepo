@@ -33,40 +33,34 @@
  *                  int i, int thread_id)
  *                static int subfind_ngb_compare_dist(const void *a, const
  *                  void *b)
- * 
- * 
+ *
+ *
  * \par Major modifications and contributions:
- * 
+ *
  * - DD.MM.YYYY Description
  * - 15.05.2018 Prepared file for public release -- Rainer Weinberger
  */
 
-
-#include <stdlib.h>
-#include <string.h>
+#include <gsl/gsl_math.h>
 #include <math.h>
 #include <mpi.h>
-#include <gsl/gsl_math.h>
-
+#include <stdlib.h>
+#include <string.h>
 
 #include "../main/allvars.h"
 #include "../main/proto.h"
 
-
 #ifdef SUBFIND
 #include "subfind.h"
 
-
 static int subfind_ngb_compare_dist(const void *a, const void *b);
 static int subfind_linkngb_evaluate(int target, int mode, int threadid);
-
 
 static int *DM_NumNgb;
 static double *Dist2list;
 static int *Ngblist;
 static MyFloat *Left, *Right;
 static char *Todo;
-
 
 /*! \brief Local data structure for collecting particle/cell data that is sent
  *         to other processors if needed. Type called data_in and static
@@ -82,7 +76,6 @@ typedef struct
 
 static data_in *DataIn, *DataGet;
 
-
 /*! \brief Routine that fills the relevant particle/cell data into the input
  *         structure defined above. Needed by generic_comm_helpers2.
  *
@@ -92,7 +85,7 @@ static data_in *DataIn, *DataGet;
  *
  *  \return void
  */
-static void particle2in(data_in * in, int i, int firstnode)
+static void particle2in(data_in *in, int i, int firstnode)
 {
 #ifdef CELL_CENTER_GRAVITY
   if(P[i].Type == 0)
@@ -114,7 +107,6 @@ static void particle2in(data_in * in, int i, int firstnode)
   in->Firstnode = firstnode;
 }
 
-
 /*! \brief Local data structure that holds results acquired on remote
  *         processors. Type called data_out and static pointers DataResult and
  *         DataOut needed by generic_comm_helpers2.
@@ -125,7 +117,6 @@ typedef struct
 } data_out;
 
 static data_out *DataResult, *DataOut;
-
 
 /*! \brief Routine to store or combine result data. Needed by
  *         generic_comm_helpers2.
@@ -138,13 +129,13 @@ static data_out *DataResult, *DataOut;
  *
  *  \return void
  */
-static void out2particle(data_out * out, int i, int mode)
+static void out2particle(data_out *out, int i, int mode)
 {
-  if(mode == MODE_LOCAL_PARTICLES)      /* initial store */
+  if(mode == MODE_LOCAL_PARTICLES) /* initial store */
     {
       DM_NumNgb[i] = out->Ngb;
     }
-  else                          /* combine */
+  else /* combine */
     {
       DM_NumNgb[i] += out->Ngb;
     }
@@ -152,7 +143,6 @@ static void out2particle(data_out * out, int i, int mode)
 
 #define USE_SUBCOMM_COMMUNICATOR
 #include "../utils/generic_comm_helpers2.h"
-
 
 /*! \brief Routine that defines what to do with local particles.
  *
@@ -186,7 +176,6 @@ static void kernel_local(void)
   }
 }
 
-
 /*! \brief Routine that defines what to do with imported particles.
  *
  *  Calls the *_evaluate function in MODE_IMPORTED_PARTICLES.
@@ -212,7 +201,6 @@ static void kernel_imported(void)
   }
 }
 
-
 /*! \brief Iteratvie search for particle smoothing length to enclose a given
  *         number of neighbours.
  *
@@ -224,26 +212,25 @@ void subfind_find_linkngb(void)
   int i, npleft, iter = 0;
   double t0, t1;
 
-
   if(SubThisTask == 0)
     printf("SUBFIND-COLLECTIVE, root-task=%d: Start find_linkngb. (%d particles on root-task)\n", ThisTask, NumPartGroup);
 
   /* allocate buffers to arrange communication */
 
-  Ngblist = (int *) mymalloc("Ngblist", NumPartGroup * sizeof(int));
-  Dist2list = (double *) mymalloc("Dist2list", NumPartGroup * sizeof(double));
+  Ngblist   = (int *)mymalloc("Ngblist", NumPartGroup * sizeof(int));
+  Dist2list = (double *)mymalloc("Dist2list", NumPartGroup * sizeof(double));
 
   generic_set_MaxNexport();
 
-  Left = (MyFloat *) mymalloc("Left", sizeof(MyFloat) * NumPartGroup);
-  Right = (MyFloat *) mymalloc("Right", sizeof(MyFloat) * NumPartGroup);
-  Todo = (char *) mymalloc("Todo", sizeof(char) * NumPartGroup);
-  DM_NumNgb = (int *) mymalloc_movable(&DM_NumNgb, "DM_NumNgb", sizeof(int) * NumPartGroup);
+  Left      = (MyFloat *)mymalloc("Left", sizeof(MyFloat) * NumPartGroup);
+  Right     = (MyFloat *)mymalloc("Right", sizeof(MyFloat) * NumPartGroup);
+  Todo      = (char *)mymalloc("Todo", sizeof(char) * NumPartGroup);
+  DM_NumNgb = (int *)mymalloc_movable(&DM_NumNgb, "DM_NumNgb", sizeof(int) * NumPartGroup);
 
   for(i = 0; i < NumPartGroup; i++)
     {
       Left[i] = Right[i] = 0;
-      Todo[i] = 1;
+      Todo[i]            = 1;
     }
 
   /* we will repeat the whole thing for those particles where we didn't find enough neighbours */
@@ -279,9 +266,9 @@ void subfind_find_linkngb(void)
 
                   if(iter >= MAXITER - 10)
                     {
-                      printf
-                        ("i=%d task=%d ID=%d DM_Hsml=%g Left=%g Right=%g Right-Left=%g\n   pos=(%g|%g|%g)\n",
-                         i, ThisTask, (int) P[i].ID, PS[i].Hsml, Left[i], Right[i], (double) (Right[i] - Left[i]), P[i].Pos[0], P[i].Pos[1], P[i].Pos[2]);
+                      printf("i=%d task=%d ID=%d DM_Hsml=%g Left=%g Right=%g Right-Left=%g\n   pos=(%g|%g|%g)\n", i, ThisTask,
+                             (int)P[i].ID, PS[i].Hsml, Left[i], Right[i], (double)(Right[i] - Left[i]), P[i].Pos[0], P[i].Pos[1],
+                             P[i].Pos[2]);
                       fflush(stdout);
                     }
 
@@ -314,7 +301,8 @@ void subfind_find_linkngb(void)
 
           if(iter > 0 && SubThisTask == 0)
             {
-              printf("SUBFIND-COLLECTIVE, root-task=%d: find linkngb iteration %d, need to repeat for %lld particles. (took %g sec)\n", ThisTask, iter, ntot, timediff(t0, t1));
+              printf("SUBFIND-COLLECTIVE, root-task=%d: find linkngb iteration %d, need to repeat for %lld particles. (took %g sec)\n",
+                     ThisTask, iter, ntot, timediff(t0, t1));
               fflush(stdout);
             }
 
@@ -329,14 +317,12 @@ void subfind_find_linkngb(void)
   myfree(Right);
   myfree(Left);
 
-
   myfree(Dist2list);
   myfree(Ngblist);
 
   if(SubThisTask == 0)
     printf("SUBFIND-COLLECTIVE, root-task=%d: Done with find_linkngb\n", ThisTask);
 }
-
 
 /*! \brief Evaluate function for the neighbor search algorithm.
  *
@@ -356,7 +342,6 @@ static int subfind_linkngb_evaluate(int target, int mode, int threadid)
   double dx, dy, dz, dist, r2;
   MyDouble xtmp, ytmp, ztmp;
 
-
   data_in local, *in;
   data_out out;
 
@@ -365,7 +350,7 @@ static int subfind_linkngb_evaluate(int target, int mode, int threadid)
       particle2in(&local, target, 0);
       in = &local;
 
-      numnodes = 1;
+      numnodes  = 1;
       firstnode = NULL;
     }
   else
@@ -375,7 +360,7 @@ static int subfind_linkngb_evaluate(int target, int mode, int threadid)
       generic_get_numnodes(target, &numnodes, &firstnode);
     }
 
-  pos = in->Pos;
+  pos  = in->Pos;
   hsml = in->DM_Hsml;
 
   numngb = 0;
@@ -389,18 +374,18 @@ static int subfind_linkngb_evaluate(int target, int mode, int threadid)
       else
         {
           no = firstnode[k];
-          no = SubNodes[no].u.d.nextnode;       /* open it */
+          no = SubNodes[no].u.d.nextnode; /* open it */
         }
 
       while(no >= 0)
         {
-          if(no < SubTree_MaxPart)      /* single particle */
+          if(no < SubTree_MaxPart) /* single particle */
             {
-              p = no;
+              p  = no;
               no = SubNextnode[no];
 
               dist = hsml;
-              dx = FOF_NEAREST_LONG_X(SubTree_Pos_list[3 * p + 0] - pos[0]);
+              dx   = FOF_NEAREST_LONG_X(SubTree_Pos_list[3 * p + 0] - pos[0]);
               if(dx > dist)
                 continue;
               dy = FOF_NEAREST_LONG_Y(SubTree_Pos_list[3 * p + 1] - pos[1]);
@@ -415,20 +400,21 @@ static int subfind_linkngb_evaluate(int target, int mode, int threadid)
               Dist2list[numngb] = r2;
               Ngblist[numngb++] = p;
             }
-          else if(no < SubTree_MaxPart + SubTree_MaxNodes)      /* internal node */
+          else if(no < SubTree_MaxPart + SubTree_MaxNodes) /* internal node */
             {
               if(mode == 1)
                 {
-                  if(no < SubTree_FirstNonTopLevelNode) /* we reached a top-level node again, which means that we are done with the branch */
+                  if(no < SubTree_FirstNonTopLevelNode) /* we reached a top-level node again, which means that we are done with the
+                                                           branch */
                     break;
                 }
 
               current = &SubNodes[no];
 
-              no = current->u.d.sibling;        /* in case the node can be discarded */
+              no = current->u.d.sibling; /* in case the node can be discarded */
 
               dist = hsml + 0.5 * current->len;
-              dx = FOF_NEAREST_LONG_X(current->center[0] - pos[0]);
+              dx   = FOF_NEAREST_LONG_X(current->center[0] - pos[0]);
               if(dx > dist)
                 continue;
               dy = FOF_NEAREST_LONG_Y(current->center[1] - pos[1]);
@@ -442,14 +428,14 @@ static int subfind_linkngb_evaluate(int target, int mode, int threadid)
               if(dx * dx + dy * dy + dz * dz > dist * dist)
                 continue;
 
-              no = current->u.d.nextnode;       /* ok, we need to open the node */
+              no = current->u.d.nextnode; /* ok, we need to open the node */
             }
           else
-            {                   /* pseudo particle */
+            { /* pseudo particle */
               if(mode == MODE_IMPORTED_PARTICLES)
                 terminate("mode == MODE_IMPORTED_PARTICLES");
 
-              if(target >= 0)   /* if no target is given, export will not occur */
+              if(target >= 0) /* if no target is given, export will not occur */
                 {
                   exported = 1;
 
@@ -460,28 +446,27 @@ static int subfind_linkngb_evaluate(int target, int mode, int threadid)
               no = SubNextnode[no - SubTree_MaxNodes];
             }
         }
-
     }
 
-  if(mode == MODE_LOCAL_PARTICLES)      /* local particle */
-    if(exported == 0)           /* completely local */
+  if(mode == MODE_LOCAL_PARTICLES) /* local particle */
+    if(exported == 0)              /* completely local */
       if(numngb >= All.DesLinkNgb)
         {
-          R2list = (r2type *) mymalloc("R2list", sizeof(r2type) * numngb);
+          R2list = (r2type *)mymalloc("R2list", sizeof(r2type) * numngb);
           for(i = 0; i < numngb; i++)
             {
               R2list[i].index = Ngblist[i];
-              R2list[i].r2 = Dist2list[i];
+              R2list[i].r2    = Dist2list[i];
             }
 
           qsort(R2list, numngb, sizeof(r2type), subfind_ngb_compare_dist);
 
           PS[target].Hsml = sqrt(R2list[All.DesLinkNgb - 1].r2);
-          numngb = All.DesLinkNgb;
+          numngb          = All.DesLinkNgb;
 
           for(i = 0; i < numngb; i++)
             {
-              Ngblist[i] = R2list[i].index;
+              Ngblist[i]   = R2list[i].index;
               Dist2list[i] = R2list[i].r2;
             }
 
@@ -499,7 +484,6 @@ static int subfind_linkngb_evaluate(int target, int mode, int threadid)
   return 0;
 }
 
-
 /*! \brief Prepares node export.
  *
  *  \param[in] no Index of node.
@@ -515,23 +499,22 @@ int subfind_treefind_collective_export_node_threads(int no, int i, int thread_id
 
   if(Thread[thread_id].Exportflag[task] != i)
     {
-      Thread[thread_id].Exportflag[task] = i;
-      int nexp = Thread[thread_id].Nexport++;
-      Thread[thread_id].PartList[nexp].Task = task;
+      Thread[thread_id].Exportflag[task]     = i;
+      int nexp                               = Thread[thread_id].Nexport++;
+      Thread[thread_id].PartList[nexp].Task  = task;
       Thread[thread_id].PartList[nexp].Index = i;
       Thread[thread_id].ExportSpace -= Thread[thread_id].ItemSize;
     }
 
-  int nexp = Thread[thread_id].NexportNodes++;
-  nexp = -1 - nexp;
-  struct datanodelist *nodelist = (struct datanodelist *) (((char *) Thread[thread_id].PartList) + Thread[thread_id].InitialSpace);
-  nodelist[nexp].Task = task;
-  nodelist[nexp].Index = i;
-  nodelist[nexp].Node = SubDomainNodeIndex[no - (SubTree_MaxPart + SubTree_MaxNodes)];
+  int nexp                      = Thread[thread_id].NexportNodes++;
+  nexp                          = -1 - nexp;
+  struct datanodelist *nodelist = (struct datanodelist *)(((char *)Thread[thread_id].PartList) + Thread[thread_id].InitialSpace);
+  nodelist[nexp].Task           = task;
+  nodelist[nexp].Index          = i;
+  nodelist[nexp].Node           = SubDomainNodeIndex[no - (SubTree_MaxPart + SubTree_MaxNodes)];
   Thread[thread_id].ExportSpace -= sizeof(struct datanodelist) + sizeof(int);
   return 0;
 }
-
 
 /*! \brief Comparison function for r2type objects.
  *
@@ -544,14 +527,13 @@ int subfind_treefind_collective_export_node_threads(int no, int i, int thread_id
  */
 static int subfind_ngb_compare_dist(const void *a, const void *b)
 {
-  if(((r2type *) a)->r2 < (((r2type *) b)->r2))
+  if(((r2type *)a)->r2 < (((r2type *)b)->r2))
     return -1;
 
-  if(((r2type *) a)->r2 > (((r2type *) b)->r2))
+  if(((r2type *)a)->r2 > (((r2type *)b)->r2))
     return +1;
 
   return 0;
 }
-
 
 #endif /* #ifdef SUBFIND */

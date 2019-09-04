@@ -25,24 +25,21 @@
  *                void compute_statistics(void)
  *                void energy_statistics(void)
  *                void compute_global_quantities_of_system(void)
- * 
+ *
  * \par Major modifications and contributions:
- * 
+ *
  * - DD.MM.YYYY Description
  * - 05.05.2018 Prepared file for public release -- Rainer Weinberger
  */
 
-
+#include <math.h>
 #include <mpi.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <math.h>
-
 
 #include "../main/allvars.h"
 #include "../main/proto.h"
-
 
 /*! \brief Computes new global statistics if needed (call of
  *         energy_statistics()).
@@ -52,18 +49,18 @@
 void compute_statistics(void)
 {
   /* check whether we want a full energy statistics */
-  if((All.Time - All.TimeLastStatistics) >= All.TimeBetStatistics && All.HighestActiveTimeBin == All.HighestOccupiedTimeBin)    /* allow only top-level synchronization points */
+  if((All.Time - All.TimeLastStatistics) >= All.TimeBetStatistics &&
+     All.HighestActiveTimeBin == All.HighestOccupiedTimeBin) /* allow only top-level synchronization points */
     {
       TIMER_START(CPU_LOGS);
 
-      energy_statistics();      /* compute and output energy statistics */
+      energy_statistics(); /* compute and output energy statistics */
 
       All.TimeLastStatistics += All.TimeBetStatistics;
 
       TIMER_STOP(CPU_LOGS);
     }
 }
-
 
 /*! \brief Compute global statistics of the system.
  *
@@ -85,21 +82,18 @@ void energy_statistics(void)
 
   if(ThisTask == 0)
     {
-      fprintf(FdEnergy,
-              "%g %g %g %g %g %g %g %g %g %g %g %g %g %g %g %g %g %g %g %g %g %g %g %g %g %g %g %g %g\n",
-              All.Time, SysState.EnergyInt, SysState.EnergyPot, SysState.EnergyKin, SysState.EnergyIntComp[0],
-              SysState.EnergyPotComp[0], SysState.EnergyKinComp[0], SysState.EnergyIntComp[1],
-              SysState.EnergyPotComp[1], SysState.EnergyKinComp[1], SysState.EnergyIntComp[2],
-              SysState.EnergyPotComp[2], SysState.EnergyKinComp[2], SysState.EnergyIntComp[3],
-              SysState.EnergyPotComp[3], SysState.EnergyKinComp[3], SysState.EnergyIntComp[4],
-              SysState.EnergyPotComp[4], SysState.EnergyKinComp[4], SysState.EnergyIntComp[5],
-              SysState.EnergyPotComp[5], SysState.EnergyKinComp[5], SysState.MassComp[0],
-              SysState.MassComp[1], SysState.MassComp[2], SysState.MassComp[3], SysState.MassComp[4], SysState.MassComp[5], egyinj_tot);
+      fprintf(FdEnergy, "%g %g %g %g %g %g %g %g %g %g %g %g %g %g %g %g %g %g %g %g %g %g %g %g %g %g %g %g %g\n", All.Time,
+              SysState.EnergyInt, SysState.EnergyPot, SysState.EnergyKin, SysState.EnergyIntComp[0], SysState.EnergyPotComp[0],
+              SysState.EnergyKinComp[0], SysState.EnergyIntComp[1], SysState.EnergyPotComp[1], SysState.EnergyKinComp[1],
+              SysState.EnergyIntComp[2], SysState.EnergyPotComp[2], SysState.EnergyKinComp[2], SysState.EnergyIntComp[3],
+              SysState.EnergyPotComp[3], SysState.EnergyKinComp[3], SysState.EnergyIntComp[4], SysState.EnergyPotComp[4],
+              SysState.EnergyKinComp[4], SysState.EnergyIntComp[5], SysState.EnergyPotComp[5], SysState.EnergyKinComp[5],
+              SysState.MassComp[0], SysState.MassComp[1], SysState.MassComp[2], SysState.MassComp[3], SysState.MassComp[4],
+              SysState.MassComp[5], egyinj_tot);
 
       myflush(FdEnergy);
     }
 }
-
 
 /*! \brief This routine computes various global properties of the particle
  *         distribution and stores the result in the struct `SysState'.
@@ -116,7 +110,6 @@ void compute_global_quantities_of_system(void)
   struct state_of_system sys;
   double egyspec, vel[3];
 
-
   for(n = 0; n < NTYPES; n++)
     {
       sys.MassComp[n] = sys.EnergyKinComp[n] = sys.EnergyPotComp[n] = sys.EnergyIntComp[n] = 0;
@@ -132,24 +125,27 @@ void compute_global_quantities_of_system(void)
 #if defined(SELFGRAVITY)
 #ifdef EVALPOTENTIAL
 #ifndef EXACT_GRAVITY_FOR_PARTICLE_TYPE
-      sys.EnergyPotComp[P[i].Type] += 0.5 * P[i].Mass * (P[i].Potential + All.G * P[i].Mass / (All.ForceSoftening[P[i].SofteningType] / 2.8)) / All.cf_atime;
-#else /* #ifndef EXACT_GRAVITY_FOR_PARTICLE_TYPE */
+      sys.EnergyPotComp[P[i].Type] +=
+          0.5 * P[i].Mass * (P[i].Potential + All.G * P[i].Mass / (All.ForceSoftening[P[i].SofteningType] / 2.8)) / All.cf_atime;
+#else  /* #ifndef EXACT_GRAVITY_FOR_PARTICLE_TYPE */
       /* ignore self-contribution from gravity if exact gravity is used */
       if(P[i].Type == EXACT_GRAVITY_FOR_PARTICLE_TYPE)
         sys.EnergyPotComp[P[i].Type] += 0.5 * P[i].Mass * P[i].Potential / All.cf_atime;
       else
-        sys.EnergyPotComp[P[i].Type] += 0.5 * P[i].Mass * (P[i].Potential + All.G * P[i].Mass / (All.ForceSoftening[P[i].SofteningType] / 2.8)) / All.cf_atime;
+        sys.EnergyPotComp[P[i].Type] +=
+            0.5 * P[i].Mass * (P[i].Potential + All.G * P[i].Mass / (All.ForceSoftening[P[i].SofteningType] / 2.8)) / All.cf_atime;
 #endif /* #ifndef EXACT_GRAVITY_FOR_PARTICLE_TYPE #else */
 #endif /* #ifdef EVALPOTENTIAL */
 #endif /* #if defined(SELFGRAVITY) */
 
 #if defined(EXTERNALGRAVITY)
 #if defined(SELFGRAVITY)
-      sys.EnergyPotComp[P[i].Type] += 0.5 * P[i].Mass * P[i].ExtPotential;      /* note: ExtPotential already included on P[].p.Potential, that's why only 0.5 is needed here to recover the rest */
-#else /* #if defined(SELFGRAVITY) */
+      sys.EnergyPotComp[P[i].Type] += 0.5 * P[i].Mass * P[i].ExtPotential; /* note: ExtPotential already included on P[].p.Potential,
+                                                                              that's why only 0.5 is needed here to recover the rest */
+#else                                                                      /* #if defined(SELFGRAVITY) */
       sys.EnergyPotComp[P[i].Type] += 1.0 * P[i].Mass * P[i].ExtPotential;
-#endif /* #if defined(SELFGRAVITY) #else */
-#endif /* #if defined(EXTERNALGRAVITY) */
+#endif                                                                     /* #if defined(SELFGRAVITY) #else */
+#endif                                                                     /* #if defined(EXTERNALGRAVITY) */
 
       if(P[i].Type == 0)
         {
@@ -163,7 +159,6 @@ void compute_global_quantities_of_system(void)
           egyspec = SphP[i].Utherm;
 
           sys.EnergyIntComp[0] += P[i].Mass * egyspec;
-
         }
       else
         {
@@ -239,8 +234,8 @@ void compute_global_quantities_of_system(void)
               SysState.AngMomentumComp[i][3] += SysState.AngMomentumComp[i][j] * SysState.AngMomentumComp[i][j];
             }
           SysState.CenterOfMassComp[i][3] = sqrt(SysState.CenterOfMassComp[i][3]);
-          SysState.MomentumComp[i][3] = sqrt(SysState.MomentumComp[i][3]);
-          SysState.AngMomentumComp[i][3] = sqrt(SysState.AngMomentumComp[i][3]);
+          SysState.MomentumComp[i][3]     = sqrt(SysState.MomentumComp[i][3]);
+          SysState.AngMomentumComp[i][3]  = sqrt(SysState.AngMomentumComp[i][3]);
         }
 
       SysState.CenterOfMass[3] = SysState.Momentum[3] = SysState.AngMomentum[3] = 0;
@@ -253,8 +248,8 @@ void compute_global_quantities_of_system(void)
         }
 
       SysState.CenterOfMass[3] = sqrt(SysState.CenterOfMass[3]);
-      SysState.Momentum[3] = sqrt(SysState.Momentum[3]);
-      SysState.AngMomentum[3] = sqrt(SysState.AngMomentum[3]);
+      SysState.Momentum[3]     = sqrt(SysState.Momentum[3]);
+      SysState.AngMomentum[3]  = sqrt(SysState.AngMomentum[3]);
     }
 
   /* give everyone the result, maybe the want to do something with it */

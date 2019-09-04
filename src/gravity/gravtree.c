@@ -36,49 +36,40 @@
  *                 void gravity_tree(int timebin)
  *                 static int gravity_evaluate(int target, int mode, int
  *                   threadid)
- * 
+ *
  * \par Major modifications and contributions:
- * 
+ *
  * - DD.MM.YYYY Description
  * - 20.05.2018 Prepared file for public release -- Rainer Weinberger
  */
 
-
+#include <math.h>
 #include <mpi.h>
 #include <stdlib.h>
 #include <string.h>
-#include <math.h>
 
-
+#include "../domain/domain.h"
 #include "../main/allvars.h"
 #include "../main/proto.h"
-#include "../domain/domain.h"
 
-
-static double ThreadsCosttotal[NUM_THREADS];    /*!< The total cost of the particles/nodes processed by each thread */
-static int ThreadFirstExec[NUM_THREADS];        /*!< Keeps track, if a given thread executes the gravity_primary_loop() for the first time */
-static int MeasureCostFlag;     /*!< Whether the tree costs are measured for the current time step */
-
+static double ThreadsCosttotal[NUM_THREADS]; /*!< The total cost of the particles/nodes processed by each thread */
+static int ThreadFirstExec[NUM_THREADS]; /*!< Keeps track, if a given thread executes the gravity_primary_loop() for the first time */
+static int MeasureCostFlag;              /*!< Whether the tree costs are measured for the current time step */
 
 static int gravity_evaluate(int target, int mode, int threadid);
 
-
 typedef gravdata_in data_in;
 
-
 typedef gravdata_out data_out;
-
 
 #ifdef DETAILEDTIMINGS
 static double tstart;
 static int current_timebin;
 #endif /* #ifdef DETAILEDTIMINGS */
 
-
 /* local data structure for collecting particle/cell data that is sent to other processors if needed */
 static data_in *DataIn, *DataGet;
 static data_out *DataResult, *DataOut;
-
 
 /*! \brief Routine that fills the relevant particle/cell data into the input
  *         structure defined above. Needed by generic_comm_helpers2.
@@ -89,7 +80,7 @@ static data_out *DataResult, *DataOut;
  *
  *  \return void
  */
-static void particle2in(data_in * in, int i, int firstnode)
+static void particle2in(data_in *in, int i, int firstnode)
 {
   if(i < NumPart)
     {
@@ -106,9 +97,9 @@ static void particle2in(data_in * in, int i, int firstnode)
             in->Pos[k] = P[i].Pos[k];
         }
 
-      in->Type = P[i].Type;
+      in->Type          = P[i].Type;
       in->SofteningType = P[i].SofteningType;
-      in->OldAcc = P[i].OldAcc;
+      in->OldAcc        = P[i].OldAcc;
     }
   else
     {
@@ -117,13 +108,12 @@ static void particle2in(data_in * in, int i, int firstnode)
       for(int k = 0; k < 3; k++)
         in->Pos[k] = Tree_Points[i].Pos[k];
 
-      in->Type = Tree_Points[i].Type;
+      in->Type          = Tree_Points[i].Type;
       in->SofteningType = Tree_Points[i].SofteningType;
-      in->OldAcc = Tree_Points[i].OldAcc;
+      in->OldAcc        = Tree_Points[i].OldAcc;
     }
   in->Firstnode = firstnode;
 }
-
 
 /*! \brief Routine to store or combine result data. Needed by
  *         generic_comm_helpers2.
@@ -136,9 +126,9 @@ static void particle2in(data_in * in, int i, int firstnode)
  *
  *  \return void
  */
-static void out2particle(data_out * out, int i, int mode)
+static void out2particle(data_out *out, int i, int mode)
 {
-  if(mode == MODE_LOCAL_PARTICLES)      /* initial store */
+  if(mode == MODE_LOCAL_PARTICLES) /* initial store */
     {
       if(i < NumPart)
         {
@@ -151,11 +141,10 @@ static void out2particle(data_out * out, int i, int mode)
 #ifdef OUTPUTGRAVINTERACTIONS
           P[i].GravInteractions = out->GravNinteractions;
 #endif /* #ifdef OUTPUTGRAVINTERACTIONS */
-
         }
       else
         {
-          int idx = Tree_ResultIndexList[i - Tree_ImportedNodeOffset];
+          int idx                                      = Tree_ResultIndexList[i - Tree_ImportedNodeOffset];
           Tree_ResultsActiveImported[idx].GravAccel[0] = out->Acc[0];
           Tree_ResultsActiveImported[idx].GravAccel[1] = out->Acc[1];
           Tree_ResultsActiveImported[idx].GravAccel[2] = out->Acc[2];
@@ -165,10 +154,9 @@ static void out2particle(data_out * out, int i, int mode)
 #ifdef OUTPUTGRAVINTERACTIONS
           Tree_ResultsActiveImported[idx].GravInteractions = out->GravNinteractions;
 #endif /* #ifdef OUTPUTGRAVINTERACTIONS */
-
         }
     }
-  else                          /* combine */
+  else /* combine */
     {
       if(i < NumPart)
         {
@@ -181,7 +169,6 @@ static void out2particle(data_out * out, int i, int mode)
 #ifdef OUTPUTGRAVINTERACTIONS
           P[i].GravInteractions += out->GravNinteractions;
 #endif /* #ifdef OUTPUTGRAVINTERACTIONS */
-
         }
       else
         {
@@ -195,14 +182,11 @@ static void out2particle(data_out * out, int i, int mode)
 #ifdef OUTPUTGRAVINTERACTIONS
           Tree_ResultsActiveImported[idx].GravInteractions += out->GravNinteractions;
 #endif /* #ifdef OUTPUTGRAVINTERACTIONS */
-
         }
     }
 }
 
-
 #include "../utils/generic_comm_helpers2.h"
-
 
 /*! \brief Primary loop of gravity calculation.
  *
@@ -261,12 +245,12 @@ static void gravity_primary_loop(void)
 #ifdef DETAILEDTIMINGS
   double t1 = second();
 
-  fprintf(FdDetailed, "%d %d %d %d %g %g\n", All.NumCurrentTiStep, current_timebin, DETAILED_TIMING_GRAVWALK, MODE_LOCAL_PARTICLES, timediff(tstart, t0), timediff(tstart, t1));
+  fprintf(FdDetailed, "%d %d %d %d %g %g\n", All.NumCurrentTiStep, current_timebin, DETAILED_TIMING_GRAVWALK, MODE_LOCAL_PARTICLES,
+          timediff(tstart, t0), timediff(tstart, t1));
 #endif /* #ifdef DETAILEDTIMINGS */
 
   TIMER_STOPSTART(CPU_TREEWALK1, CPU_TREEBALSNDRCV);
 }
-
 
 /*! \brief Secondary loop of gravity calculation.
  *
@@ -287,7 +271,7 @@ void gravity_secondary_loop(void)
   int i, cnt = 0;
   {
     int threadid = get_thread_num();
-    double cost = 0;
+    double cost  = 0;
 
     if(ThreadFirstExec[threadid])
       {
@@ -317,12 +301,12 @@ void gravity_secondary_loop(void)
 #ifdef DETAILEDTIMINGS
   double t1 = second();
 
-  fprintf(FdDetailed, "%d %d %d %d %g %g\n", All.NumCurrentTiStep, current_timebin, DETAILED_TIMING_GRAVWALK, MODE_IMPORTED_PARTICLES, timediff(tstart, t0), timediff(tstart, t1));
+  fprintf(FdDetailed, "%d %d %d %d %g %g\n", All.NumCurrentTiStep, current_timebin, DETAILED_TIMING_GRAVWALK, MODE_IMPORTED_PARTICLES,
+          timediff(tstart, t0), timediff(tstart, t1));
 #endif /* #ifdef DETAILEDTIMINGS */
 
   TIMER_STOPSTART(CPU_TREEWALK2, CPU_TREEBALSNDRCV);
 }
-
 
 /*! \brief This function computes the gravitational forces for all active
  *         particles.
@@ -375,7 +359,8 @@ void gravity_tree(int timebin)
   struct detailed_timings
   {
     double all, tree1, tree2, tree, commwait;
-    double sumnexport, costtotal, numnodes;;
+    double sumnexport, costtotal, numnodes;
+    ;
   } timer, tisum, timax;
   memset(&timer, 0, sizeof(struct detailed_timings));
   double Costtotal;
@@ -393,7 +378,7 @@ void gravity_tree(int timebin)
   for(i = 0; i < NUM_THREADS; i++)
     {
       ThreadsCosttotal[i] = 0;
-      ThreadFirstExec[i] = 0;
+      ThreadFirstExec[i]  = 0;
     }
 
   /* find the level (if any) for which we measure gravity cost */
@@ -406,14 +391,14 @@ void gravity_tree(int timebin)
         }
     }
 
-  if(TakeLevel < 0)             /* we have not found a matching slot */
+  if(TakeLevel < 0) /* we have not found a matching slot */
     {
       for(i = 0; i < GRAVCOSTLEVELS; i++)
         {
           if(All.LevelToTimeBin[i] < 0)
             {
-              All.LevelToTimeBin[i] = timebin;
-              TakeLevel = i;
+              All.LevelToTimeBin[i]       = timebin;
+              TakeLevel                   = i;
               All.LevelHasBeenMeasured[i] = 0;
               break;
             }
@@ -428,15 +413,15 @@ void gravity_tree(int timebin)
                 {
                   if(All.LevelToTimeBin[i] > All.HighestOccupiedGravTimeBin)
                     {
-                      All.LevelToTimeBin[i] = timebin;
-                      TakeLevel = i;
+                      All.LevelToTimeBin[i]       = timebin;
+                      TakeLevel                   = i;
                       All.LevelHasBeenMeasured[i] = 0;
                       break;
                     }
                   if(All.LevelToTimeBin[i] < All.HighestOccupiedGravTimeBin - (GRAVCOSTLEVELS - 1))
                     {
-                      All.LevelToTimeBin[i] = timebin;
-                      TakeLevel = i;
+                      All.LevelToTimeBin[i]       = timebin;
+                      TakeLevel                   = i;
                       All.LevelHasBeenMeasured[i] = 0;
                       break;
                     }
@@ -450,8 +435,8 @@ void gravity_tree(int timebin)
                         {
                           if(All.LevelToTimeBin[i] == All.HighestOccupiedGravTimeBin)
                             {
-                              All.LevelToTimeBin[i] = timebin;
-                              TakeLevel = i;
+                              All.LevelToTimeBin[i]       = timebin;
+                              TakeLevel                   = i;
                               All.LevelHasBeenMeasured[i] = 0;
                               break;
                             }
@@ -483,15 +468,15 @@ void gravity_tree(int timebin)
       {
         MeasureCostFlag = 1;
 
-        Thread[0].P_CostCount = mymalloc("Thread_P_CostCount", NumPart * sizeof(int));
+        Thread[0].P_CostCount          = mymalloc("Thread_P_CostCount", NumPart * sizeof(int));
         Thread[0].TreePoints_CostCount = mymalloc("Threads_TreePoints_CostCount", Tree_NumPartImported * sizeof(int));
-        Thread[0].Node_CostCount = mymalloc("Threads_Node_CostCount", Tree_NumNodes * sizeof(int));
+        Thread[0].Node_CostCount       = mymalloc("Threads_Node_CostCount", Tree_NumNodes * sizeof(int));
 
         for(i = 1; i < NUM_THREADS; i++)
           {
-            Thread[i].P_CostCount = mymalloc("Threads_P_CostCount", NumPart * sizeof(int));
+            Thread[i].P_CostCount          = mymalloc("Threads_P_CostCount", NumPart * sizeof(int));
             Thread[i].TreePoints_CostCount = mymalloc("Threads_TreePoints_CostCount", Tree_NumPartImported * sizeof(int));
-            Thread[i].Node_CostCount = mymalloc("Threads_Node_CostCount", Tree_NumNodes * sizeof(int));
+            Thread[i].Node_CostCount       = mymalloc("Threads_Node_CostCount", Tree_NumNodes * sizeof(int));
           }
 
         for(i = 0; i < NUM_THREADS; i++)
@@ -501,12 +486,11 @@ void gravity_tree(int timebin)
           ThreadFirstExec[i] = 1;
       }
 
-
   TIMER_STOPSTART(CPU_TREECOSTMEASURE, CPU_TREE);
 
   /* Create list of targets. We do this here to simplify the treatment of the two possible sources of points */
 
-  TargetList = mymalloc("TargetList", (NumPart + Tree_NumPartImported) * sizeof(int));
+  TargetList           = mymalloc("TargetList", (NumPart + Tree_NumPartImported) * sizeof(int));
   Tree_ResultIndexList = mymalloc("Tree_ResultIndexList", Tree_NumPartImported * sizeof(int));
 
   Nforces = 0;
@@ -527,7 +511,7 @@ void gravity_tree(int timebin)
 #endif /* #ifndef HIERARCHICAL_GRAVITY */
       {
         Tree_ResultIndexList[i] = ncount++;
-        TargetList[Nforces++] = i + Tree_ImportedNodeOffset;
+        TargetList[Nforces++]   = i + Tree_ImportedNodeOffset;
       }
 
   Tree_ResultsActiveImported = mymalloc("Tree_ResultsActiveImported", ncount * sizeof(struct resultsactiveimported_data));
@@ -543,7 +527,7 @@ void gravity_tree(int timebin)
   TIMER_STOPSTART(CPU_TREE, CPU_TREEBALSNDRCV);
 
 #ifdef DETAILEDTIMINGS
-  tstart = second();
+  tstart          = second();
   current_timebin = timebin;
 #endif /* #ifdef DETAILEDTIMINGS */
 
@@ -556,7 +540,8 @@ void gravity_tree(int timebin)
 #ifdef DETAILEDTIMINGS
   double tend = second();
 
-  fprintf(FdDetailed, "%d %d %d %d %g %g\n", All.NumCurrentTiStep, current_timebin, DETAILED_TIMING_GRAVWALK, MODE_FINISHED, timediff(tstart, tend), timediff(tstart, tend));
+  fprintf(FdDetailed, "%d %d %d %d %g %g\n", All.NumCurrentTiStep, current_timebin, DETAILED_TIMING_GRAVWALK, MODE_FINISHED,
+          timediff(tstart, tend), timediff(tstart, tend));
   fflush(FdDetailed);
 #endif /* #ifdef DETAILEDTIMINGS */
 
@@ -605,7 +590,8 @@ void gravity_tree(int timebin)
             {
               MPI_Sendrecv(&Tree_ResultsActiveImported[Recv_offset[recvTask]],
                            Recv_count[recvTask] * sizeof(struct resultsactiveimported_data), MPI_BYTE, recvTask, TAG_FOF_A,
-                           &tmp_results[Send_offset[recvTask]], Send_count[recvTask] * sizeof(struct resultsactiveimported_data), MPI_BYTE, recvTask, TAG_FOF_A, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
+                           &tmp_results[Send_offset[recvTask]], Send_count[recvTask] * sizeof(struct resultsactiveimported_data),
+                           MPI_BYTE, recvTask, TAG_FOF_A, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
             }
         }
     }
@@ -616,7 +602,6 @@ void gravity_tree(int timebin)
 
       for(k = 0; k < 3; k++)
         P[target].GravAccel[k] = tmp_results[i].GravAccel[k];
-
     }
 
   myfree(tmp_results);
@@ -666,7 +651,7 @@ void gravity_tree(int timebin)
   TIMER_STOPSTART(CPU_TREECOSTMEASURE, CPU_TREE);
 
   if(All.TypeOfOpeningCriterion == 1)
-    All.ErrTolTheta = 0;        /* This will switch to the relative opening criterion for the following force computations */
+    All.ErrTolTheta = 0; /* This will switch to the relative opening criterion for the following force computations */
 
   mpi_printf("GRAVTREE: tree-force is done.\n");
 
@@ -678,18 +663,20 @@ void gravity_tree(int timebin)
   for(i = 0; i < NUM_THREADS; i++)
     Costtotal += ThreadsCosttotal[i];
 
-  timer.tree1 = TIMER_DIFF(CPU_TREEWALK1);
-  timer.tree2 = TIMER_DIFF(CPU_TREEWALK2);
-  timer.tree = timer.tree1 + timer.tree2;
-  timer.commwait = TIMER_DIFF(CPU_TREEBALSNDRCV) + TIMER_DIFF(CPU_TREESENDBACK);
-  timer.all = timer.tree + timer.commwait + TIMER_DIFF(CPU_TREE) + TIMER_DIFF(CPU_TREECOSTMEASURE);
+  timer.tree1      = TIMER_DIFF(CPU_TREEWALK1);
+  timer.tree2      = TIMER_DIFF(CPU_TREEWALK2);
+  timer.tree       = timer.tree1 + timer.tree2;
+  timer.commwait   = TIMER_DIFF(CPU_TREEBALSNDRCV) + TIMER_DIFF(CPU_TREESENDBACK);
+  timer.all        = timer.tree + timer.commwait + TIMER_DIFF(CPU_TREE) + TIMER_DIFF(CPU_TREECOSTMEASURE);
   timer.sumnexport = SumNexport;
-  timer.costtotal = Costtotal;
-  timer.numnodes = Tree_NumNodes;
+  timer.costtotal  = Costtotal;
+  timer.numnodes   = Tree_NumNodes;
 
   MPI_Reduce(&iter, &maxiter, 1, MPI_INT, MPI_MAX, 0, MPI_COMM_WORLD);
-  MPI_Reduce((double *) &timer, (double *) &tisum, (int) (sizeof(struct detailed_timings) / sizeof(double)), MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD);
-  MPI_Reduce((double *) &timer, (double *) &timax, (int) (sizeof(struct detailed_timings) / sizeof(double)), MPI_DOUBLE, MPI_MAX, 0, MPI_COMM_WORLD);
+  MPI_Reduce((double *)&timer, (double *)&tisum, (int)(sizeof(struct detailed_timings) / sizeof(double)), MPI_DOUBLE, MPI_SUM, 0,
+             MPI_COMM_WORLD);
+  MPI_Reduce((double *)&timer, (double *)&timax, (int)(sizeof(struct detailed_timings) / sizeof(double)), MPI_DOUBLE, MPI_MAX, 0,
+             MPI_COMM_WORLD);
 
   All.TotNumOfForces += TimeBinsGravity.GlobalNActiveParticles;
 
@@ -697,24 +684,26 @@ void gravity_tree(int timebin)
     {
       fprintf(FdTimings, "Nf=%9lld  timebin=%d  total-Nf=%lld\n", TimeBinsGravity.GlobalNActiveParticles, timebin, All.TotNumOfForces);
 
-      fprintf(FdTimings, "   work-load balance: %g (%g %g), rel1to2: %g\n",
-              timax.tree / ((tisum.tree + 1e-20) / NTask),
-              timax.tree1 / ((tisum.tree1 + 1e-20) / NTask), timax.tree2 / ((tisum.tree2 + 1e-20) / NTask), tisum.tree1 / (tisum.tree1 + tisum.tree2 + 1e-20));
-      fprintf(FdTimings, "   number of iterations:  max=%d, exported fraction: %g\n", maxiter, tisum.sumnexport / (TimeBinsGravity.GlobalNActiveParticles + 1e-20));
+      fprintf(FdTimings, "   work-load balance: %g (%g %g), rel1to2: %g\n", timax.tree / ((tisum.tree + 1e-20) / NTask),
+              timax.tree1 / ((tisum.tree1 + 1e-20) / NTask), timax.tree2 / ((tisum.tree2 + 1e-20) / NTask),
+              tisum.tree1 / (tisum.tree1 + tisum.tree2 + 1e-20));
+      fprintf(FdTimings, "   number of iterations:  max=%d, exported fraction: %g\n", maxiter,
+              tisum.sumnexport / (TimeBinsGravity.GlobalNActiveParticles + 1e-20));
       fprintf(FdTimings, "   part/sec: raw=%g, effective=%g     ia/part: avg=%g\n",
               TimeBinsGravity.GlobalNActiveParticles / (tisum.tree + 1.0e-20),
-              TimeBinsGravity.GlobalNActiveParticles / ((timax.tree + 1.0e-20) * NTask), tisum.costtotal / (TimeBinsGravity.GlobalNActiveParticles + 1.0e-20));
+              TimeBinsGravity.GlobalNActiveParticles / ((timax.tree + 1.0e-20) * NTask),
+              tisum.costtotal / (TimeBinsGravity.GlobalNActiveParticles + 1.0e-20));
 
       fprintf(FdTimings, "   maximum number of nodes: %g, filled: %g\n", timax.numnodes, timax.numnodes / Tree_MaxNodes);
 
-      fprintf(FdTimings, "   avg times: all=%g  tree1=%g  tree2=%g  commwait=%g sec\n", tisum.all / NTask, tisum.tree1 / NTask, tisum.tree2 / NTask, tisum.commwait / NTask);
+      fprintf(FdTimings, "   avg times: all=%g  tree1=%g  tree2=%g  commwait=%g sec\n", tisum.all / NTask, tisum.tree1 / NTask,
+              tisum.tree2 / NTask, tisum.commwait / NTask);
 
       myflush(FdTimings);
     }
 
   TIMER_STOP(CPU_LOGS);
 }
-
 
 /*! \brief Evaluate-function for gravitational tree. Calls
  *         force_treeevaluate.
@@ -734,15 +723,15 @@ static int gravity_evaluate(int target, int mode, int threadid)
   if(mode == MODE_LOCAL_PARTICLES)
     {
       particle2in(&local, target, 0);
-      target_data = &local;
+      target_data   = &local;
       target_result = &out;
 
-      numnodes = 1;
+      numnodes  = 1;
       firstnode = NULL;
     }
   else
     {
-      target_data = &DataGet[target];
+      target_data   = &DataGet[target];
       target_result = &DataResult[target];
       generic_get_numnodes(target, &numnodes, &firstnode);
     }

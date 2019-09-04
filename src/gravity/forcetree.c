@@ -59,45 +59,39 @@
  *                void force_treefree(void)
  *                void dump_particles(void)
  *                int force_add_empty_nodes(void)
- * 
+ *
  * \par Major modifications and contributions:
- * 
+ *
  * - DD.MM.YYYY Description
  * - 17.05.2018 Prepared file for public release -- Rainer Weinberger
  */
 
-
+#include <math.h>
 #include <mpi.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <math.h>
 #include <time.h>
 
-
+#include "../domain/domain.h"
 #include "../main/allvars.h"
 #include "../main/proto.h"
-#include "../domain/domain.h"
-
 
 static int *th_list;
 static unsigned char *level_list;
 int NTreeInsert;
 
-
 #ifdef FOF
 #ifndef FOF_SECONDARY_LINK_TARGET_TYPES
-#define FOF_SECONDARY_LINK_TARGET_TYPES   FOF_PRIMARY_LINK_TYPES
+#define FOF_SECONDARY_LINK_TARGET_TYPES FOF_PRIMARY_LINK_TYPES
 #endif /* #ifndef FOF_SECONDARY_LINK_TARGET_TYPES */
 #endif /* #ifdef FOF */
-
 
 #ifdef HIERARCHICAL_GRAVITY
 #define INDEX(idx) (TimeBinsGravity.ActiveParticleList[idx])
 #else /* #ifdef HIERARCHICAL_GRAVITY */
 #define INDEX(idx) (idx)
 #endif /* #ifdef HIERARCHICAL_GRAVITY #else */
-
 
 /*! \brief Triggers forcetree construction until successful.
  *
@@ -125,25 +119,25 @@ int construct_forcetree(int mode, int optimized_domain_mapping, int insert_only_
        * during the first loop.
        */
       if(insert_only_primary != 2 || Tree_NumNodes < 0)
-        force_treeallocate(NumPart, All.MaxPart);       /* reallocate force tree structure */
+        force_treeallocate(NumPart, All.MaxPart); /* reallocate force tree structure */
 
       /* prepare variables for force_treebuild call */
-      switch (mode)
+      switch(mode)
         {
-        case 0:                /* all particles */
-          {
-            npart = NumPart;
-            break;
-          }
-        case 1:                /* only gas particles */
-          {
-            npart = NumGas;
-            break;
-          }
-        default:
-          {
-            mpi_terminate("FORCETREE: construct_forcetree: invalid mode!\n");
-          }
+          case 0: /* all particles */
+            {
+              npart = NumPart;
+              break;
+            }
+          case 1: /* only gas particles */
+            {
+              npart = NumGas;
+              break;
+            }
+          default:
+            {
+              mpi_terminate("FORCETREE: construct_forcetree: invalid mode!\n");
+            }
         }
 
       Tree_NumNodes = force_treebuild(npart, optimized_domain_mapping, insert_only_primary, timebin);
@@ -153,7 +147,6 @@ int construct_forcetree(int mode, int optimized_domain_mapping, int insert_only_
   return Tree_NumNodes;
 }
 
-
 /*! \brief Constructs the gravitational oct-tree and handles errors.
  *
  *  \param[in] npart Number of particles on local task.
@@ -162,7 +155,7 @@ int construct_forcetree(int mode, int optimized_domain_mapping, int insert_only_
  *  \param[in] insert_only_primary If this is set, only particles of the types
  *             set in FOF_PRIMARY_LINK_TYPES are inserted.
  *  \param[in] timebin Current timebin; needed for HIERARCHICAL_GRAVITY.
- * 
+ *
  *  \return number of local+top nodes of the constructed tree.
  */
 int force_treebuild(int npart, int optimized_domain_mapping, int insert_only_primary, int timebin)
@@ -170,9 +163,9 @@ int force_treebuild(int npart, int optimized_domain_mapping, int insert_only_pri
   int i, flag;
 
 #ifdef HIERARCHICAL_GRAVITY
-  NTreeInsert = TimeBinsGravity.NActiveParticles;
+  NTreeInsert              = TimeBinsGravity.NActiveParticles;
   optimized_domain_mapping = 0;
-#else /* #ifdef HIERARCHICAL_GRAVITY */
+#else  /* #ifdef HIERARCHICAL_GRAVITY */
   NTreeInsert = npart;
 #endif /* #ifdef HIERARCHICAL_GRAVITY #else */
 
@@ -202,7 +195,7 @@ int force_treebuild(int npart, int optimized_domain_mapping, int insert_only_pri
 
       if(flag == -3)
         {
-          /* we need to do an extra domain decomposition to recover from an out-of-box condition for a particle, 
+          /* we need to do an extra domain decomposition to recover from an out-of-box condition for a particle,
              which can happen if GRAVITY_NOT_PERIODIC is used */
           ngb_treefree();
           domain_free();
@@ -221,20 +214,20 @@ int force_treebuild(int npart, int optimized_domain_mapping, int insert_only_pri
             {
               char buf[500];
               sprintf(buf,
-                      "task %d: looks like a serious problem in tree construction, stopping with particle dump.  Tree_NumNodes=%d Tree_MaxNodes=%d  Tree_NumPartImported=%d NumPart=%d\n",
+                      "task %d: looks like a serious problem in tree construction, stopping with particle dump.  Tree_NumNodes=%d "
+                      "Tree_MaxNodes=%d  Tree_NumPartImported=%d NumPart=%d\n",
                       ThisTask, Tree_NumNodes, Tree_MaxNodes, Tree_NumPartImported, NumPart);
               dump_particles();
               terminate(buf);
             }
         }
 
-      TIMER_STOP(CPU_TREEBUILD);        /* stop timer before returning */
-      return -1;                /* stop right here with error code to invoke a new call of this function, possibly with changed values for npart */
-    }                           /* if(flag < 0) */
+      TIMER_STOP(CPU_TREEBUILD); /* stop timer before returning */
+      return -1; /* stop right here with error code to invoke a new call of this function, possibly with changed values for npart */
+    }            /* if(flag < 0) */
 
-
-  Nextnode = (int *) mymalloc_movable(&Nextnode, "Nextnode", (Tree_MaxPart + NTopleaves + Tree_NumPartImported) * sizeof(int));
-  Father = (int *) mymalloc_movable(&Father, "Father", (Tree_MaxPart + Tree_NumPartImported) * sizeof(int));
+  Nextnode = (int *)mymalloc_movable(&Nextnode, "Nextnode", (Tree_MaxPart + NTopleaves + Tree_NumPartImported) * sizeof(int));
+  Father   = (int *)mymalloc_movable(&Father, "Father", (Tree_MaxPart + Tree_NumPartImported) * sizeof(int));
 
   for(i = 0; i < Tree_MaxPart + Tree_NumPartImported; i++)
     Father[i] = -1;
@@ -251,7 +244,7 @@ int force_treebuild(int npart, int optimized_domain_mapping, int insert_only_pri
 
   if(last >= Tree_MaxPart)
     {
-      if(last >= Tree_MaxPart + Tree_MaxNodes)  /* a pseudo-particle or imported particle */
+      if(last >= Tree_MaxPart + Tree_MaxNodes) /* a pseudo-particle or imported particle */
         Nextnode[last - Tree_MaxNodes] = -1;
       else
         Nodes[last].u.d.nextnode = -1;
@@ -272,14 +265,16 @@ int force_treebuild(int npart, int optimized_domain_mapping, int insert_only_pri
   if(timebin == All.HighestOccupiedGravTimeBin)
 #endif /* #ifdef HIERARCHICAL_GRAVITY */
     {
-      double locdata[2] = { Tree_NumPartImported, Tree_NumNodes }, sumdata[2];
+      double locdata[2] = {Tree_NumPartImported, Tree_NumNodes}, sumdata[2];
       MPI_Reduce(locdata, sumdata, 2, MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD);
       double tot_imported = sumdata[0];
       double tot_numnodes = sumdata[1];
 
-      mpi_printf("FORCETREE: Tree construction done.  <avg imported/local ratio>=%g <numnodes>=%g NTopnodes=%d NTopleaves=%d tree-build-scalability=%g\n",
-                 tot_imported / (All.TotNumPart + 1.0e-60),
-                 tot_numnodes / NTask, NTopnodes, NTopleaves, ((double) ((tot_numnodes - NTask * ((double) NTopnodes)) + NTopnodes)) / (tot_numnodes + 1.0e-60));
+      mpi_printf(
+          "FORCETREE: Tree construction done.  <avg imported/local ratio>=%g <numnodes>=%g NTopnodes=%d NTopleaves=%d "
+          "tree-build-scalability=%g\n",
+          tot_imported / (All.TotNumPart + 1.0e-60), tot_numnodes / NTask, NTopnodes, NTopleaves,
+          ((double)((tot_numnodes - NTask * ((double)NTopnodes)) + NTopnodes)) / (tot_numnodes + 1.0e-60));
     }
 #ifdef HIERARCHICAL_GRAVITY
   else
@@ -290,7 +285,6 @@ int force_treebuild(int npart, int optimized_domain_mapping, int insert_only_pri
 
   return Tree_NumNodes;
 }
-
 
 /*! \brief Constructs the gravitational oct-tree.
  *
@@ -314,7 +308,7 @@ int force_treebuild(int npart, int optimized_domain_mapping, int insert_only_pri
  *  \param[in] insert_only_primary If this is set, only particles of the types
  *             set in FOF_PRIMARY_LINK_TYPES are inserted.
  *  \param[in] timebin (unused).
- * 
+ *
  *  \return if successful returns the number of local+top nodes of the
  *             constructed tree;
  *          -1 if the number of allocated tree nodes is too small;
@@ -341,8 +335,8 @@ int force_treebuild_construct(int npart, int optimized_domain_mapping, int inser
 #endif /* #if !defined(GRAVITY_NOT_PERIODIC) */
 
   /* create an empty root node  */
-  Tree_NextFreeNode = Tree_MaxPart;     /* index of first free node */
-  struct NODE *nfreep = &Nodes[Tree_NextFreeNode];      /* select first node        */
+  Tree_NextFreeNode   = Tree_MaxPart;              /* index of first free node */
+  struct NODE *nfreep = &Nodes[Tree_NextFreeNode]; /* select first node        */
 
   for(j = 0; j < 8; j++)
     nfreep->u.suns[j] = -1;
@@ -369,14 +363,17 @@ int force_treebuild_construct(int npart, int optimized_domain_mapping, int inser
    * top-level tree for the high-resolution inset
    */
 
-  /* we first do a dummy allocation here that we'll resize later if needed, in which case the following arrays will have to be moved once. */
+  /* we first do a dummy allocation here that we'll resize later if needed, in which case the following arrays will have to be moved
+   * once. */
   int guess_nimported = 1.2 * NumPart;
 
-  Tree_Points = (struct treepoint_data *) mymalloc_movable(&Tree_Points, "Tree_Points", guess_nimported * sizeof(struct treepoint_data));
+  Tree_Points =
+      (struct treepoint_data *)mymalloc_movable(&Tree_Points, "Tree_Points", guess_nimported * sizeof(struct treepoint_data));
 
-  th_list = (int *) mymalloc_movable(&th_list, "th_list", NumPart * sizeof(int));
-  level_list = (unsigned char *) mymalloc_movable(&level_list, "level_list", NumPart * sizeof(unsigned char));
-  Tree_IntPos_list = (unsigned long long *) mymalloc_movable(&Tree_IntPos_list, "Tree_IntPos_list", 3 * NumPart * sizeof(unsigned long long));
+  th_list    = (int *)mymalloc_movable(&th_list, "th_list", NumPart * sizeof(int));
+  level_list = (unsigned char *)mymalloc_movable(&level_list, "level_list", NumPart * sizeof(unsigned char));
+  Tree_IntPos_list =
+      (unsigned long long *)mymalloc_movable(&Tree_IntPos_list, "Tree_IntPos_list", 3 * NumPart * sizeof(unsigned long long));
 
   if(NumPart < NTreeInsert)
     {
@@ -423,17 +420,19 @@ int force_treebuild_construct(int npart, int optimized_domain_mapping, int inser
   MPI_Allreduce(&flag, &flag_sum, 1, MPI_INT, MPI_SUM, MPI_COMM_WORLD);
   if(flag_sum)
     {
-      mpi_printf("FORCETREE: Particle out of domain box condition was triggered. Need to do an (unplanned) new domain decomposition.\n");
+      mpi_printf(
+          "FORCETREE: Particle out of domain box condition was triggered. Need to do an (unplanned) new domain decomposition.\n");
       myfree(Tree_IntPos_list);
       myfree(level_list);
       myfree(th_list);
       return -3;
     }
-#else /* #if defined(GRAVITY_NOT_PERIODIC) */
+#else  /* #if defined(GRAVITY_NOT_PERIODIC) */
   if(flag)
     {
       char buf[1000];
-      sprintf(buf, "i=%d ID=%lld type=%d moved out of box. Pos[j=%d]=%g DomainCorner[%d]=%g DomainLen=%g", i, (long long) P[i].ID, P[i].Type, j, P[i].Pos[j], j, DomainCorner[j], DomainLen);
+      sprintf(buf, "i=%d ID=%lld type=%d moved out of box. Pos[j=%d]=%g DomainCorner[%d]=%g DomainLen=%g", i, (long long)P[i].ID,
+              P[i].Type, j, P[i].Pos[j], j, DomainCorner[j], DomainLen);
       terminate(buf);
     }
 #endif /* #if defined(GRAVITY_NOT_PERIODIC) #else */
@@ -453,19 +452,19 @@ int force_treebuild_construct(int npart, int optimized_domain_mapping, int inser
 #endif /* #ifdef PLACEHIGHRESREGION */
         mass_lowres += P[i].Mass;
     }
-  double mass_pmregions[2] = { mass_lowres, mass_highres };
+  double mass_pmregions[2] = {mass_lowres, mass_highres};
   MPI_Allreduce(mass_pmregions, All.MassPMregions, 2, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
 #endif /* #if defined(EVALPOTENTIAL) && defined(PMGRID) && !defined(GRAVITY_NOT_PERIODIC) */
 
   /* now we determine for each point the insertion top-level node, and the task on which this lies */
   if(optimized_domain_mapping)
     {
-      TaskCost = mymalloc("TaskCost", NTask * sizeof(double));
-      TaskCount = mymalloc("TaskCount", NTask * sizeof(int));
-      DomainCost = mymalloc("DomainCost", NTopleaves * sizeof(double));
+      TaskCost    = mymalloc("TaskCost", NTask * sizeof(double));
+      TaskCount   = mymalloc("TaskCount", NTask * sizeof(int));
+      DomainCost  = mymalloc("DomainCost", NTopleaves * sizeof(double));
       DomainCount = mymalloc("DomainCount", NTopleaves * sizeof(int));
-      ListNoData = mymalloc("ListNoData", NTopleaves * sizeof(struct no_list_data));
-      no_place = mymalloc("no_place", NTopleaves * sizeof(int));
+      ListNoData  = mymalloc("ListNoData", NTopleaves * sizeof(struct no_list_data));
+      no_place    = mymalloc("no_place", NTopleaves * sizeof(int));
 
       memset(no_place, -1, NTopleaves * sizeof(int));
 
@@ -490,16 +489,16 @@ int force_treebuild_construct(int npart, int optimized_domain_mapping, int inser
 
       posp = &Tree_Pos_list[i * 3];
 
-      unsigned long long xxb = force_double_to_int(((*posp++ - DomainCorner[0]) * DomainInverseLen) + 1.0);
-      unsigned long long yyb = force_double_to_int(((*posp++ - DomainCorner[1]) * DomainInverseLen) + 1.0);
-      unsigned long long zzb = force_double_to_int(((*posp++ - DomainCorner[2]) * DomainInverseLen) + 1.0);
-      unsigned long long mask = ((unsigned long long) 1) << (52 - 1);
-      unsigned char shiftx = (52 - 1);
-      unsigned char shifty = (52 - 2);
-      unsigned char shiftz = (52 - 3);
-      unsigned char levels = 0;
+      unsigned long long xxb  = force_double_to_int(((*posp++ - DomainCorner[0]) * DomainInverseLen) + 1.0);
+      unsigned long long yyb  = force_double_to_int(((*posp++ - DomainCorner[1]) * DomainInverseLen) + 1.0);
+      unsigned long long zzb  = force_double_to_int(((*posp++ - DomainCorner[2]) * DomainInverseLen) + 1.0);
+      unsigned long long mask = ((unsigned long long)1) << (52 - 1);
+      unsigned char shiftx    = (52 - 1);
+      unsigned char shifty    = (52 - 2);
+      unsigned char shiftz    = (52 - 3);
+      unsigned char levels    = 0;
 
-      intposp = &Tree_IntPos_list[i * 3];
+      intposp    = &Tree_IntPos_list[i * 3];
       *intposp++ = xxb;
       *intposp++ = yyb;
       *intposp++ = zzb;
@@ -507,7 +506,8 @@ int force_treebuild_construct(int npart, int optimized_domain_mapping, int inser
       no = 0;
       while(TopNodes[no].Daughter >= 0) /* walk down top tree to find correct leaf */
         {
-          unsigned char subnode = (((unsigned char) ((xxb & mask) >> (shiftx--))) | ((unsigned char) ((yyb & mask) >> (shifty--))) | ((unsigned char) ((zzb & mask) >> (shiftz--))));
+          unsigned char subnode = (((unsigned char)((xxb & mask) >> (shiftx--))) | ((unsigned char)((yyb & mask) >> (shifty--))) |
+                                   ((unsigned char)((zzb & mask) >> (shiftz--))));
 
           mask >>= 1;
           levels++;
@@ -517,7 +517,7 @@ int force_treebuild_construct(int npart, int optimized_domain_mapping, int inser
 
       no = TopNodes[no].Leaf;
 
-      th_list[i] = no;
+      th_list[i]    = no;
       level_list[i] = levels;
 
       if(optimized_domain_mapping)
@@ -556,11 +556,11 @@ int force_treebuild_construct(int npart, int optimized_domain_mapping, int inser
               else
                 {
                   Send_count[task]++;
-                  p = count_ListNoData++;
-                  no_place[no] = p;
-                  ListNoData[p].task = task;
-                  ListNoData[p].no = no;
-                  ListNoData[p].domainCost = cost;
+                  p                         = count_ListNoData++;
+                  no_place[no]              = p;
+                  ListNoData[p].task        = task;
+                  ListNoData[p].no          = no;
+                  ListNoData[p].domainCost  = cost;
                   ListNoData[p].domainCount = 1;
                 }
             }
@@ -578,7 +578,8 @@ int force_treebuild_construct(int npart, int optimized_domain_mapping, int inser
 
           mpi_printf("FORCETREE: current balance=  %g | %g\n", current_balance, impact);
 
-          if(All.HighestActiveTimeBin < All.SmallestTimeBinWithDomainDecomposition)     /* only do this for steps which did not do a domain decomposition */
+          if(All.HighestActiveTimeBin <
+             All.SmallestTimeBinWithDomainDecomposition) /* only do this for steps which did not do a domain decomposition */
             {
               if(impact > MAX_IMPACT_BEFORE_OPTIMIZATION)
                 {
@@ -587,7 +588,10 @@ int force_treebuild_construct(int npart, int optimized_domain_mapping, int inser
                 }
               else
                 {
-                  mpi_printf("FORCETREE: we're not trying to optimize further because overall imbalance impact is only %g (threshold is %g)\n", impact, MAX_IMPACT_BEFORE_OPTIMIZATION);
+                  mpi_printf(
+                      "FORCETREE: we're not trying to optimize further because overall imbalance impact is only %g (threshold is "
+                      "%g)\n",
+                      impact, MAX_IMPACT_BEFORE_OPTIMIZATION);
                   memcpy(DomainNewTask, DomainTask, NTopleaves * sizeof(int));
                 }
             }
@@ -618,13 +622,13 @@ int force_treebuild_construct(int npart, int optimized_domain_mapping, int inser
       Force_Send_count[j] = 0;
     }
 
-  for(idx = 0; idx < NTreeInsert; idx++)        /* make list of insertion top leaf and task for all particles */
+  for(idx = 0; idx < NTreeInsert; idx++) /* make list of insertion top leaf and task for all particles */
     {
       i = INDEX(idx);
       if(i < 0)
         continue;
 
-      no = th_list[i];
+      no         = th_list[i];
       th_list[i] = DomainNodeIndex[no];
 
       int task = DomainNewTask[no];
@@ -653,32 +657,33 @@ int force_treebuild_construct(int npart, int optimized_domain_mapping, int inser
   if(Tree_NumPartImported > guess_nimported)
     {
       printf("ThisTask=%d: Tree_NumPartImported=%d  NumPart=%d\n", ThisTask, Tree_NumPartImported, NumPart);
-      Tree_Points = (struct treepoint_data *) myrealloc_movable(Tree_Points, Tree_NumPartImported * sizeof(struct treepoint_data));
+      Tree_Points = (struct treepoint_data *)myrealloc_movable(Tree_Points, Tree_NumPartImported * sizeof(struct treepoint_data));
     }
 
   if(Tree_NumPartImported > 0.25 * NumPart)
     {
-      Tree_MaxNodes = (int) (All.TreeAllocFactor * (NumPart + Tree_NumPartImported)) + NTopnodes;
+      Tree_MaxNodes = (int)(All.TreeAllocFactor * (NumPart + Tree_NumPartImported)) + NTopnodes;
 
       Nodes += Tree_MaxPart;
-      Nodes = (struct NODE *) myrealloc_movable(Nodes, (Tree_MaxNodes + 1) * sizeof(struct NODE));
+      Nodes = (struct NODE *)myrealloc_movable(Nodes, (Tree_MaxNodes + 1) * sizeof(struct NODE));
       Nodes -= Tree_MaxPart;
 
 #ifdef MULTIPLE_NODE_SOFTENING
       ExtNodes += Tree_MaxPart;
-      ExtNodes = (struct ExtNODE *) myrealloc_movable(ExtNodes, (Tree_MaxNodes + 1) * sizeof(struct ExtNODE));
+      ExtNodes = (struct ExtNODE *)myrealloc_movable(ExtNodes, (Tree_MaxNodes + 1) * sizeof(struct ExtNODE));
       ExtNodes -= Tree_MaxPart;
 #endif /* #ifdef MULTIPLE_NODE_SOFTENING */
     }
 
-  struct treepoint_data *export_Tree_Points = (struct treepoint_data *) mymalloc("export_Tree_Points", Tree_NumPartExported * sizeof(struct treepoint_data));
+  struct treepoint_data *export_Tree_Points =
+      (struct treepoint_data *)mymalloc("export_Tree_Points", Tree_NumPartExported * sizeof(struct treepoint_data));
 
   for(j = 0; j < NTask; j++)
     {
       Force_Send_count[j] = 0;
     }
 
-  for(idx = 0; idx < NTreeInsert; idx++)        /* prepare particle data to be copied to other tasks */
+  for(idx = 0; idx < NTreeInsert; idx++) /* prepare particle data to be copied to other tasks */
     {
       i = INDEX(idx);
       if(i < 0)
@@ -691,19 +696,19 @@ int force_treebuild_construct(int npart, int optimized_domain_mapping, int inser
           int n = Force_Send_offset[task] + Force_Send_count[task]++;
 
           /* this point has to go to another task */
-          export_Tree_Points[n].Pos[0] = Tree_Pos_list[3 * i + 0];
-          export_Tree_Points[n].Pos[1] = Tree_Pos_list[3 * i + 1];
-          export_Tree_Points[n].Pos[2] = Tree_Pos_list[3 * i + 2];
-          export_Tree_Points[n].IntPos[0] = Tree_IntPos_list[3 * i + 0];
-          export_Tree_Points[n].IntPos[1] = Tree_IntPos_list[3 * i + 1];
-          export_Tree_Points[n].IntPos[2] = Tree_IntPos_list[3 * i + 2];
-          export_Tree_Points[n].Mass = P[i].Mass;
-          export_Tree_Points[n].OldAcc = P[i].OldAcc;
+          export_Tree_Points[n].Pos[0]        = Tree_Pos_list[3 * i + 0];
+          export_Tree_Points[n].Pos[1]        = Tree_Pos_list[3 * i + 1];
+          export_Tree_Points[n].Pos[2]        = Tree_Pos_list[3 * i + 2];
+          export_Tree_Points[n].IntPos[0]     = Tree_IntPos_list[3 * i + 0];
+          export_Tree_Points[n].IntPos[1]     = Tree_IntPos_list[3 * i + 1];
+          export_Tree_Points[n].IntPos[2]     = Tree_IntPos_list[3 * i + 2];
+          export_Tree_Points[n].Mass          = P[i].Mass;
+          export_Tree_Points[n].OldAcc        = P[i].OldAcc;
           export_Tree_Points[n].SofteningType = P[i].SofteningType;
-          export_Tree_Points[n].index = i;
-          export_Tree_Points[n].Type = P[i].Type;
-          export_Tree_Points[n].th = th_list[i];
-          export_Tree_Points[n].level = level_list[i];
+          export_Tree_Points[n].index         = i;
+          export_Tree_Points[n].Type          = P[i].Type;
+          export_Tree_Points[n].th            = th_list[i];
+          export_Tree_Points[n].level         = level_list[i];
 #ifndef HIERARCHICAL_GRAVITY
           if(TimeBinSynchronized[P[i].TimeBinGrav])
             export_Tree_Points[n].ActiveFlag = 1;
@@ -719,9 +724,10 @@ int force_treebuild_construct(int npart, int optimized_domain_mapping, int inser
       recvTask = ThisTask ^ ngrp;
       if(recvTask < NTask)
         if(Force_Send_count[recvTask] > 0 || Force_Recv_count[recvTask] > 0)
-          MPI_Sendrecv(&export_Tree_Points[Force_Send_offset[recvTask]], Force_Send_count[recvTask] * sizeof(struct treepoint_data), MPI_BYTE,
-                       recvTask, TAG_DENS_A, &Tree_Points[Force_Recv_offset[recvTask]], Force_Recv_count[recvTask] * sizeof(struct treepoint_data),
-                       MPI_BYTE, recvTask, TAG_DENS_A, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
+          MPI_Sendrecv(&export_Tree_Points[Force_Send_offset[recvTask]], Force_Send_count[recvTask] * sizeof(struct treepoint_data),
+                       MPI_BYTE, recvTask, TAG_DENS_A, &Tree_Points[Force_Recv_offset[recvTask]],
+                       Force_Recv_count[recvTask] * sizeof(struct treepoint_data), MPI_BYTE, recvTask, TAG_DENS_A, MPI_COMM_WORLD,
+                       MPI_STATUS_IGNORE);
     }
 
   myfree(export_Tree_Points);
@@ -767,11 +773,10 @@ int force_treebuild_construct(int npart, int optimized_domain_mapping, int inser
         }
     }
 
-  if(full_flag == 0)            /* only continue if previous step was successful */
+  if(full_flag == 0) /* only continue if previous step was successful */
     {
       for(i = 0; i < Tree_NumPartImported; i++)
         {
-
 #ifdef NO_GAS_SELFGRAVITY
           if(Tree_Points[i].Type == 0)
             continue;
@@ -792,7 +797,8 @@ int force_treebuild_construct(int npart, int optimized_domain_mapping, int inser
                 continue;
             }
 #endif /* #if defined(FOF) || defined(SUBFIND) */
-          if(force_treebuild_insert_single_point(i + Tree_ImportedNodeOffset, Tree_Points[i].IntPos, Tree_Points[i].th, Tree_Points[i].level) < 0)
+          if(force_treebuild_insert_single_point(i + Tree_ImportedNodeOffset, Tree_Points[i].IntPos, Tree_Points[i].th,
+                                                 Tree_Points[i].level) < 0)
             {
               full_flag = 1;
               break;
@@ -815,7 +821,6 @@ int force_treebuild_construct(int npart, int optimized_domain_mapping, int inser
   return Tree_NumNodes;
 }
 
-
 /*! \brief Inserts a single particle into the gravitational tree.
  *
  *  \param[in] i Index of particle.
@@ -829,23 +834,24 @@ int force_treebuild_construct(int npart, int optimized_domain_mapping, int inser
 int force_treebuild_insert_single_point(int i, unsigned long long *intpos, int th, unsigned char levels)
 {
   int j, parent = -1;
-  unsigned char subnode = 0;
-  unsigned long long xxb = intpos[0];
-  unsigned long long yyb = intpos[1];
-  unsigned long long zzb = intpos[2];
-  unsigned long long mask = ((unsigned long long) 1) << ((52 - 1) - levels);
-  unsigned char shiftx = (52 - 1) - levels;
-  unsigned char shifty = (52 - 2) - levels;
-  unsigned char shiftz = (52 - 3) - levels;
+  unsigned char subnode       = 0;
+  unsigned long long xxb      = intpos[0];
+  unsigned long long yyb      = intpos[1];
+  unsigned long long zzb      = intpos[2];
+  unsigned long long mask     = ((unsigned long long)1) << ((52 - 1) - levels);
+  unsigned char shiftx        = (52 - 1) - levels;
+  unsigned char shifty        = (52 - 2) - levels;
+  unsigned char shiftz        = (52 - 3) - levels;
   signed long long centermask = (0xFFF0000000000000llu);
   unsigned long long *intppos;
   centermask >>= levels;
 
   while(1)
     {
-      if(th >= Tree_MaxPart && th < Tree_ImportedNodeOffset)    /* we are dealing with an internal node */
+      if(th >= Tree_MaxPart && th < Tree_ImportedNodeOffset) /* we are dealing with an internal node */
         {
-          subnode = (((unsigned char) ((xxb & mask) >> (shiftx--))) | ((unsigned char) ((yyb & mask) >> (shifty--))) | ((unsigned char) ((zzb & mask) >> (shiftz--))));
+          subnode = (((unsigned char)((xxb & mask) >> (shiftx--))) | ((unsigned char)((yyb & mask) >> (shifty--))) |
+                     ((unsigned char)((zzb & mask) >> (shiftz--))));
 
           centermask >>= 1;
           mask >>= 1;
@@ -855,7 +861,7 @@ int force_treebuild_insert_single_point(int i, unsigned long long *intpos, int t
             {
               /* seems like we're dealing with particles at identical (or extremely close)
                * locations. Shift subnode index to allow tree construction. Note: Multipole moments
-               * of tree are still correct, but one should MAX_TREE_LEVEL large enough to have 
+               * of tree are still correct, but one should MAX_TREE_LEVEL large enough to have
                *      DomainLen/2^MAX_TREE_LEEL  < gravitational softening length
                */
               for(j = 0; j < 8; j++)
@@ -871,10 +877,10 @@ int force_treebuild_insert_single_point(int i, unsigned long long *intpos, int t
 
           int nn = Nodes[th].u.suns[subnode];
 
-          if(nn >= 0)           /* ok, something is in the daughter slot already, need to continue */
+          if(nn >= 0) /* ok, something is in the daughter slot already, need to continue */
             {
               parent = th;
-              th = nn;
+              th     = nn;
             }
           else
             {
@@ -882,7 +888,7 @@ int force_treebuild_insert_single_point(int i, unsigned long long *intpos, int t
                * the new particle as a leaf.
                */
               Nodes[th].u.suns[subnode] = i;
-              break;            /* done for this particle */
+              break; /* done for this particle */
             }
         }
       else
@@ -891,14 +897,14 @@ int force_treebuild_insert_single_point(int i, unsigned long long *intpos, int t
            * to generate a new internal node at this point.
            */
           Nodes[parent].u.suns[subnode] = Tree_NextFreeNode;
-          struct NODE *nfreep = &Nodes[Tree_NextFreeNode];
+          struct NODE *nfreep           = &Nodes[Tree_NextFreeNode];
 
-          double len = ((double) (mask << 1)) * DomainBigFac;
-          double cx = ((double) ((xxb & centermask) | mask)) * DomainBigFac + DomainCorner[0];
-          double cy = ((double) ((yyb & centermask) | mask)) * DomainBigFac + DomainCorner[1];
-          double cz = ((double) ((zzb & centermask) | mask)) * DomainBigFac + DomainCorner[2];
+          double len = ((double)(mask << 1)) * DomainBigFac;
+          double cx  = ((double)((xxb & centermask) | mask)) * DomainBigFac + DomainCorner[0];
+          double cy  = ((double)((yyb & centermask) | mask)) * DomainBigFac + DomainCorner[1];
+          double cz  = ((double)((zzb & centermask) | mask)) * DomainBigFac + DomainCorner[2];
 
-          nfreep->len = len;
+          nfreep->len       = len;
           nfreep->center[0] = cx;
           nfreep->center[1] = cy;
           nfreep->center[2] = cz;
@@ -911,11 +917,12 @@ int force_treebuild_insert_single_point(int i, unsigned long long *intpos, int t
           else
             intppos = &Tree_IntPos_list[3 * th];
 
-          subnode = (((unsigned char) ((intppos[0] & mask) >> shiftx)) | ((unsigned char) ((intppos[1] & mask) >> shifty)) | ((unsigned char) ((intppos[2] & mask) >> shiftz)));
+          subnode = (((unsigned char)((intppos[0] & mask) >> shiftx)) | ((unsigned char)((intppos[1] & mask) >> shifty)) |
+                     ((unsigned char)((intppos[2] & mask) >> shiftz)));
 
           nfreep->u.suns[subnode] = th;
 
-          th = Tree_NextFreeNode;       /* resume trying to insert the new particle the newly created internal node */
+          th = Tree_NextFreeNode; /* resume trying to insert the new particle the newly created internal node */
           Tree_NumNodes++;
           Tree_NextFreeNode++;
 
@@ -928,7 +935,6 @@ int force_treebuild_insert_single_point(int i, unsigned long long *intpos, int t
 
   return 0;
 }
-
 
 /*! \brief Distributes the gravity costs of each node among the particles it
  *         contains.
@@ -990,7 +996,7 @@ void force_assign_cost_values(void)
       MPI_Allreduce(&partcost, &partcosttot, 1, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
 #endif /* #ifdef VERBOSE */
 
-      double *loc_cost = mymalloc("loc_cost", NTopnodes * sizeof(double));
+      double *loc_cost  = mymalloc("loc_cost", NTopnodes * sizeof(double));
       double *glob_cost = mymalloc("glob_cost", NTopnodes * sizeof(double));
 
       for(i = 0; i < NTopnodes; i++)
@@ -1036,8 +1042,7 @@ void force_assign_cost_values(void)
       {
         float GravCost;
         int index;
-      }
-       *gdata_export, *gdata_import;
+      } * gdata_export, *gdata_import;
 
       gdata_export = mymalloc("grav_data_export", Tree_NumPartExported * sizeof(struct gravcost_data));
       gdata_import = mymalloc("grav_data_import", Tree_NumPartImported * sizeof(struct gravcost_data));
@@ -1057,7 +1062,7 @@ void force_assign_cost_values(void)
             }
 
           gdata_import[i].GravCost = sum;
-          gdata_import[i].index = Tree_Points[i].index;
+          gdata_import[i].index    = Tree_Points[i].index;
         }
 
       /* exchange  data */
@@ -1069,10 +1074,10 @@ void force_assign_cost_values(void)
             {
               if(Force_Send_count[recvTask] > 0 || Force_Recv_count[recvTask] > 0)
                 {
-                  MPI_Sendrecv(&gdata_import[Force_Recv_offset[recvTask]], Force_Recv_count[recvTask] * sizeof(struct gravcost_data), MPI_BYTE,
-                               recvTask, TAG_DENS_A, &gdata_export[Force_Send_offset[recvTask]],
-                               Force_Send_count[recvTask] * sizeof(struct gravcost_data), MPI_BYTE, recvTask, TAG_DENS_A, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
-
+                  MPI_Sendrecv(&gdata_import[Force_Recv_offset[recvTask]], Force_Recv_count[recvTask] * sizeof(struct gravcost_data),
+                               MPI_BYTE, recvTask, TAG_DENS_A, &gdata_export[Force_Send_offset[recvTask]],
+                               Force_Send_count[recvTask] * sizeof(struct gravcost_data), MPI_BYTE, recvTask, TAG_DENS_A,
+                               MPI_COMM_WORLD, MPI_STATUS_IGNORE);
                 }
             }
         }
@@ -1088,15 +1093,16 @@ void force_assign_cost_values(void)
       for(i = 0; i < NumPart; i++)
         sum += P[i].GravCost[TakeLevel];
       MPI_Allreduce(&sum, &sumtot, 1, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
-      mpi_printf
-        ("FORCETREE: Cost assignment for TakeLevel=%d, highest active-TimeBin=%d   yields cost=%g|%g (before %g)  nodecosttot=%g  partcosttot=%g importedcosttot=%g\n",
-         TakeLevel, All.HighestActiveTimeBin, sumtot, nodecosttot + partcosttot + importedcosttot, sumbeforetot, nodecosttot, partcosttot, importedcosttot);
-#else /* #ifdef VERBOSE */
+      mpi_printf(
+          "FORCETREE: Cost assignment for TakeLevel=%d, highest active-TimeBin=%d   yields cost=%g|%g (before %g)  nodecosttot=%g  "
+          "partcosttot=%g importedcosttot=%g\n",
+          TakeLevel, All.HighestActiveTimeBin, sumtot, nodecosttot + partcosttot + importedcosttot, sumbeforetot, nodecosttot,
+          partcosttot, importedcosttot);
+#else  /* #ifdef VERBOSE */
       mpi_printf("FORCETREE: Cost assignment for TakeLevel=%d, highest active-TimeBin=%d\n", TakeLevel, All.HighestActiveTimeBin);
 #endif /* #ifdef VERBOSE #else */
     }
 }
-
 
 /*! \brief Recursively creates a set of empty tree nodes which
  *         corresponds to the top-level tree for the domain grid.
@@ -1116,16 +1122,16 @@ void force_assign_cost_values(void)
  *            range [0,2^(bits-1) - 1].
  * \param[in] z Position of the parent node in the z direction, falls in the
  *            range [0,2^(bits-1) - 1].
- * 
+ *
  * \return 0 if successful;
  *         -1 if number of allocated tree nodes is too small to fit the newly
  *         created nodes.
-*/
+ */
 int force_create_empty_nodes(int no, int topnode, int bits, int x, int y, int z)
 {
   if(TopNodes[topnode].Daughter >= 0)
     {
-      for(int i = 0; i < 2; i++)        /* loop over daughter nodes */
+      for(int i = 0; i < 2; i++) /* loop over daughter nodes */
         for(int j = 0; j < 2; j++)
           for(int k = 0; k < 2; k++)
             {
@@ -1134,7 +1140,8 @@ int force_create_empty_nodes(int no, int topnode, int bits, int x, int y, int z)
                   if(All.TreeAllocFactor > MAX_TREE_ALLOC_FACTOR)
                     {
                       char buf[500];
-                      sprintf(buf, "task %d: looks like a serious problem (NTopnodes=%d), stopping with particle dump.\n", ThisTask, NTopnodes);
+                      sprintf(buf, "task %d: looks like a serious problem (NTopnodes=%d), stopping with particle dump.\n", ThisTask,
+                              NTopnodes);
                       dump_particles();
                       terminate(buf);
                     }
@@ -1147,8 +1154,8 @@ int force_create_empty_nodes(int no, int topnode, int bits, int x, int y, int z)
 
               Nodes[no].u.suns[count] = Tree_NextFreeNode;
 
-              double lenhalf = 0.25 * Nodes[no].len;
-              Nodes[Tree_NextFreeNode].len = 0.5 * Nodes[no].len;
+              double lenhalf                     = 0.25 * Nodes[no].len;
+              Nodes[Tree_NextFreeNode].len       = 0.5 * Nodes[no].len;
               Nodes[Tree_NextFreeNode].center[0] = Nodes[no].center[0] + (2 * i - 1) * lenhalf;
               Nodes[Tree_NextFreeNode].center[1] = Nodes[no].center[1] + (2 * j - 1) * lenhalf;
               Nodes[Tree_NextFreeNode].center[2] = Nodes[no].center[2] + (2 * k - 1) * lenhalf;
@@ -1162,14 +1169,14 @@ int force_create_empty_nodes(int no, int topnode, int bits, int x, int y, int z)
               Tree_NextFreeNode++;
               Tree_NumNodes++;
 
-              if(force_create_empty_nodes(Tree_NextFreeNode - 1, TopNodes[topnode].Daughter + sub, bits + 1, 2 * x + i, 2 * y + j, 2 * z + k) < 0)
-                return -1;      /* create granddaughter nodes for current daughter node */
+              if(force_create_empty_nodes(Tree_NextFreeNode - 1, TopNodes[topnode].Daughter + sub, bits + 1, 2 * x + i, 2 * y + j,
+                                          2 * z + k) < 0)
+                return -1; /* create granddaughter nodes for current daughter node */
             }
     }
 
   return 0;
 }
-
 
 /*! \brief Inserts pseudo particles.
  *
@@ -1191,7 +1198,6 @@ void force_insert_pseudo_particles(void)
         Nodes[index].u.suns[0] = Tree_MaxPart + Tree_MaxNodes + i;
     }
 }
-
 
 /*! \brief Determines multipole moments.
  *
@@ -1220,17 +1226,17 @@ void force_update_node_recursive(int no, int sib, int father, int *last)
 #endif /* #ifdef ADAPTIVE_HYDRO_SOFTENING */
 #endif /* #ifdef MULTIPLE_NODE_SOFTENING */
 
-  if(no >= Tree_MaxPart && no < Tree_MaxPart + Tree_MaxNodes)   /* internal node */
+  if(no >= Tree_MaxPart && no < Tree_MaxPart + Tree_MaxNodes) /* internal node */
     {
       for(j = 0; j < 8; j++)
-        suns[j] = Nodes[no].u.suns[j];  /* this "backup" is necessary because the nextnode entry will
-                                           overwrite one element (union!) */
+        suns[j] = Nodes[no].u.suns[j]; /* this "backup" is necessary because the nextnode entry will
+                                          overwrite one element (union!) */
       if(*last >= 0)
         {
           if(*last >= Tree_MaxPart)
             {
               if(*last >= Tree_MaxPart + Tree_MaxNodes)
-                Nextnode[*last - Tree_MaxNodes] = no;   /* a pseudo-particle or imported point */
+                Nextnode[*last - Tree_MaxNodes] = no; /* a pseudo-particle or imported point */
               else
                 Nodes[*last].u.d.nextnode = no;
             }
@@ -1240,10 +1246,10 @@ void force_update_node_recursive(int no, int sib, int father, int *last)
 
       *last = no;
 
-      mass = 0;
-      s[0] = 0;
-      s[1] = 0;
-      s[2] = 0;
+      mass        = 0;
+      s[0]        = 0;
+      s[1]        = 0;
+      s[2]        = 0;
       maxsofttype = NSOFTTYPES + NSOFTTYPES_HYDRO;
 
 #ifdef MULTIPLE_NODE_SOFTENING
@@ -1265,14 +1271,14 @@ void force_update_node_recursive(int no, int sib, int father, int *last)
                 if((pp = suns[jj]) >= 0)
                   break;
 
-              if(jj < 8)        /* yes, we do */
+              if(jj < 8) /* yes, we do */
                 nextsib = pp;
               else
                 nextsib = sib;
 
               force_update_node_recursive(p, nextsib, no, last);
 
-              if(p < Tree_MaxPart)      /* a particle */
+              if(p < Tree_MaxPart) /* a particle */
                 {
                   MyDouble *pos = &Tree_Pos_list[3 * p];
 
@@ -1295,7 +1301,7 @@ void force_update_node_recursive(int no, int sib, int father, int *last)
                       if(minhydrosofttype > P[p].SofteningType)
                         minhydrosofttype = P[p].SofteningType;
                     }
-#else /* #ifdef ADAPTIVE_HYDRO_SOFTENING */
+#else  /* #ifdef ADAPTIVE_HYDRO_SOFTENING */
                   mass_per_type[P[p].SofteningType] += P[p].Mass;
 #endif /* #ifdef ADAPTIVE_HYDRO_SOFTENING #else */
 #endif /* #ifdef MULTIPLE_NODE_SOFTENING */
@@ -1315,7 +1321,6 @@ void force_update_node_recursive(int no, int sib, int father, int *last)
                   for(k = 0; k < NSOFTTYPES; k++)
                     mass_per_type[k] += ExtNodes[p].mass_per_type[k];
 
-
 #ifdef ADAPTIVE_HYDRO_SOFTENING
                   if(maxhydrosofttype < Nodes[p].u.d.maxhydrosofttype)
                     maxhydrosofttype = Nodes[p].u.d.maxhydrosofttype;
@@ -1324,7 +1329,7 @@ void force_update_node_recursive(int no, int sib, int father, int *last)
 #endif /* #ifdef ADAPTIVE_HYDRO_SOFTENING */
 #endif /* #ifdef MULTIPLE_NODE_SOFTENING */
                 }
-              else if(p < Tree_MaxPart + Tree_MaxNodes + NTopleaves)    /* a pseudo particle */
+              else if(p < Tree_MaxPart + Tree_MaxNodes + NTopleaves) /* a pseudo particle */
                 {
                   /* nothing to be done here because the mass of the
                    *  pseudo-particle is still zero. This will be changed
@@ -1332,7 +1337,7 @@ void force_update_node_recursive(int no, int sib, int father, int *last)
                    */
                 }
               else
-                {               /* an imported point */
+                { /* an imported point */
                   int n = p - (Tree_MaxPart + Tree_MaxNodes + NTopleaves);
 
                   if(n >= Tree_NumPartImported)
@@ -1358,7 +1363,7 @@ void force_update_node_recursive(int no, int sib, int father, int *last)
                       if(minhydrosofttype > Tree_Points[n].SofteningType)
                         minhydrosofttype = Tree_Points[n].SofteningType;
                     }
-#else /* #ifdef ADAPTIVE_HYDRO_SOFTENING */
+#else  /* #ifdef ADAPTIVE_HYDRO_SOFTENING */
                   mass_per_type[Tree_Points[n].SofteningType] += Tree_Points[n].Mass;
 #endif /* #ifdef ADAPTIVE_HYDRO_SOFTENING #else */
 #endif /* #ifdef MULTIPLE_NODE_SOFTENING */
@@ -1379,10 +1384,10 @@ void force_update_node_recursive(int no, int sib, int father, int *last)
           s[2] = Nodes[no].center[2];
         }
 
-      Nodes[no].u.d.mass = mass;
-      Nodes[no].u.d.s[0] = s[0];
-      Nodes[no].u.d.s[1] = s[1];
-      Nodes[no].u.d.s[2] = s[2];
+      Nodes[no].u.d.mass        = mass;
+      Nodes[no].u.d.s[0]        = s[0];
+      Nodes[no].u.d.s[1]        = s[1];
+      Nodes[no].u.d.s[2]        = s[2];
       Nodes[no].u.d.maxsofttype = maxsofttype;
 #ifdef MULTIPLE_NODE_SOFTENING
       int k;
@@ -1396,16 +1401,16 @@ void force_update_node_recursive(int no, int sib, int father, int *last)
 #endif /* #ifdef MULTIPLE_NODE_SOFTENING */
 
       Nodes[no].u.d.sibling = sib;
-      Nodes[no].u.d.father = father;
+      Nodes[no].u.d.father  = father;
     }
-  else                          /* single particle or pseudo particle */
+  else /* single particle or pseudo particle */
     {
       if(*last >= 0)
         {
           if(*last >= Tree_MaxPart)
             {
               if(*last >= Tree_MaxPart + Tree_MaxNodes)
-                Nextnode[*last - Tree_MaxNodes] = no;   /* a pseudo-particle or an imported point */
+                Nextnode[*last - Tree_MaxNodes] = no; /* a pseudo-particle or an imported point */
               else
                 Nodes[*last].u.d.nextnode = no;
             }
@@ -1415,14 +1420,12 @@ void force_update_node_recursive(int no, int sib, int father, int *last)
 
       *last = no;
 
-      if(no < Tree_MaxPart)     /* only set it for single particles... */
+      if(no < Tree_MaxPart) /* only set it for single particles... */
         Father[no] = father;
-      if(no >= Tree_MaxPart + Tree_MaxNodes + NTopleaves)       /* ...or for imported points */
+      if(no >= Tree_MaxPart + Tree_MaxNodes + NTopleaves) /* ...or for imported points */
         Father[no - Tree_MaxNodes - NTopleaves] = father;
-
     }
 }
-
 
 /*! \brief Communicates the values of the multipole moments of the
  *         top-level tree-nodes of the domain grid.
@@ -1443,21 +1446,21 @@ void force_exchange_topleafdata(void)
 #ifdef ADAPTIVE_HYDRO_SOFTENING
     unsigned char maxhydrosofttype;
     unsigned char minhydrosofttype;
-#endif                          /* #ifdef ADAPTIVE_HYDRO_SOFTENING */
-#endif                          /* #ifdef MULTIPLE_NODE_SOFTENING */
+#endif /* #ifdef ADAPTIVE_HYDRO_SOFTENING */
+#endif /* #ifdef MULTIPLE_NODE_SOFTENING */
     unsigned char maxsofttype;
 #if defined(SUBFIND) && defined(SUBFIND_EXTENDED_PROPERTIES)
     int NodeGrNr;
-#endif                          /* #if defined(SUBFIND) && defined(SUBFIND_EXTENDED_PROPERTIES) */
+#endif /* #if defined(SUBFIND) && defined(SUBFIND_EXTENDED_PROPERTIES) */
   };
 
-  struct DomainNODE *DomainMoment = (struct DomainNODE *) mymalloc("DomainMoment", NTopleaves * sizeof(struct DomainNODE));
+  struct DomainNODE *DomainMoment = (struct DomainNODE *)mymalloc("DomainMoment", NTopleaves * sizeof(struct DomainNODE));
 
   /* share the pseudo-particle data accross CPUs */
-  int *recvcounts = (int *) mymalloc("recvcounts", sizeof(int) * NTask);
-  int *recvoffset = (int *) mymalloc("recvoffset", sizeof(int) * NTask);
-  int *bytecounts = (int *) mymalloc("bytecounts", sizeof(int) * NTask);
-  int *byteoffset = (int *) mymalloc("byteoffset", sizeof(int) * NTask);
+  int *recvcounts = (int *)mymalloc("recvcounts", sizeof(int) * NTask);
+  int *recvoffset = (int *)mymalloc("recvoffset", sizeof(int) * NTask);
+  int *bytecounts = (int *)mymalloc("bytecounts", sizeof(int) * NTask);
+  int *byteoffset = (int *)mymalloc("byteoffset", sizeof(int) * NTask);
 
   for(int task = 0; task < NTask; task++)
     recvcounts[task] = 0;
@@ -1475,7 +1478,8 @@ void force_exchange_topleafdata(void)
       byteoffset[task] = byteoffset[task - 1] + bytecounts[task - 1];
     }
 
-  struct DomainNODE *loc_DomainMoment = (struct DomainNODE *) mymalloc("loc_DomainMoment", recvcounts[ThisTask] * sizeof(struct DomainNODE));
+  struct DomainNODE *loc_DomainMoment =
+      (struct DomainNODE *)mymalloc("loc_DomainMoment", recvcounts[ThisTask] * sizeof(struct DomainNODE));
 
   int idx = 0;
   for(int n = 0; n < NTopleaves; n++)
@@ -1485,10 +1489,10 @@ void force_exchange_topleafdata(void)
           int no = DomainNodeIndex[n];
 
           /* read out the multipole moments from the local base cells */
-          loc_DomainMoment[idx].s[0] = Nodes[no].u.d.s[0];
-          loc_DomainMoment[idx].s[1] = Nodes[no].u.d.s[1];
-          loc_DomainMoment[idx].s[2] = Nodes[no].u.d.s[2];
-          loc_DomainMoment[idx].mass = Nodes[no].u.d.mass;
+          loc_DomainMoment[idx].s[0]        = Nodes[no].u.d.s[0];
+          loc_DomainMoment[idx].s[1]        = Nodes[no].u.d.s[1];
+          loc_DomainMoment[idx].s[2]        = Nodes[no].u.d.s[2];
+          loc_DomainMoment[idx].mass        = Nodes[no].u.d.mass;
           loc_DomainMoment[idx].maxsofttype = Nodes[no].u.d.maxsofttype;
 
 #ifdef MULTIPLE_NODE_SOFTENING
@@ -1514,13 +1518,13 @@ void force_exchange_topleafdata(void)
       int task = DomainNewTask[n];
       if(task != ThisTask)
         {
-          int no = DomainNodeIndex[n];
+          int no  = DomainNodeIndex[n];
           int idx = recvoffset[task] + recvcounts[task]++;
 
-          Nodes[no].u.d.s[0] = DomainMoment[idx].s[0];
-          Nodes[no].u.d.s[1] = DomainMoment[idx].s[1];
-          Nodes[no].u.d.s[2] = DomainMoment[idx].s[2];
-          Nodes[no].u.d.mass = DomainMoment[idx].mass;
+          Nodes[no].u.d.s[0]        = DomainMoment[idx].s[0];
+          Nodes[no].u.d.s[1]        = DomainMoment[idx].s[1];
+          Nodes[no].u.d.s[2]        = DomainMoment[idx].s[2];
+          Nodes[no].u.d.mass        = DomainMoment[idx].mass;
           Nodes[no].u.d.maxsofttype = DomainMoment[idx].maxsofttype;
 
 #ifdef MULTIPLE_NODE_SOFTENING
@@ -1541,7 +1545,6 @@ void force_exchange_topleafdata(void)
   myfree(recvcounts);
   myfree(DomainMoment);
 }
-
 
 /*! \brief Updates the top-level tree after the multipole moments of the
  *         pseudo-particles have been updated.
@@ -1580,13 +1583,14 @@ void force_treeupdate_toplevel(int no, int topnode, int bits, int x, int y, int 
               int sub = 7 & peano_hilbert_key((x << 1) + i, (y << 1) + j, (z << 1) + k, bits);
 
               Tree_NextFreeNode++;
-              force_treeupdate_toplevel(Tree_NextFreeNode - 1, TopNodes[topnode].Daughter + sub, bits + 1, 2 * x + i, 2 * y + j, 2 * z + k);
+              force_treeupdate_toplevel(Tree_NextFreeNode - 1, TopNodes[topnode].Daughter + sub, bits + 1, 2 * x + i, 2 * y + j,
+                                        2 * z + k);
             }
 
-      mass = 0;
-      s[0] = 0;
-      s[1] = 0;
-      s[2] = 0;
+      mass        = 0;
+      s[0]        = 0;
+      s[1]        = 0;
+      s[2]        = 0;
       maxsofttype = NSOFTTYPES + NSOFTTYPES_HYDRO;
 #ifdef MULTIPLE_NODE_SOFTENING
       for(int j = 0; j < NSOFTTYPES; j++)
@@ -1600,9 +1604,9 @@ void force_treeupdate_toplevel(int no, int topnode, int bits, int x, int y, int 
 
       int p = Nodes[no].u.d.nextnode;
 
-      for(int j = 0; j < 8; j++)        /* since we are dealing with top-level nodes, we know that there are 8 consecutive daughter nodes */
+      for(int j = 0; j < 8; j++) /* since we are dealing with top-level nodes, we know that there are 8 consecutive daughter nodes */
         {
-          if(p >= Tree_MaxPart && p < Tree_MaxPart + Tree_MaxNodes)     /* internal node */
+          if(p >= Tree_MaxPart && p < Tree_MaxPart + Tree_MaxNodes) /* internal node */
             {
               mass += Nodes[p].u.d.mass;
               s[0] += Nodes[p].u.d.mass * Nodes[p].u.d.s[0];
@@ -1642,10 +1646,10 @@ void force_treeupdate_toplevel(int no, int topnode, int bits, int x, int y, int 
           s[2] = Nodes[no].center[2];
         }
 
-      Nodes[no].u.d.s[0] = s[0];
-      Nodes[no].u.d.s[1] = s[1];
-      Nodes[no].u.d.s[2] = s[2];
-      Nodes[no].u.d.mass = mass;
+      Nodes[no].u.d.s[0]        = s[0];
+      Nodes[no].u.d.s[1]        = s[1];
+      Nodes[no].u.d.s[2]        = s[2];
+      Nodes[no].u.d.mass        = mass;
       Nodes[no].u.d.maxsofttype = maxsofttype;
 #ifdef MULTIPLE_NODE_SOFTENING
       for(int k = 0; k < NSOFTTYPES; k++)
@@ -1657,7 +1661,6 @@ void force_treeupdate_toplevel(int no, int topnode, int bits, int x, int y, int 
 #endif /* #ifdef MULTIPLE_NODE_SOFTENING */
     }
 }
-
 
 /*! \brief Allocates the memory used for storage of the tree nodes.
  *
@@ -1675,22 +1678,21 @@ void force_treeallocate(int maxpart, int maxindex)
   if(Nodes)
     terminate("already allocated");
 
-  Tree_MaxPart = maxindex;
-  Tree_MaxNodes = (int) (All.TreeAllocFactor * maxpart) + NTopnodes;
+  Tree_MaxPart  = maxindex;
+  Tree_MaxNodes = (int)(All.TreeAllocFactor * maxpart) + NTopnodes;
 
-  DomainNewTask = (int *) mymalloc_movable(&DomainNewTask, "DomainNewTask", NTopleaves * sizeof(int));
-  DomainNodeIndex = (int *) mymalloc_movable(&DomainNodeIndex, "DomainNodeIndex", NTopleaves * sizeof(int));
-  Tree_Task_list = (int *) mymalloc_movable(&Tree_Task_list, "Tree_Task_list", maxpart * sizeof(int));
-  Tree_Pos_list = (MyDouble *) mymalloc_movable(&Tree_Pos_list, "Tree_Pos_list", 3 * maxpart * sizeof(MyDouble));
+  DomainNewTask   = (int *)mymalloc_movable(&DomainNewTask, "DomainNewTask", NTopleaves * sizeof(int));
+  DomainNodeIndex = (int *)mymalloc_movable(&DomainNodeIndex, "DomainNodeIndex", NTopleaves * sizeof(int));
+  Tree_Task_list  = (int *)mymalloc_movable(&Tree_Task_list, "Tree_Task_list", maxpart * sizeof(int));
+  Tree_Pos_list   = (MyDouble *)mymalloc_movable(&Tree_Pos_list, "Tree_Pos_list", 3 * maxpart * sizeof(MyDouble));
 
-  Nodes = (struct NODE *) mymalloc_movable(&Nodes, "Nodes", (Tree_MaxNodes + 1) * sizeof(struct NODE));
+  Nodes = (struct NODE *)mymalloc_movable(&Nodes, "Nodes", (Tree_MaxNodes + 1) * sizeof(struct NODE));
   Nodes -= Tree_MaxPart;
 #ifdef MULTIPLE_NODE_SOFTENING
-  ExtNodes = (struct ExtNODE *) mymalloc_movable(&ExtNodes, "ExtNodes", (Tree_MaxNodes + 1) * sizeof(struct ExtNODE));
+  ExtNodes = (struct ExtNODE *)mymalloc_movable(&ExtNodes, "ExtNodes", (Tree_MaxNodes + 1) * sizeof(struct ExtNODE));
   ExtNodes -= Tree_MaxPart;
 #endif /* #ifdef MULTIPLE_NODE_SOFTENING */
 }
-
 
 /*! \brief Frees the memory allocated for the tree.
  *
@@ -1712,17 +1714,16 @@ void force_treefree(void)
       myfree(DomainNodeIndex);
       myfree(DomainNewTask);
 
-      Nodes = NULL;
+      Nodes           = NULL;
       DomainNodeIndex = NULL;
-      DomainNewTask = NULL;
-      Tree_Task_list = NULL;
-      Nextnode = NULL;
-      Father = NULL;
+      DomainNewTask   = NULL;
+      Tree_Task_list  = NULL;
+      Nextnode        = NULL;
+      Father          = NULL;
     }
   else
     terminate("trying to free the tree even though it's not allocated");
 }
-
 
 /*! \brief Dump particle data into file.
  *
@@ -1747,7 +1748,6 @@ void dump_particles(void)
     my_fwrite(&P[i].ID, 1, sizeof(int), fd);
   fclose(fd);
 }
-
 
 #ifdef ADDBACKGROUNDGRID
 /*! \brief Add additional empty nodes.
@@ -1775,9 +1775,9 @@ int force_add_empty_nodes(void)
             if(Nodes[no].u.suns[subnode] == -1)
               {
                 Nodes[no].u.suns[subnode] = Tree_NextFreeNode;
-                struct NODE *nfreep = &Nodes[Tree_NextFreeNode];
+                struct NODE *nfreep       = &Nodes[Tree_NextFreeNode];
 
-                nfreep->len = 0.5 * Nodes[no].len;
+                nfreep->len    = 0.5 * Nodes[no].len;
                 double lenhalf = 0.25 * Nodes[no].len;
 
                 if(subnode & 1)
@@ -1806,7 +1806,10 @@ int force_add_empty_nodes(void)
                     if(All.TreeAllocFactor > 5.0)
                       {
                         char buf[500];
-                        sprintf(buf, "task %d: looks like a serious problem, stopping with particle dump. Tree_NumNodes=%d Tree_MaxNodes=%d\n", ThisTask, Tree_NumNodes, Tree_MaxNodes);
+                        sprintf(
+                            buf,
+                            "task %d: looks like a serious problem, stopping with particle dump. Tree_NumNodes=%d Tree_MaxNodes=%d\n",
+                            ThisTask, Tree_NumNodes, Tree_MaxNodes);
                         dump_particles();
                         terminate(buf);
                       }

@@ -35,32 +35,24 @@
  * - 11.05.2018 Prepared file for public release -- Rainer Weinberger
  */
 
-
 #ifndef ADD_BGGRID_H
 #define ADD_BGGRID_H
 
-
 #include "../main/allvars.h"
-
 
 #ifdef ADDBACKGROUNDGRID
 
-
-#define ADDBACKGROUNDGRIDMAX  256
-#define FACTOR_MAX_BOX_SIZE   15.0
-#define FACTOR_MIN_BOX_SIZE   2.0
-
+#define ADDBACKGROUNDGRIDMAX 256
+#define FACTOR_MAX_BOX_SIZE 15.0
+#define FACTOR_MIN_BOX_SIZE 2.0
 
 extern MyIDType IDNew;
-
 
 int add_backgroundgrid(void);
 void prepare_domain_backgroundgrid(void);
 void calculate_weights();
 void distribute_particles();
 
-
 #endif /* #ifdef ADDBACKGROUNDGRID */
-
 
 #endif /* ADD_BGGRID_H */

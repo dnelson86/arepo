@@ -25,24 +25,21 @@
  *                void long_range_init(void)
  *                void long_range_init_regionsize(void)
  *                void long_range_force(void)
- * 
+ *
  * \par Major modifications and contributions:
- * 
+ *
  * - DD.MM.YYYY Description
  * - 06.05.2018 Prepared file for public release -- Rainer Weinberger
  */
 
-
+#include <math.h>
 #include <mpi.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <math.h>
-
 
 #include "../main/allvars.h"
 #include "../main/proto.h"
-
 
 #ifdef PMGRID
 /*! \brief Driver routine to call initialization of periodic or/and
@@ -60,11 +57,10 @@ void long_range_init(void)
 #ifdef PLACEHIGHRESREGION
   pm_init_nonperiodic();
 #endif /* #ifdef PLACEHIGHRESREGION */
-#else /* #ifndef GRAVITY_NOT_PERIODIC */
+#else  /* #ifndef GRAVITY_NOT_PERIODIC */
   pm_init_nonperiodic();
 #endif /* #ifndef GRAVITY_NOT_PERIODIC #else */
 }
-
 
 /*! \brief Driver routine to determine the extend of the non-
  *         periodic or high resolution region.
@@ -83,13 +79,12 @@ void long_range_init_regionsize(void)
   pm_setup_nonperiodic_kernel();
 #endif /* #ifdef PLACEHIGHRESREGION */
 
-#else /* #ifndef GRAVITY_NOT_PERIODIC */
+#else  /* #ifndef GRAVITY_NOT_PERIODIC */
   if(RestartFlag != 1)
     pm_init_regionsize();
   pm_setup_nonperiodic_kernel();
 #endif /* #ifndef GRAVITY_NOT_PERIODIC #else */
 }
-
 
 /*! \brief This function computes the long-range PM force for all particles.
  *
@@ -127,18 +122,18 @@ void long_range_force(void)
 
 #ifdef TWODIMS
   pm2d_force_periodic(0);
-#else /* #ifdef TWODIMS */
+#else  /* #ifdef TWODIMS */
   pmforce_periodic(0, NULL);
 #endif /* #ifdef TWODIMS #else */
 
 #ifdef PLACEHIGHRESREGION
   i = pmforce_nonperiodic(1);
 
-  if(i == 1)                    /* this is returned if a particle lied outside allowed range */
+  if(i == 1) /* this is returned if a particle lied outside allowed range */
     {
       pm_init_regionsize();
       pm_setup_nonperiodic_kernel();
-      i = pmforce_nonperiodic(1);       /* try again */
+      i = pmforce_nonperiodic(1); /* try again */
     }
   if(i == 1)
     terminate("despite we tried to increase the region, we still don't fit all particles in it");
@@ -147,18 +142,18 @@ void long_range_force(void)
 #else /* #ifndef GRAVITY_NOT_PERIODIC */
   i = pmforce_nonperiodic(0);
 
-  if(i == 1)                    /* this is returned if a particle lied outside allowed range */
+  if(i == 1) /* this is returned if a particle lied outside allowed range */
     {
       pm_init_regionsize();
       pm_setup_nonperiodic_kernel();
-      i = pmforce_nonperiodic(0);       /* try again */
+      i = pmforce_nonperiodic(0); /* try again */
     }
   if(i == 1)
     terminate("despite we tried to increase the region, somehow we still don't fit all particles in it");
 #ifdef PLACEHIGHRESREGION
   i = pmforce_nonperiodic(1);
 
-  if(i == 1)                    /* this is returned if a particle lied outside allowed range */
+  if(i == 1) /* this is returned if a particle lied outside allowed range */
     {
       pm_init_regionsize();
       pm_setup_nonperiodic_kernel();
@@ -169,7 +164,6 @@ void long_range_force(void)
         P[i].GravPM[0] = P[i].GravPM[1] = P[i].GravPM[2] = 0;
 
       i = pmforce_nonperiodic(0) + pmforce_nonperiodic(1);
-
     }
   if(i != 0)
     terminate("despite we tried to increase the region, somehow we still don't fit all particles in it");

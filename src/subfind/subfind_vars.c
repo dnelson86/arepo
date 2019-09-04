@@ -20,62 +20,50 @@
  * \file        src/subfind/subfind_vars.c
  * \date        05/2018
  * \brief       Variables for the subfind algorithm.
- * \details     
- * 
- * 
+ * \details
+ *
+ *
  * \par Major modifications and contributions:
- * 
+ *
  * - DD.MM.YYYY Description
  * - 14.05.2018 Prepared file for public release -- Rainer Weinberger
  */
 
-
 #include "../main/allvars.h"
-
 
 #ifdef SUBFIND
 
-
+#include "../domain/domain.h"
 #include "../fof/fof.h"
 #include "subfind.h"
-#include "../domain/domain.h"
-
 
 double SubDomainCorner[3], SubDomainCenter[3], SubDomainLen, SubDomainFac;
 double SubDomainInverseLen, SubDomainBigFac;
 
-
 MyDouble GrCM[3];
-
 
 int GrNr;
 int NumPartGroup;
-
 
 MPI_Comm SubComm;
 int CommSplitColor;
 int SubNTask, SubThisTask;
 int SubTagOffset;
 
-
 struct topnode_data *SubTopNodes;
 struct local_topnode_data *Sub_LocTopNodes;
 
-
 double SubTreeAllocFactor;
-
 
 #if defined(SUBFIND) && defined(SUBFIND_EXTENDED_PROPERTIES)
 int *NodeGrNr;
 #endif
-
 
 int *SubDomainTask;
 int *SubDomainNodeIndex;
 int *SubNextnode;
 int SubNTopleaves;
 int SubNTopnodes;
-
 
 int SubTree_MaxPart;
 int SubTree_NumNodes;
@@ -92,19 +80,15 @@ int *SubTree_Task_list;
 unsigned long long *SubTree_IntPos_list;
 MyDouble *SubTree_Pos_list;
 
-
 int Ncollective;
 int NprocsCollective;
 int MaxNsubgroups = 0;
 int MaxNgbs;
 int MaxSerialGroupLen;
 
-
 r2type *R2list;
 
-
 int NumPaux;
-
 
 struct paux_data *Paux;
 struct proc_assign_data *ProcAssign;
@@ -114,6 +98,5 @@ struct nearest_ngb_data *NgbLoc;
 struct submp_data *submp;
 struct cand_dat *candidates;
 struct coll_cand_dat *coll_candidates;
-
 
 #endif /* #ifdef SUBFIND */

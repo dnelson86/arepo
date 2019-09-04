@@ -30,25 +30,22 @@
  *                  thread_id)
  *                void force_evaluate_direct(int target, int result_idx,
  *                  int nimport)
- * 
+ *
  * \par Major modifications and contributions:
- * 
+ *
  * - DD.MM.YYYY Description
  * - 16.05.2018 Prepared file for public release -- Rainer Weinberger
  */
 
-
+#include <math.h>
 #include <mpi.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <math.h>
 #include <time.h>
-
 
 #include "../main/allvars.h"
 #include "../main/proto.h"
-
 
 /*! \brief Variable for short-range lookup table.
  *
@@ -57,14 +54,12 @@
  */
 static float shortrange_table[NTAB + 1];
 
-
 /*! \brief Variable for short-range lookup table.
  *
  *  Contains the factor needed for the short range
  *  contribution of the tree to the potential energy.
  */
 static float shortrange_table_potential[NTAB + 1];
-
 
 /*! \brief Initializes the short range table.
  *
@@ -83,12 +78,11 @@ void force_short_range_init(void)
       shortrange_table_potential[i] = -erfc(u); /* -r * g(r) */
 
       if(u > 0)
-        shortrange_table[i] = (erfc(u) + 2.0 * u / sqrt(M_PI) * exp(-u * u) - 1.0) / (u * u);   /* -g'(r) - 1/r^2 */
+        shortrange_table[i] = (erfc(u) + 2.0 * u / sqrt(M_PI) * exp(-u * u) - 1.0) / (u * u); /* -g'(r) - 1/r^2 */
       else
         shortrange_table[i] = 0;
     }
 }
-
 
 /*! \brief This routine calculates the (short range) force contribution
  *   for a given particle in case the Tree(PM) algorithm is used.
@@ -118,7 +112,8 @@ void force_short_range_init(void)
  *
  *  \return Number of interactions processed for particle i.
  */
-int force_treeevaluate(gravdata_in * in, gravdata_out * out, int target, int mode, int thread_id, int numnodes, int *firstnode, int measure_cost_flag)
+int force_treeevaluate(gravdata_in *in, gravdata_out *out, int target, int mode, int thread_id, int numnodes, int *firstnode,
+                       int measure_cost_flag)
 {
   struct NODE *nop = NULL;
 #ifdef MULTIPLE_NODE_SOFTENING
@@ -140,24 +135,24 @@ int force_treeevaluate(gravdata_in * in, gravdata_out * out, int target, int mod
   double pos_x = in->Pos[0];
   double pos_y = in->Pos[1];
   double pos_z = in->Pos[2];
-  double aold = All.ErrTolForceAcc * in->OldAcc;
-  double h_i = All.ForceSoftening[in->SofteningType];
+  double aold  = All.ErrTolForceAcc * in->OldAcc;
+  double h_i   = All.ForceSoftening[in->SofteningType];
 
 #ifdef PMGRID
-  double rcut = All.Rcut[0];
+  double rcut  = All.Rcut[0];
   double asmth = All.Asmth[0];
 #ifdef PLACEHIGHRESREGION
   if(pmforce_is_particle_high_res(in->Type, in->Pos))
     {
-      rcut = All.Rcut[1];
+      rcut  = All.Rcut[1];
       asmth = All.Asmth[1];
     }
 #endif /* #ifdef PLACEHIGHRESREGION */
 
-  double rcut2 = rcut * rcut;
-  double asmthinv = 0.5 / asmth;
+  double rcut2     = rcut * rcut;
+  double asmthinv  = 0.5 / asmth;
   double asmthinv2 = asmthinv * asmthinv;
-  double asmthfac = asmthinv * (NTAB / (RCUT / 2.0));
+  double asmthfac  = asmthinv * (NTAB / (RCUT / 2.0));
 #endif /* #ifdef PMGRID */
 
   for(int k = 0; k < numnodes; k++)
@@ -165,11 +160,11 @@ int force_treeevaluate(gravdata_in * in, gravdata_out * out, int target, int mod
       int no;
 
       if(mode == 0)
-        no = Tree_MaxPart;      /* root node */
+        no = Tree_MaxPart; /* root node */
       else
         {
           no = firstnode[k];
-          no = Nodes[no].u.d.nextnode;  /* open it */
+          no = Nodes[no].u.d.nextnode; /* open it */
         }
 
       while(no >= 0)
@@ -198,11 +193,12 @@ int force_treeevaluate(gravdata_in * in, gravdata_out * out, int target, int mod
 
               no = Nextnode[no];
             }
-          else if(no < Tree_MaxPart + Tree_MaxNodes)    /* we have an  internal node */
+          else if(no < Tree_MaxPart + Tree_MaxNodes) /* we have an  internal node */
             {
               if(mode == 1)
                 {
-                  if(no < Tree_FirstNonTopLevelNode)    /* we reached a top-level node again, which means that we are done with the branch */
+                  if(no <
+                     Tree_FirstNonTopLevelNode) /* we reached a top-level node again, which means that we are done with the branch */
                     {
                       no = -1;
                       continue;
@@ -212,9 +208,9 @@ int force_treeevaluate(gravdata_in * in, gravdata_out * out, int target, int mod
               nop = &Nodes[no];
 
               mass = nop->u.d.mass;
-              dx = GRAVITY_NEAREST_X(nop->u.d.s[0] - pos_x);
-              dy = GRAVITY_NEAREST_Y(nop->u.d.s[1] - pos_y);
-              dz = GRAVITY_NEAREST_Z(nop->u.d.s[2] - pos_z);
+              dx   = GRAVITY_NEAREST_X(nop->u.d.s[0] - pos_x);
+              dy   = GRAVITY_NEAREST_Y(nop->u.d.s[1] - pos_y);
+              dz   = GRAVITY_NEAREST_Z(nop->u.d.s[2] - pos_z);
 
               r2 = dx * dx + dy * dy + dz * dz;
 
@@ -247,7 +243,7 @@ int force_treeevaluate(gravdata_in * in, gravdata_out * out, int target, int mod
                 }
 #endif /* #if defined(PMGRID) */
 
-              if(All.ErrTolTheta)       /* check Barnes-Hut opening criterion */
+              if(All.ErrTolTheta) /* check Barnes-Hut opening criterion */
                 {
                   if(nop->len * nop->len > r2 * All.ErrTolTheta * All.ErrTolTheta)
                     {
@@ -256,21 +252,21 @@ int force_treeevaluate(gravdata_in * in, gravdata_out * out, int target, int mod
                       continue;
                     }
                 }
-              else              /* check relative opening criterion */
+              else /* check relative opening criterion */
                 {
                   double len2 = nop->len * nop->len;
 
-                  if(len2 > r2 * (1.2 * 1.2))   /* add a worst case protection */
+                  if(len2 > r2 * (1.2 * 1.2)) /* add a worst case protection */
                     {
                       /* open cell */
                       no = nop->u.d.nextnode;
                       continue;
                     }
 
-                  // note that aold is strictly speaking |acceleration| / G
+                    // note that aold is strictly speaking |acceleration| / G
 #ifdef ACTIVATE_MINIMUM_OPENING_ANGLE
                   if(mass * len2 > r2 * r2 * aold && len2 > r2 * (0.4 * 0.4))
-#else /* #ifdef ACTIVATE_MINIMUM_OPENING_ANGLE */
+#else  /* #ifdef ACTIVATE_MINIMUM_OPENING_ANGLE */
                   if(mass * len2 > r2 * r2 * aold)
 #endif /* #ifdef ACTIVATE_MINIMUM_OPENING_ANGLE #else */
                     {
@@ -310,7 +306,7 @@ int force_treeevaluate(gravdata_in * in, gravdata_out * out, int target, int mod
 #endif /* #ifdef ADAPTIVE_HYDRO_SOFTENING */
                   indi_flag1 = 0;
                   indi_flag2 = NSOFTTYPES;
-#else /* #ifdef MULTIPLE_NODE_SOFTENING */
+#else  /* #ifdef MULTIPLE_NODE_SOFTENING */
                   if(r2 < h_j * h_j)
                     {
                       /* open cell */
@@ -323,7 +319,7 @@ int force_treeevaluate(gravdata_in * in, gravdata_out * out, int target, int mod
               else
                 hmax = h_i;
 
-              /* ok, node can be used */
+                /* ok, node can be used */
 #ifdef MULTIPLE_NODE_SOFTENING
               extnop = &ExtNodes[no];
 #endif /* #ifdef MULTIPLE_NODE_SOFTENING */
@@ -332,7 +328,7 @@ int force_treeevaluate(gravdata_in * in, gravdata_out * out, int target, int mod
 
               no = nop->u.d.sibling;
             }
-          else if(no >= Tree_ImportedNodeOffset)        /* point from imported nodelist */
+          else if(no >= Tree_ImportedNodeOffset) /* point from imported nodelist */
             {
               int n = no - Tree_ImportedNodeOffset;
 
@@ -353,7 +349,7 @@ int force_treeevaluate(gravdata_in * in, gravdata_out * out, int target, int mod
 
               no = Nextnode[no - Tree_MaxNodes];
             }
-          else                  /* pseudo particle */
+          else /* pseudo particle */
             {
               if(mode == 0)
                 {
@@ -371,14 +367,15 @@ int force_treeevaluate(gravdata_in * in, gravdata_out * out, int target, int mod
 
 #ifdef PMGRID
               double tabentry = asmthfac * r;
-              int tabindex = (int) tabentry;
+              int tabindex    = (int)tabentry;
 
               if(tabindex < NTAB)
                 {
-                  double tabweight = tabentry - tabindex;
+                  double tabweight    = tabentry - tabindex;
                   double factor_force = (1.0 - tabweight) * shortrange_table[tabindex] + tabweight * shortrange_table[tabindex + 1];
 #ifdef EVALPOTENTIAL
-                  double factor_pot = (1.0 - tabweight) * shortrange_table_potential[tabindex] + tabweight * shortrange_table_potential[tabindex + 1];
+                  double factor_pot =
+                      (1.0 - tabweight) * shortrange_table_potential[tabindex] + tabweight * shortrange_table_potential[tabindex + 1];
 #endif /* #ifdef EVALPOTENTIAL */
 #endif /* #ifdef PMGRID */
 
@@ -409,30 +406,30 @@ int force_treeevaluate(gravdata_in * in, gravdata_out * out, int target, int mod
 
                           if(r >= hmax)
                             {
-                              double rinv = 1.0 / r;
+                              double rinv  = 1.0 / r;
                               double rinv3 = rinv * rinv * rinv;
 #ifdef PMGRID
-                              fac = rinv3 + rinv * factor_force * asmthinv2;    /* fac  = -g'(r)/r */
+                              fac = rinv3 + rinv * factor_force * asmthinv2; /* fac  = -g'(r)/r */
 #ifdef EVALPOTENTIAL
-                              wp = rinv * factor_pot;   /* wp   = -g(r)    */
-#endif /* #ifdef EVALPOTENTIAL */
-#else /* #ifdef PMGRID */
-                              fac = rinv3;
+                              wp = rinv * factor_pot; /* wp   = -g(r)    */
+#endif                                                /* #ifdef EVALPOTENTIAL */
+#else                                                 /* #ifdef PMGRID */
+                  fac = rinv3;
 #ifdef EVALPOTENTIAL
-                              wp = -rinv;
+                  wp  = -rinv;
 #endif /* #ifdef EVALPOTENTIAL */
 #endif /* #ifdef PMGRID #else */
                             }
                           else
                             {
-                              double h_inv = 1.0 / hmax;
+                              double h_inv  = 1.0 / hmax;
                               double h3_inv = h_inv * h_inv * h_inv;
-                              double u = r * h_inv;
+                              double u      = r * h_inv;
 
                               if(u < 0.5)
                                 {
                                   double u2 = u * u;
-                                  fac = h3_inv * (SOFTFAC1 + u2 * (SOFTFAC2 * u + SOFTFAC3));
+                                  fac       = h3_inv * (SOFTFAC1 + u2 * (SOFTFAC2 * u + SOFTFAC3));
 #ifdef EVALPOTENTIAL
                                   wp = h_inv * (SOFTFAC4 + u2 * (SOFTFAC5 + u2 * (SOFTFAC6 * u + SOFTFAC7)));
 #endif /* #ifdef EVALPOTENTIAL */
@@ -441,9 +438,10 @@ int force_treeevaluate(gravdata_in * in, gravdata_out * out, int target, int mod
                                 {
                                   double u2 = u * u;
                                   double u3 = u2 * u;
-                                  fac = h3_inv * (SOFTFAC8 + SOFTFAC9 * u + SOFTFAC10 * u2 + SOFTFAC11 * u3 + SOFTFAC12 / u3);
+                                  fac       = h3_inv * (SOFTFAC8 + SOFTFAC9 * u + SOFTFAC10 * u2 + SOFTFAC11 * u3 + SOFTFAC12 / u3);
 #ifdef EVALPOTENTIAL
-                                  wp = h_inv * (SOFTFAC13 + SOFTFAC14 / u + u2 * (SOFTFAC1 + u * (SOFTFAC15 + u * (SOFTFAC16 + SOFTFAC17 * u))));
+                                  wp = h_inv * (SOFTFAC13 + SOFTFAC14 / u +
+                                                u2 * (SOFTFAC1 + u * (SOFTFAC15 + u * (SOFTFAC16 + SOFTFAC17 * u))));
 #endif /* #ifdef EVALPOTENTIAL */
                                 }
 
@@ -451,10 +449,10 @@ int force_treeevaluate(gravdata_in * in, gravdata_out * out, int target, int mod
                               if(r > 0)
                                 {
                                   double rinv = 1.0 / r;
-                                  fac += rinv * factor_force * asmthinv2;       /* fac  = -g'(r)/r */
+                                  fac += rinv * factor_force * asmthinv2; /* fac  = -g'(r)/r */
 #ifdef EVALPOTENTIAL
-                                  wp += rinv * (factor_pot + 1.0);      /* wp   = -g(r)    */
-#endif /* #ifdef EVALPOTENTIAL */
+                                  wp += rinv * (factor_pot + 1.0); /* wp   = -g(r)    */
+#endif                                                             /* #ifdef EVALPOTENTIAL */
                                 }
 #endif /* #ifdef PMGRID */
                             }
@@ -467,7 +465,6 @@ int force_treeevaluate(gravdata_in * in, gravdata_out * out, int target, int mod
                           acc_x += dx * fac;
                           acc_y += dy * fac;
                           acc_z += dz * fac;
-
 
 #if !defined(PMGRID) && defined(SELFGRAVITY) && !defined(GRAVITY_NOT_PERIODIC) && !defined(ONEDIMS_SPHERICAL)
                           double fcorr[3];
@@ -516,7 +513,6 @@ int force_treeevaluate(gravdata_in * in, gravdata_out * out, int target, int mod
   return ninteractions;
 }
 
-
 /*! \brief Prepares node to be exported.
  *
  *  \param[in] no Index of node.
@@ -532,23 +528,22 @@ int tree_treefind_export_node_threads(int no, int i, int thread_id)
 
   if(Thread[thread_id].Exportflag[task] != i)
     {
-      Thread[thread_id].Exportflag[task] = i;
-      int nexp = Thread[thread_id].Nexport++;
-      Thread[thread_id].PartList[nexp].Task = task;
+      Thread[thread_id].Exportflag[task]     = i;
+      int nexp                               = Thread[thread_id].Nexport++;
+      Thread[thread_id].PartList[nexp].Task  = task;
       Thread[thread_id].PartList[nexp].Index = i;
       Thread[thread_id].ExportSpace -= Thread[thread_id].ItemSize;
     }
 
-  int nexp = Thread[thread_id].NexportNodes++;
-  nexp = -1 - nexp;
-  struct datanodelist *nodelist = (struct datanodelist *) (((char *) Thread[thread_id].PartList) + Thread[thread_id].InitialSpace);
-  nodelist[nexp].Task = task;
-  nodelist[nexp].Index = i;
-  nodelist[nexp].Node = DomainNodeIndex[no - (Tree_MaxPart + Tree_MaxNodes)];
+  int nexp                      = Thread[thread_id].NexportNodes++;
+  nexp                          = -1 - nexp;
+  struct datanodelist *nodelist = (struct datanodelist *)(((char *)Thread[thread_id].PartList) + Thread[thread_id].InitialSpace);
+  nodelist[nexp].Task           = task;
+  nodelist[nexp].Index          = i;
+  nodelist[nexp].Node           = DomainNodeIndex[no - (Tree_MaxPart + Tree_MaxNodes)];
   Thread[thread_id].ExportSpace -= sizeof(struct datanodelist) + sizeof(int);
   return 0;
 }
-
 
 #ifdef ALLOW_DIRECT_SUMMATION
 /*! \brief Kernel of direct summation force calculation.
@@ -575,7 +570,7 @@ void force_evaluate_direct(int target, int result_idx, int nimport)
   double pos_x = DirectDataAll[target].Pos[0];
   double pos_y = DirectDataAll[target].Pos[1];
   double pos_z = DirectDataAll[target].Pos[2];
-  double h_i = All.ForceSoftening[DirectDataAll[target].SofteningType];
+  double h_i   = All.ForceSoftening[DirectDataAll[target].SofteningType];
 
 #ifdef PMGRID
   double asmth = All.Asmth[0];
@@ -584,9 +579,9 @@ void force_evaluate_direct(int target, int result_idx, int nimport)
   if(pmforce_is_particle_high_res(ptype_i, DirectDataAll[target].Pos))
     asmth = All.Asmth[1];
 #endif /* #if defined(PLACEHIGHRESREGION) */
-  double asmthinv = 0.5 / asmth;
+  double asmthinv  = 0.5 / asmth;
   double asmthinv2 = asmthinv * asmthinv;
-  double asmthfac = asmthinv * (NTAB / (RCUT / 2.0));
+  double asmthfac  = asmthinv * (NTAB / (RCUT / 2.0));
 #endif /* #ifdef PMGRID */
 
   for(int j = 0; j < nimport; j++)
@@ -609,14 +604,15 @@ void force_evaluate_direct(int target, int result_idx, int nimport)
 
 #ifdef PMGRID
       double tabentry = asmthfac * r;
-      int tabindex = (int) tabentry;
+      int tabindex    = (int)tabentry;
 
       if(tabindex < NTAB)
         {
-          double tabweight = tabentry - tabindex;
+          double tabweight    = tabentry - tabindex;
           double factor_force = (1.0 - tabweight) * shortrange_table[tabindex] + tabweight * shortrange_table[tabindex + 1];
 #ifdef EVALPOTENTIAL
-          double factor_pot = (1.0 - tabweight) * shortrange_table_potential[tabindex] + tabweight * shortrange_table_potential[tabindex + 1];
+          double factor_pot =
+              (1.0 - tabweight) * shortrange_table_potential[tabindex] + tabweight * shortrange_table_potential[tabindex + 1];
 #endif /* #ifdef EVALPOTENTIAL */
 #endif /* #ifdef PMGRID */
 
@@ -627,30 +623,30 @@ void force_evaluate_direct(int target, int result_idx, int nimport)
 
           if(r >= hmax)
             {
-              double rinv = 1.0 / r;
+              double rinv  = 1.0 / r;
               double rinv3 = rinv * rinv * rinv;
 #ifdef PMGRID
-              fac = rinv3 + rinv * factor_force * asmthinv2;    /* fac  = -g'(r)/r */
+              fac = rinv3 + rinv * factor_force * asmthinv2; /* fac  = -g'(r)/r */
 #ifdef EVALPOTENTIAL
-              wp = rinv * factor_pot;   /* wp   = -g(r)    */
-#endif /* #ifdef EVALPOTENTIAL */
-#else /* #ifdef PMGRID */
-              fac = rinv3;
+              wp = rinv * factor_pot; /* wp   = -g(r)    */
+#endif                                /* #ifdef EVALPOTENTIAL */
+#else                                 /* #ifdef PMGRID */
+          fac = rinv3;
 #ifdef EVALPOTENTIAL
-              wp = -rinv;
+          wp  = -rinv;
 #endif /* #ifdef EVALPOTENTIAL */
 #endif /* #ifdef PMGRID #else */
             }
           else
             {
-              double h_inv = 1.0 / hmax;
+              double h_inv  = 1.0 / hmax;
               double h3_inv = h_inv * h_inv * h_inv;
-              double u = r * h_inv;
+              double u      = r * h_inv;
 
               if(u < 0.5)
                 {
                   double u2 = u * u;
-                  fac = h3_inv * (SOFTFAC1 + u2 * (SOFTFAC2 * u + SOFTFAC3));
+                  fac       = h3_inv * (SOFTFAC1 + u2 * (SOFTFAC2 * u + SOFTFAC3));
 #ifdef EVALPOTENTIAL
                   wp = h_inv * (SOFTFAC4 + u2 * (SOFTFAC5 + u2 * (SOFTFAC6 * u + SOFTFAC7)));
 #endif /* #ifdef EVALPOTENTIAL */
@@ -659,7 +655,7 @@ void force_evaluate_direct(int target, int result_idx, int nimport)
                 {
                   double u2 = u * u;
                   double u3 = u2 * u;
-                  fac = h3_inv * (SOFTFAC8 + SOFTFAC9 * u + SOFTFAC10 * u2 + SOFTFAC11 * u3 + SOFTFAC12 / u3);
+                  fac       = h3_inv * (SOFTFAC8 + SOFTFAC9 * u + SOFTFAC10 * u2 + SOFTFAC11 * u3 + SOFTFAC12 / u3);
 #ifdef EVALPOTENTIAL
                   wp = h_inv * (SOFTFAC13 + SOFTFAC14 / u + u2 * (SOFTFAC1 + u * (SOFTFAC15 + u * (SOFTFAC16 + SOFTFAC17 * u))));
 #endif /* #ifdef EVALPOTENTIAL */
@@ -668,10 +664,10 @@ void force_evaluate_direct(int target, int result_idx, int nimport)
               if(r > 0)
                 {
                   double rinv = 1.0 / r;
-                  fac += rinv * factor_force * asmthinv2;       /* fac  = -g'(r)/r */
+                  fac += rinv * factor_force * asmthinv2; /* fac  = -g'(r)/r */
 #ifdef EVALPOTENTIAL
-                  wp += rinv * (factor_pot + 1.0);      /* wp   = -g(r)    */
-#endif /* #ifdef EVALPOTENTIAL */
+                  wp += rinv * (factor_pot + 1.0); /* wp   = -g(r)    */
+#endif                                             /* #ifdef EVALPOTENTIAL */
                 }
 #endif /* #ifdef PMGRID */
             }
@@ -684,7 +680,6 @@ void force_evaluate_direct(int target, int result_idx, int nimport)
           acc_x += dx * fac;
           acc_y += dy * fac;
           acc_z += dz * fac;
-
 
 #if !defined(PMGRID) && defined(SELFGRAVITY) && !defined(GRAVITY_NOT_PERIODIC) && !defined(ONEDIMS_SPHERICAL)
           {
@@ -699,11 +694,9 @@ void force_evaluate_direct(int target, int result_idx, int nimport)
           }
 #endif /* #if !defined(PMGRID) && defined(SELFGRAVITY) && !defined(GRAVITY_NOT_PERIODIC) && !defined(ONEDIMS_SPHERICAL) */
 
-
 #ifdef PMGRID
         }
 #endif /* #ifdef PMGRID */
-
     }
 
   DirectAccOut[result_idx].Acc[0] = acc_x;

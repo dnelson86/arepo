@@ -22,21 +22,18 @@
  * \brief       Functions to calculate an MD5 checksum from a dataset.
  * \details     contains functions:
  *                void calc_memory_checksum(void *base, size_t bytes)
- * 
- * 
+ *
+ *
  * \par Major modifications and contributions:
- * 
+ *
  * - DD.MM.YYYY Description
  * - 24.05.2018 Prepared file for public release -- Rainer Weinberger
  */
 
-
 #include "../main/allvars.h"
 #include "../main/proto.h"
 
-
 #include "Md5.h"
-
 
 /*! \brief Calculates a md5 checksum (on all MPI tasks) and prints it.
  *
@@ -74,7 +71,6 @@ void calc_memory_checksum(void *base, size_t bytes)
     }
 }
 
-
 #ifdef RESTART_DEBUG
 /*! \brief Calculates md5 checksums of main data structures of a restart file.
  *
@@ -91,7 +87,7 @@ void log_restart_debug(void)
   int i;
 
   MD5Init(&sum);
-  MD5UpdateLong(&sum, (void *) P, NumPart * sizeof(struct particle_data));
+  MD5UpdateLong(&sum, (void *)P, NumPart * sizeof(struct particle_data));
   MD5Final(&sum);
 
   for(i = 0; i < 16; i++)
@@ -100,7 +96,7 @@ void log_restart_debug(void)
   MPI_Allreduce(u.val, uglob_P.val, 4, MPI_INT, MPI_SUM, MPI_COMM_WORLD);
 
   MD5Init(&sum);
-  MD5UpdateLong(&sum, (void *) SphP, NumGas * sizeof(struct sph_particle_data));
+  MD5UpdateLong(&sum, (void *)SphP, NumGas * sizeof(struct sph_particle_data));
   MD5Final(&sum);
 
   for(i = 0; i < 16; i++)

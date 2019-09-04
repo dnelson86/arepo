@@ -31,28 +31,24 @@
  *              summation for all particle pairs of a given type.
  *              contains functions:
  *                void gravity_direct(int timebin)
- * 
+ *
  * \par Major modifications and contributions:
- * 
+ *
  * - DD.MM.YYYY Description
  * - 06.05.2018 Prepared file for public release -- Rainer Weinberger
  */
 
-
+#include <math.h>
 #include <mpi.h>
 #include <stdlib.h>
 #include <string.h>
-#include <math.h>
 
-
+#include "../domain/domain.h"
 #include "../main/allvars.h"
 #include "../main/proto.h"
-#include "../domain/domain.h"
-
 
 #ifdef ALLOW_DIRECT_SUMMATION
 static int Nimport;
-
 
 /*! \brief Computes the gravitational forces for all active particles through
  *         direct summation.
@@ -92,7 +88,7 @@ void gravity_direct(int timebin)
 
   double tstart = second();
 
-  DirectDataIn = (struct directdata *) mymalloc("DirectDataIn", TimeBinsGravity.NActiveParticles * sizeof(struct directdata));
+  DirectDataIn = (struct directdata *)mymalloc("DirectDataIn", TimeBinsGravity.NActiveParticles * sizeof(struct directdata));
 
   Nforces = 0;
 
@@ -117,7 +113,7 @@ void gravity_direct(int timebin)
 
       DirectDataIn[Nforces].Mass = P[i].Mass;
 
-      DirectDataIn[Nforces].Type = P[i].Type;
+      DirectDataIn[Nforces].Type          = P[i].Type;
       DirectDataIn[Nforces].SofteningType = P[i].SofteningType;
 
       Nforces++;
@@ -133,22 +129,22 @@ void gravity_direct(int timebin)
         Recv_offset[j] = Recv_offset[j - 1] + Recv_count[j - 1];
     }
 
-  DirectDataAll = (struct directdata *) mymalloc("DirectDataAll", Nimport * sizeof(struct directdata));
+  DirectDataAll = (struct directdata *)mymalloc("DirectDataAll", Nimport * sizeof(struct directdata));
 
   for(j = 0; j < NTask; j++)
     {
-      Send_count[j] = Recv_count[j] * sizeof(struct directdata);
+      Send_count[j]  = Recv_count[j] * sizeof(struct directdata);
       Send_offset[j] = Recv_offset[j] * sizeof(struct directdata);
     }
 
-  MPI_Allgatherv(DirectDataIn, Nforces * sizeof(struct directdata), MPI_BYTE, DirectDataAll, Send_count, Send_offset, MPI_BYTE, MPI_COMM_WORLD);
-
+  MPI_Allgatherv(DirectDataIn, Nforces * sizeof(struct directdata), MPI_BYTE, DirectDataAll, Send_count, Send_offset, MPI_BYTE,
+                 MPI_COMM_WORLD);
 
   /* subdivide the work evenly */
   int first, count;
   subdivide_evenly(Nimport, NTask, ThisTask, &first, &count);
 
-  DirectAccOut = (struct accdata *) mymalloc("DirectDataOut", count * sizeof(struct accdata));
+  DirectAccOut = (struct accdata *)mymalloc("DirectDataOut", count * sizeof(struct accdata));
 
   /* now calculate the forces */
   for(i = 0; i < count; i++)
@@ -156,17 +152,17 @@ void gravity_direct(int timebin)
 
   /* now send the forces to the right places */
 
-  DirectAccIn = (struct accdata *) mymalloc("DirectDataIn", Nforces * sizeof(struct accdata));
+  DirectAccIn = (struct accdata *)mymalloc("DirectDataIn", Nforces * sizeof(struct accdata));
 
-  MPI_Request *requests = (MPI_Request *) mymalloc_movable(&requests, "requests", 2 * NTask * sizeof(MPI_Request));
-  int n_requests = 0;
+  MPI_Request *requests = (MPI_Request *)mymalloc_movable(&requests, "requests", 2 * NTask * sizeof(MPI_Request));
+  int n_requests        = 0;
 
   int recvTask = 0;
   int sendTask = 0;
   int send_first, send_count;
   subdivide_evenly(Nimport, NTask, sendTask, &send_first, &send_count);
 
-  while(recvTask < NTask && sendTask < NTask)   /* go through both lists */
+  while(recvTask < NTask && sendTask < NTask) /* go through both lists */
     {
       while(send_first + send_count < Recv_offset[recvTask])
         {
@@ -186,15 +182,17 @@ void gravity_direct(int timebin)
         }
 
       int start = imax(Recv_offset[recvTask], send_first);
-      int next = imin(Recv_offset[recvTask] + Recv_count[recvTask], send_first + send_count);
+      int next  = imin(Recv_offset[recvTask] + Recv_count[recvTask], send_first + send_count);
 
       if(next - start >= 1)
         {
           if(ThisTask == sendTask)
-            MPI_Isend(DirectAccOut + start - send_first, (next - start) * sizeof(struct accdata), MPI_BYTE, recvTask, TAG_PDATA_SPH, MPI_COMM_WORLD, &requests[n_requests++]);
+            MPI_Isend(DirectAccOut + start - send_first, (next - start) * sizeof(struct accdata), MPI_BYTE, recvTask, TAG_PDATA_SPH,
+                      MPI_COMM_WORLD, &requests[n_requests++]);
 
           if(ThisTask == recvTask)
-            MPI_Irecv(DirectAccIn + start - Recv_offset[recvTask], (next - start) * sizeof(struct accdata), MPI_BYTE, sendTask, TAG_PDATA_SPH, MPI_COMM_WORLD, &requests[n_requests++]);
+            MPI_Irecv(DirectAccIn + start - Recv_offset[recvTask], (next - start) * sizeof(struct accdata), MPI_BYTE, sendTask,
+                      TAG_PDATA_SPH, MPI_COMM_WORLD, &requests[n_requests++]);
         }
 
       if(next == Recv_offset[recvTask] + Recv_count[recvTask])
@@ -247,15 +245,14 @@ void gravity_direct(int timebin)
 
   if(ThisTask == 0)
     {
-      fprintf(FdTimings, "Nf=%9lld   active part/task: avg=%g   total-Nf=%lld\n",
-              TimeBinsGravity.GlobalNActiveParticles, ((double) TimeBinsGravity.GlobalNActiveParticles) / NTask, All.TotNumOfForces);
-      fprintf(FdTimings, "  (direct) part/sec:  %g   ia/sec: %g\n",
-              TimeBinsGravity.GlobalNActiveParticles / (sumt + 1.0e-20), TimeBinsGravity.GlobalNActiveParticles / (sumt + 1.0e-20) * TimeBinsGravity.GlobalNActiveParticles);
+      fprintf(FdTimings, "Nf=%9lld   active part/task: avg=%g   total-Nf=%lld\n", TimeBinsGravity.GlobalNActiveParticles,
+              ((double)TimeBinsGravity.GlobalNActiveParticles) / NTask, All.TotNumOfForces);
+      fprintf(FdTimings, "  (direct) part/sec:  %g   ia/sec: %g\n", TimeBinsGravity.GlobalNActiveParticles / (sumt + 1.0e-20),
+              TimeBinsGravity.GlobalNActiveParticles / (sumt + 1.0e-20) * TimeBinsGravity.GlobalNActiveParticles);
       myflush(FdTimings);
     }
 
   TIMER_STOP(CPU_TREEDIRECT);
 }
-
 
 #endif /* #ifdef ALLOW_DIRECT_SUMMATION */

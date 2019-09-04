@@ -30,24 +30,21 @@
  * - 24.05.2018 Prepared file for public release -- Rainer Weinberger
  */
 
-
+#include <gsl/gsl_math.h>
+#include <inttypes.h>
+#include <math.h>
 #include <mpi.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <math.h>
 #include <sys/stat.h>
 #include <sys/types.h>
-#include <gsl/gsl_math.h>
-#include <inttypes.h>
 
-
-#include "fof.h"
+#include "../domain/domain.h"
 #include "../main/allvars.h"
 #include "../main/proto.h"
-#include "../domain/domain.h"
 #include "../subfind/subfind.h"
-
+#include "fof.h"
 
 #ifdef FOF
 

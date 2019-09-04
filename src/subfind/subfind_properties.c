@@ -33,22 +33,18 @@
  * - 14.05.2018 Prepared file for public release -- Rainer Weinberger
  */
 
-
+#include <math.h>
 #include <mpi.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <math.h>
-
 
 #include "../main/allvars.h"
 #include "../main/proto.h"
 
-
 #ifdef SUBFIND
-#include "subfind.h"
 #include "../fof/fof.h"
-
+#include "subfind.h"
 
 /*! \brief Calculates subhalo properties.
  *
@@ -64,7 +60,8 @@
  *
  *  \return void
  */
-void subfind_determine_sub_halo_properties(struct unbind_data *d, int num, struct subgroup_properties *subgroup, int grnr, int subnr, int parallel_flag, int nsubgroups_cat)
+void subfind_determine_sub_halo_properties(struct unbind_data *d, int num, struct subgroup_properties *subgroup, int grnr, int subnr,
+                                           int parallel_flag, int nsubgroups_cat)
 {
   int i, j, p, len_type[NTYPES], len_type_loc[NTYPES], totlen;
   double s[3], v[3], pos[3], vel[3], spin[3], cm[3], veldisp, max, vel_to_phys, H_of_a, minpot;
@@ -113,7 +110,7 @@ void subfind_determine_sub_halo_properties(struct unbind_data *d, int num, struc
       p = d[i].index;
       if(PS[p].Potential < minpot || minindex == -1)
         {
-          minpot = PS[p].Potential;
+          minpot   = PS[p].Potential;
           minindex = p;
         }
 
@@ -121,8 +118,8 @@ void subfind_determine_sub_halo_properties(struct unbind_data *d, int num, struc
 
 #ifdef USE_SFR
       if(P[p].Type == 0)
-        sfr += SphP[PS[p].OldIndex].Sfr;        /* note: the SphP[] array has not been reordered */
-#endif /* #ifdef USE_SFR */
+        sfr += SphP[PS[p].OldIndex].Sfr; /* note: the SphP[] array has not been reordered */
+#endif                                   /* #ifdef USE_SFR */
     }
 
   for(j = 0; j < NTYPES; j++)
@@ -195,7 +192,7 @@ void subfind_determine_sub_halo_properties(struct unbind_data *d, int num, struc
       p = d[i].index;
       if(PS[p].BindingEnergy < minpot || minindex == -1)
         {
-          minpot = PS[p].BindingEnergy;
+          minpot   = PS[p].BindingEnergy;
           minindex = p;
         }
     }
@@ -284,7 +281,7 @@ void subfind_determine_sub_halo_properties(struct unbind_data *d, int num, struc
 
   for(j = 0; j < 3; j++)
     {
-      s[j] /= mass;             /* center of mass */
+      s[j] /= mass; /* center of mass */
       v[j] /= mass;
       vel[j] = vel_to_phys * v[j];
     }
@@ -297,7 +294,7 @@ void subfind_determine_sub_halo_properties(struct unbind_data *d, int num, struc
         s[j] += boxsize;
       while(s[j] >= boxsize)
         s[j] -= boxsize;
-      cm[j] = s[j];             // this is in comoving coordinates
+      cm[j] = s[j];  // this is in comoving coordinates
     }
 
   disp = lx = ly = lz = 0;
@@ -316,7 +313,7 @@ void subfind_determine_sub_halo_properties(struct unbind_data *d, int num, struc
 
       for(j = 0, rr_tmp = 0, disp_tmp = 0; j < 3; j++)
         {
-          ddxx = GRAVITY_NEAREST_X(P[p].Pos[j] - s[j]);
+          ddxx  = GRAVITY_NEAREST_X(P[p].Pos[j] - s[j]);
           dx[j] = All.cf_atime * ddxx;
           dv[j] = vel_to_phys * (P[p].Vel[j] - v[j]);
           dv[j] += H_of_a * dx[j];
@@ -332,11 +329,10 @@ void subfind_determine_sub_halo_properties(struct unbind_data *d, int num, struc
       ly += P[p].Mass * (dx[2] * dv[0] - dx[0] * dv[2]);
       lz += P[p].Mass * (dx[0] * dv[1] - dx[1] * dv[0]);
 
-
 #ifdef SUBFIND_EXTENDED_PROPERTIES
-      for(j = 0; j < 3; j++)    // hubble drifts in velocity now with respect to pot min which we consider as the centre of rotation
+      for(j = 0; j < 3; j++)  // hubble drifts in velocity now with respect to pot min which we consider as the centre of rotation
         {
-          ddxx = GRAVITY_NEAREST_X(P[p].Pos[j] - pos[j]);
+          ddxx  = GRAVITY_NEAREST_X(P[p].Pos[j] - pos[j]);
           dx[j] = All.cf_atime * ddxx;
           dv[j] = vel_to_phys * (P[p].Vel[j] - v[j]);
           dv[j] += H_of_a * dx[j];
@@ -353,19 +349,19 @@ void subfind_determine_sub_halo_properties(struct unbind_data *d, int num, struc
       Jtot[1] += P[p].Mass * (dx[2] * dv[0] - dx[0] * dv[2]);
       Jtot[2] += P[p].Mass * (dx[0] * dv[1] - dx[1] * dv[0]);
 
-      if(ptype == 1)            // dm illustris
+      if(ptype == 1)  // dm illustris
         {
           Jdm[0] += P[p].Mass * (dx[1] * dv[2] - dx[2] * dv[1]);
           Jdm[1] += P[p].Mass * (dx[2] * dv[0] - dx[0] * dv[2]);
           Jdm[2] += P[p].Mass * (dx[0] * dv[1] - dx[1] * dv[0]);
         }
-      if(ptype == 0)            // gas (incl. winds!)
+      if(ptype == 0)  // gas (incl. winds!)
         {
           Jgas[0] += P[p].Mass * (dx[1] * dv[2] - dx[2] * dv[1]);
           Jgas[1] += P[p].Mass * (dx[2] * dv[0] - dx[0] * dv[2]);
           Jgas[2] += P[p].Mass * (dx[0] * dv[1] - dx[1] * dv[0]);
         }
-      if(ptype == 4)            // stars (previously: StarP[P[p].AuxDataID].BirthTime)
+      if(ptype == 4)  // stars (previously: StarP[P[p].AuxDataID].BirthTime)
         {
           Jstars[0] += P[p].Mass * (dx[1] * dv[2] - dx[2] * dv[1]);
           Jstars[1] += P[p].Mass * (dx[2] * dv[0] - dx[0] * dv[2]);
@@ -376,7 +372,7 @@ void subfind_determine_sub_halo_properties(struct unbind_data *d, int num, struc
       rr_tmp = sqrt(rr_tmp);
 
       rr_list[i].mass = P[p].Mass;
-      rr_list[i].r = rr_tmp;
+      rr_list[i].r    = rr_tmp;
       disp += disp_tmp;
     }
 
@@ -389,9 +385,9 @@ void subfind_determine_sub_halo_properties(struct unbind_data *d, int num, struc
       MPI_Allreduce(spin, spintot, 3, MPI_DOUBLE, MPI_SUM, SubComm);
       MPI_Allreduce(&disp, &disptot, 1, MPI_DOUBLE, MPI_SUM, SubComm);
       disp = disptot;
-      lx = spintot[0];
-      ly = spintot[1];
-      lz = spintot[2];
+      lx   = spintot[0];
+      ly   = spintot[1];
+      lz   = spintot[2];
 #ifdef SUBFIND_EXTENDED_PROPERTIES
       MPI_Allreduce(MPI_IN_PLACE, &Ekin, 1, MPI_DOUBLE, MPI_SUM, SubComm);
       MPI_Allreduce(MPI_IN_PLACE, &Epot, 1, MPI_DOUBLE, MPI_SUM, SubComm);
@@ -407,7 +403,7 @@ void subfind_determine_sub_halo_properties(struct unbind_data *d, int num, struc
   spin[1] = ly / mass;
   spin[2] = lz / mass;
 
-  veldisp = sqrt(disp / (3 * mass));    /* convert to 1d velocity dispersion */
+  veldisp = sqrt(disp / (3 * mass)); /* convert to 1d velocity dispersion */
 
 #ifdef SUBFIND_EXTENDED_PROPERTIES
   // counter rotating mass fractions
@@ -423,7 +419,7 @@ void subfind_determine_sub_halo_properties(struct unbind_data *d, int num, struc
       /* calculate particle radius */
       for(j = 0; j < 3; j++)
         {
-          ddxx = GRAVITY_NEAREST_X(P[p].Pos[j] - pos[j]);       // counter-rotating mass calc with respect to pot min
+          ddxx  = GRAVITY_NEAREST_X(P[p].Pos[j] - pos[j]);  // counter-rotating mass calc with respect to pot min
           dx[j] = All.cf_atime * ddxx;
           dv[j] = vel_to_phys * (P[p].Vel[j] - v[j]);
           dv[j] += H_of_a * dx[j];
@@ -438,13 +434,13 @@ void subfind_determine_sub_halo_properties(struct unbind_data *d, int num, struc
       if((Jtot[0] * jpart[0] + Jtot[1] * jpart[1] + Jtot[2] * jpart[2]) < 0.)
         CMFrac += P[p].Mass / mass;
 
-      if(ptype == 1)            // dm illustris
+      if(ptype == 1)  // dm illustris
         if((Jdm[0] * jpart[0] + Jdm[1] * jpart[1] + Jdm[2] * jpart[2]) < 0.)
           CMFracType[1] += P[p].Mass / mass_tab[1];
-      if(ptype == 0)            // gas (incl. winds!)
+      if(ptype == 0)  // gas (incl. winds!)
         if((Jgas[0] * jpart[0] + Jgas[1] * jpart[1] + Jgas[2] * jpart[2]) < 0.)
           CMFracType[0] += P[p].Mass / mass_tab[0];
-      if(ptype == 4)            // stars
+      if(ptype == 4)  // stars
         if((Jstars[0] * jpart[0] + Jstars[1] * jpart[1] + Jstars[2] * jpart[2]) < 0.)
           CMFracType[4] += P[p].Mass / mass_tab[4];
     }
@@ -485,7 +481,7 @@ void subfind_determine_sub_halo_properties(struct unbind_data *d, int num, struc
 
       /* now calculate rotation curve maximum and half mass radius */
 
-      double halfmassrad_loc = 0;
+      double halfmassrad_loc  = 0;
       sort_r2list *rr_lowlist = mymalloc("rr_lowlist", SubNTask * sizeof(sort_r2list));
       sort_r2list low_element;
       if(num > 0)
@@ -493,12 +489,12 @@ void subfind_determine_sub_halo_properties(struct unbind_data *d, int num, struc
       else
         {
           low_element.mass = 0;
-          low_element.r = 0;
+          low_element.r    = 0;
         }
       MPI_Allgather(&low_element, sizeof(sort_r2list), MPI_BYTE, rr_lowlist, sizeof(sort_r2list), MPI_BYTE, SubComm);
 
       rr_list[num].mass = 0;
-      rr_list[num].r = 0;
+      rr_list[num].r    = 0;
 
       for(j = SubThisTask + 1; j < SubNTask; j++)
         if(rr_lowlist[j].mass > 0)
@@ -520,7 +516,7 @@ void subfind_determine_sub_halo_properties(struct unbind_data *d, int num, struc
         {
           if((i + nbefore) > 5 && rr_list[i].mass > max * rr_list[i].r)
             {
-              max = rr_list[i].mass / rr_list[i].r;
+              max    = rr_list[i].mass / rr_list[i].r;
               maxrad = rr_list[i].r;
             }
 
@@ -531,7 +527,7 @@ void subfind_determine_sub_halo_properties(struct unbind_data *d, int num, struc
       myfree(numlist);
 
       MPI_Allreduce(&halfmassrad_loc, &halfmassrad, 1, MPI_DOUBLE, MPI_MAX, SubComm);
-      double *maxlist = mymalloc("maxlist", SubNTask * sizeof(double));
+      double *maxlist    = mymalloc("maxlist", SubNTask * sizeof(double));
       double *maxradlist = mymalloc("maxradlist", SubNTask * sizeof(double));
       MPI_Allgather(&max, 1, MPI_DOUBLE, maxlist, 1, MPI_DOUBLE, SubComm);
       MPI_Allgather(&maxrad, 1, MPI_DOUBLE, maxradlist, 1, MPI_DOUBLE, SubComm);
@@ -539,7 +535,7 @@ void subfind_determine_sub_halo_properties(struct unbind_data *d, int num, struc
         {
           if(maxlist[i] > max)
             {
-              max = maxlist[i];
+              max    = maxlist[i];
               maxrad = maxradlist[i];
             }
         }
@@ -552,7 +548,7 @@ void subfind_determine_sub_halo_properties(struct unbind_data *d, int num, struc
         {
           if(i > 5 && rr_list[i].mass > max * rr_list[i].r)
             {
-              max = rr_list[i].mass / rr_list[i].r;
+              max    = rr_list[i].mass / rr_list[i].r;
               maxrad = rr_list[i].r;
             }
 
@@ -563,7 +559,7 @@ void subfind_determine_sub_halo_properties(struct unbind_data *d, int num, struc
     }
 
   halfmassrad /= All.cf_atime;
-  vmax = sqrt(All.G * max);
+  vmax    = sqrt(All.G * max);
   vmaxrad = maxrad / All.cf_atime;
 
   myfree(rr_list);
@@ -575,7 +571,7 @@ void subfind_determine_sub_halo_properties(struct unbind_data *d, int num, struc
 
   for(i = 0; i < num; i++)
     {
-      p = d[i].index;
+      p         = d[i].index;
       int ptype = P[p].Type;
 
       len_type_loc[ptype]++;
@@ -585,7 +581,7 @@ void subfind_determine_sub_halo_properties(struct unbind_data *d, int num, struc
   for(type = 0; type < NTYPES; type++)
     {
       rr_list = mymalloc("rr_list", sizeof(sort_r2list) * (len_type_loc[type] + 1));
-      itmp = 0;
+      itmp    = 0;
       for(i = 0; i < num; i++)
         {
           p = d[i].index;
@@ -603,7 +599,7 @@ void subfind_determine_sub_halo_properties(struct unbind_data *d, int num, struc
               rr_tmp = sqrt(rr_tmp);
 
               rr_list[itmp].mass = P[p].Mass;
-              rr_list[itmp].r = rr_tmp;
+              rr_list[itmp].r    = rr_tmp;
               itmp++;
             }
         }
@@ -641,7 +637,7 @@ void subfind_determine_sub_halo_properties(struct unbind_data *d, int num, struc
       /* now calculate half mass radii */
       if(parallel_flag)
         {
-          double halfmassrad_loc = 0;
+          double halfmassrad_loc  = 0;
           sort_r2list *rr_lowlist = mymalloc("rr_lowlist", SubNTask * sizeof(sort_r2list));
           sort_r2list low_element;
           if(len_type_loc[type] > 0)
@@ -649,13 +645,13 @@ void subfind_determine_sub_halo_properties(struct unbind_data *d, int num, struc
           else
             {
               low_element.mass = 0;
-              low_element.r = 0;
+              low_element.r    = 0;
             }
 
           MPI_Allgather(&low_element, sizeof(sort_r2list), MPI_BYTE, rr_lowlist, sizeof(sort_r2list), MPI_BYTE, SubComm);
 
           rr_list[len_type_loc[type]].mass = 0;
-          rr_list[len_type_loc[type]].r = 0;
+          rr_list[len_type_loc[type]].r    = 0;
           for(j = SubThisTask + 1; j < SubNTask; j++)
             if(rr_lowlist[j].mass > 0)
               {
@@ -686,8 +682,8 @@ void subfind_determine_sub_halo_properties(struct unbind_data *d, int num, struc
       myfree(rr_list);
     }
 
-  /* properties of 'central galaxies', defined in several ways as particles within some radius:
-     either (stellar half mass radius) or SUBFIND_GAL_RADIUS_FAC*(stellar half mass radius) or (radius of Vmax) */
+    /* properties of 'central galaxies', defined in several ways as particles within some radius:
+       either (stellar half mass radius) or SUBFIND_GAL_RADIUS_FAC*(stellar half mass radius) or (radius of Vmax) */
 #ifdef SUBFIND_EXTENDED_PROPERTIES
   // centre of mass /velocity of particles in half/ stellar mass rad
   sinrad[0] = sinrad[1] = sinrad[2] = 0;
@@ -699,7 +695,7 @@ void subfind_determine_sub_halo_properties(struct unbind_data *d, int num, struc
   for(i = 0; i < num; i++)
     {
       /* identify particle type */
-      p = d[i].index;
+      p         = d[i].index;
       int ptype = P[p].Type;
 
       /* calculate particle radius */
@@ -719,7 +715,7 @@ void subfind_determine_sub_halo_properties(struct unbind_data *d, int num, struc
 #ifdef SUBFIND_EXTENDED_PROPERTIES
           for(j = 0; j < 3; j++)
             {
-              ddxx = GRAVITY_NEAREST_X(P[p].Pos[j] - pos[j]);   // comoving (as it should be.)
+              ddxx = GRAVITY_NEAREST_X(P[p].Pos[j] - pos[j]);  // comoving (as it should be.)
               sinrad[j] += P[p].Mass * ddxx;
               vinrad[j] += P[p].Mass * P[p].Vel[j];
             }
@@ -731,7 +727,7 @@ void subfind_determine_sub_halo_properties(struct unbind_data *d, int num, struc
                 {
 #ifdef USE_SFR
                   sfrinrad += SphP[PS[p].OldIndex].Sfr; /* note: the SphP[] array has not been reordered */
-#endif /* #ifdef USE_SFR */
+#endif                                                  /* #ifdef USE_SFR */
                 }
             }
         }
@@ -745,7 +741,7 @@ void subfind_determine_sub_halo_properties(struct unbind_data *d, int num, struc
 #ifdef SUBFIND_EXTENDED_PROPERTIES
           for(j = 0; j < 3; j++)
             {
-              ddxx = GRAVITY_NEAREST_X(P[p].Pos[j] - pos[j]);   // comoving (as it should be.)
+              ddxx = GRAVITY_NEAREST_X(P[p].Pos[j] - pos[j]);  // comoving (as it should be.)
               sinhalfrad[j] += P[p].Mass * ddxx;
               vinhalfrad[j] += P[p].Mass * P[p].Vel[j];
             }
@@ -756,8 +752,8 @@ void subfind_determine_sub_halo_properties(struct unbind_data *d, int num, struc
               if(P[p].Type == 0)
                 {
 #ifdef USE_SFR
-                  sfrinhalfrad += SphP[PS[p].OldIndex].Sfr;     /* note: the SphP[] array has not been reordered */
-#endif /* #ifdef USE_SFR */
+                  sfrinhalfrad += SphP[PS[p].OldIndex].Sfr; /* note: the SphP[] array has not been reordered */
+#endif                                                      /* #ifdef USE_SFR */
                 }
             }
         }
@@ -773,14 +769,14 @@ void subfind_determine_sub_halo_properties(struct unbind_data *d, int num, struc
               if(P[p].Type == 0)
                 {
 #ifdef USE_SFR
-                  sfrinmaxrad += SphP[PS[p].OldIndex].Sfr;      /* note: the SphP[] array has not been reordered */
-#endif /* #ifdef USE_SFR */
+                  sfrinmaxrad += SphP[PS[p].OldIndex].Sfr; /* note: the SphP[] array has not been reordered */
+#endif                                                     /* #ifdef USE_SFR */
                 }
             }
         }
     }
 
-  /* properties of star forming gas */
+    /* properties of star forming gas */
 #ifdef USE_SFR
   for(i = 0; i < num; i++)
     {
@@ -805,7 +801,9 @@ void subfind_determine_sub_halo_properties(struct unbind_data *d, int num, struc
 
       if(P[p].Type == 0)
         {
-          double bfld2 = (SphP[PS[p].OldIndex].B[0] * SphP[PS[p].OldIndex].B[0]) + (SphP[PS[p].OldIndex].B[1] * SphP[PS[p].OldIndex].B[1]) + (SphP[PS[p].OldIndex].B[2] * SphP[PS[p].OldIndex].B[2]);
+          double bfld2 = (SphP[PS[p].OldIndex].B[0] * SphP[PS[p].OldIndex].B[0]) +
+                         (SphP[PS[p].OldIndex].B[1] * SphP[PS[p].OldIndex].B[1]) +
+                         (SphP[PS[p].OldIndex].B[2] * SphP[PS[p].OldIndex].B[2]);
           double vol = SphP[PS[p].OldIndex].Volume;
 
           bfld_halo += bfld2 * vol;
@@ -865,9 +863,9 @@ void subfind_determine_sub_halo_properties(struct unbind_data *d, int num, struc
       MPI_Allreduce(&bfld_disk, &bfld_disk_tot, 1, MPI_DOUBLE, MPI_SUM, SubComm);
       MPI_Allreduce(&bfld_vol_disk, &bfld_vol_disk_tot, 1, MPI_DOUBLE, MPI_SUM, SubComm);
 
-      bfld_halo = bfld_halo_tot;
+      bfld_halo     = bfld_halo_tot;
       bfld_vol_halo = bfld_vol_halo_tot;
-      bfld_disk = bfld_disk_tot;
+      bfld_disk     = bfld_disk_tot;
       bfld_vol_disk = bfld_vol_disk_tot;
 #endif /* #ifdef MHD */
 
@@ -916,7 +914,7 @@ void subfind_determine_sub_halo_properties(struct unbind_data *d, int num, struc
           while(sinrad[j] >= boxsize)
             sinrad[j] -= boxsize;
 
-          vinrad[j] /= massinrad;       // this is comoving (as it should be.)
+          vinrad[j] /= massinrad;  // this is comoving (as it should be.)
         }
 
       if(massinhalfrad > 0)
@@ -962,7 +960,7 @@ void subfind_determine_sub_halo_properties(struct unbind_data *d, int num, struc
         {
           for(j = 0; j < 3; j++)
             {
-              ddxx = GRAVITY_NEAREST_X(P[p].Pos[j] - pos[j]);
+              ddxx  = GRAVITY_NEAREST_X(P[p].Pos[j] - pos[j]);
               dx[j] = All.cf_atime * ddxx;
               dv[j] = vel_to_phys * (P[p].Vel[j] - vinrad[j]);
               dv[j] += H_of_a * dx[j];
@@ -972,19 +970,19 @@ void subfind_determine_sub_halo_properties(struct unbind_data *d, int num, struc
           Jtot_inRad[1] += P[p].Mass * (dx[2] * dv[0] - dx[0] * dv[2]);
           Jtot_inRad[2] += P[p].Mass * (dx[0] * dv[1] - dx[1] * dv[0]);
 
-          if(ptype == 1)        // dm illustris
+          if(ptype == 1)  // dm illustris
             {
               Jdm_inRad[0] += P[p].Mass * (dx[1] * dv[2] - dx[2] * dv[1]);
               Jdm_inRad[1] += P[p].Mass * (dx[2] * dv[0] - dx[0] * dv[2]);
               Jdm_inRad[2] += P[p].Mass * (dx[0] * dv[1] - dx[1] * dv[0]);
             }
-          if(ptype == 0)        // gas
+          if(ptype == 0)  // gas
             {
               Jgas_inRad[0] += P[p].Mass * (dx[1] * dv[2] - dx[2] * dv[1]);
               Jgas_inRad[1] += P[p].Mass * (dx[2] * dv[0] - dx[0] * dv[2]);
               Jgas_inRad[2] += P[p].Mass * (dx[0] * dv[1] - dx[1] * dv[0]);
             }
-          if(ptype == 4)        // stars
+          if(ptype == 4)  // stars
             {
               Jstars_inRad[0] += P[p].Mass * (dx[1] * dv[2] - dx[2] * dv[1]);
               Jstars_inRad[1] += P[p].Mass * (dx[2] * dv[0] - dx[0] * dv[2]);
@@ -997,7 +995,7 @@ void subfind_determine_sub_halo_properties(struct unbind_data *d, int num, struc
         {
           for(j = 0; j < 3; j++)
             {
-              ddxx = GRAVITY_NEAREST_X(P[p].Pos[j] - pos[j]);
+              ddxx  = GRAVITY_NEAREST_X(P[p].Pos[j] - pos[j]);
               dx[j] = All.cf_atime * ddxx;
               dv[j] = vel_to_phys * (P[p].Vel[j] - vinhalfrad[j]);
               dv[j] += H_of_a * dx[j];
@@ -1007,19 +1005,19 @@ void subfind_determine_sub_halo_properties(struct unbind_data *d, int num, struc
           Jtot_inHalfRad[1] += P[p].Mass * (dx[2] * dv[0] - dx[0] * dv[2]);
           Jtot_inHalfRad[2] += P[p].Mass * (dx[0] * dv[1] - dx[1] * dv[0]);
 
-          if(ptype == 1)        // dm illustris
+          if(ptype == 1)  // dm illustris
             {
               Jdm_inHalfRad[0] += P[p].Mass * (dx[1] * dv[2] - dx[2] * dv[1]);
               Jdm_inHalfRad[1] += P[p].Mass * (dx[2] * dv[0] - dx[0] * dv[2]);
               Jdm_inHalfRad[2] += P[p].Mass * (dx[0] * dv[1] - dx[1] * dv[0]);
             }
-          if(ptype == 0)        // gas
+          if(ptype == 0)  // gas
             {
               Jgas_inHalfRad[0] += P[p].Mass * (dx[1] * dv[2] - dx[2] * dv[1]);
               Jgas_inHalfRad[1] += P[p].Mass * (dx[2] * dv[0] - dx[0] * dv[2]);
               Jgas_inHalfRad[2] += P[p].Mass * (dx[0] * dv[1] - dx[1] * dv[0]);
             }
-          if(ptype == 4)        // stars
+          if(ptype == 4)  // stars
             {
               Jstars_inHalfRad[0] += P[p].Mass * (dx[1] * dv[2] - dx[2] * dv[1]);
               Jstars_inHalfRad[1] += P[p].Mass * (dx[2] * dv[0] - dx[0] * dv[2]);
@@ -1053,7 +1051,7 @@ void subfind_determine_sub_halo_properties(struct unbind_data *d, int num, struc
       /* calculate particle radius */
       for(j = 0, rr_tmp = 0; j < 3; j++)
         {
-          ddxx = GRAVITY_NEAREST_X(P[p].Pos[j] - pos[j]);       // counter-rotating mass calc with respect to pot min
+          ddxx = GRAVITY_NEAREST_X(P[p].Pos[j] - pos[j]);  // counter-rotating mass calc with respect to pot min
           rr_tmp += ddxx * ddxx;
         }
       rr_tmp = sqrt(rr_tmp);
@@ -1065,7 +1063,7 @@ void subfind_determine_sub_halo_properties(struct unbind_data *d, int num, struc
         {
           for(j = 0; j < 3; j++)
             {
-              ddxx = GRAVITY_NEAREST_X(P[p].Pos[j] - pos[j]);
+              ddxx  = GRAVITY_NEAREST_X(P[p].Pos[j] - pos[j]);
               dx[j] = All.cf_atime * ddxx;
               dv[j] = vel_to_phys * (P[p].Vel[j] - vinrad[j]);
               dv[j] += H_of_a * dx[j];
@@ -1078,13 +1076,13 @@ void subfind_determine_sub_halo_properties(struct unbind_data *d, int num, struc
           if((Jtot_inRad[0] * jpart[0] + Jtot_inRad[1] * jpart[1] + Jtot_inRad[2] * jpart[2]) < 0.)
             CMFrac_inRad += P[p].Mass / massinrad;
 
-          if(ptype == 1)        // dm illustris
+          if(ptype == 1)  // dm illustris
             if((Jdm_inRad[0] * jpart[0] + Jdm_inRad[1] * jpart[1] + Jdm_inRad[2] * jpart[2]) < 0.)
               CMFracType_inRad[1] += P[p].Mass / massinrad_tab[1];
-          if(ptype == 0)        // gas (incl. winds!)
+          if(ptype == 0)  // gas (incl. winds!)
             if((Jgas_inRad[0] * jpart[0] + Jgas_inRad[1] * jpart[1] + Jgas_inRad[2] * jpart[2]) < 0.)
               CMFracType_inRad[0] += P[p].Mass / massinrad_tab[0];
-          if(ptype == 4)        // stars
+          if(ptype == 4)  // stars
             if((Jstars_inRad[0] * jpart[0] + Jstars_inRad[1] * jpart[1] + Jstars_inRad[2] * jpart[2]) < 0.)
               CMFracType_inRad[4] += P[p].Mass / massinrad_tab[4];
         }
@@ -1094,7 +1092,7 @@ void subfind_determine_sub_halo_properties(struct unbind_data *d, int num, struc
         {
           for(j = 0; j < 3; j++)
             {
-              ddxx = GRAVITY_NEAREST_X(P[p].Pos[j] - pos[j]);
+              ddxx  = GRAVITY_NEAREST_X(P[p].Pos[j] - pos[j]);
               dx[j] = All.cf_atime * ddxx;
               dv[j] = vel_to_phys * (P[p].Vel[j] - vinhalfrad[j]);
               dv[j] += H_of_a * dx[j];
@@ -1107,13 +1105,13 @@ void subfind_determine_sub_halo_properties(struct unbind_data *d, int num, struc
           if((Jtot_inHalfRad[0] * jpart[0] + Jtot_inHalfRad[1] * jpart[1] + Jtot_inHalfRad[2] * jpart[2]) < 0.)
             CMFrac_inHalfRad += P[p].Mass / massinhalfrad;
 
-          if(ptype == 1)        // dm illustris
+          if(ptype == 1)  // dm illustris
             if((Jdm_inHalfRad[0] * jpart[0] + Jdm_inHalfRad[1] * jpart[1] + Jdm_inHalfRad[2] * jpart[2]) < 0.)
               CMFracType_inHalfRad[1] += P[p].Mass / massinhalfrad_tab[1];
-          if(ptype == 0)        // gas (incl. winds!)
+          if(ptype == 0)  // gas (incl. winds!)
             if((Jgas_inHalfRad[0] * jpart[0] + Jgas_inHalfRad[1] * jpart[1] + Jgas_inHalfRad[2] * jpart[2]) < 0.)
               CMFracType_inHalfRad[0] += P[p].Mass / massinhalfrad_tab[0];
-          if(ptype == 4)        // stars
+          if(ptype == 4)  // stars
             if((Jstars_inHalfRad[0] * jpart[0] + Jstars_inHalfRad[1] * jpart[1] + Jstars_inHalfRad[2] * jpart[2]) < 0.)
               CMFracType_inHalfRad[4] += P[p].Mass / massinhalfrad_tab[4];
         }
@@ -1131,18 +1129,18 @@ void subfind_determine_sub_halo_properties(struct unbind_data *d, int num, struc
   /* now store the calculated properties in the subgroup structure */
   if(parallel_flag == 0 || SubThisTask == 0)
     {
-      subgroup->Len = totlen;
-      subgroup->Mass = mass;
-      subgroup->SubMassInRad = massinrad;
+      subgroup->Len              = totlen;
+      subgroup->Mass             = mass;
+      subgroup->SubMassInRad     = massinrad;
       subgroup->SubMassInHalfRad = massinhalfrad;
-      subgroup->SubMassInMaxRad = massinmaxrad;
+      subgroup->SubMassInMaxRad  = massinmaxrad;
 #ifdef SUBFIND_EXTENDED_PROPERTIES
-      subgroup->Ekin = Ekin;
-      subgroup->Epot = Epot;
-      subgroup->Ethr = Ethr;
-      subgroup->CMFrac = CMFrac;
+      subgroup->Ekin             = Ekin;
+      subgroup->Epot             = Epot;
+      subgroup->Ethr             = Ethr;
+      subgroup->CMFrac           = CMFrac;
       subgroup->CMFrac_inHalfRad = CMFrac_inHalfRad;
-      subgroup->CMFrac_inRad = CMFrac_inRad;
+      subgroup->CMFrac_inRad     = CMFrac_inRad;
 #endif /* #ifdef SUBFIND_EXTENDED_PROPERTIES */
 
 #ifdef MHD
@@ -1152,56 +1150,54 @@ void subfind_determine_sub_halo_properties(struct unbind_data *d, int num, struc
 
       for(j = 0; j < 6; j++)
         {
-          subgroup->MassType[j] = mass_tab[j];
-          subgroup->LenType[j] = len_type[j];
-          subgroup->SubHalfMassRadType[j] = halfmassradtype[j];
-          subgroup->SubMassInRadType[j] = massinrad_tab[j];
+          subgroup->MassType[j]             = mass_tab[j];
+          subgroup->LenType[j]              = len_type[j];
+          subgroup->SubHalfMassRadType[j]   = halfmassradtype[j];
+          subgroup->SubMassInRadType[j]     = massinrad_tab[j];
           subgroup->SubMassInHalfRadType[j] = massinhalfrad_tab[j];
-          subgroup->SubMassInMaxRadType[j] = massinmaxrad_tab[j];
+          subgroup->SubMassInMaxRadType[j]  = massinmaxrad_tab[j];
 #ifdef SUBFIND_EXTENDED_PROPERTIES
-          subgroup->CMFracType[j] = CMFracType[j];
+          subgroup->CMFracType[j]           = CMFracType[j];
           subgroup->CMFracType_inHalfRad[j] = CMFracType_inHalfRad[j];
-          subgroup->CMFracType_inRad[j] = CMFracType_inRad[j];
+          subgroup->CMFracType_inRad[j]     = CMFracType_inRad[j];
 #endif /* #ifdef SUBFIND_EXTENDED_PROPERTIES */
         }
       for(j = 0; j < 3; j++)
         {
-          subgroup->Pos[j] = pos[j];
-          subgroup->Vel[j] = vel[j];
-          subgroup->CM[j] = cm[j];
+          subgroup->Pos[j]  = pos[j];
+          subgroup->Vel[j]  = vel[j];
+          subgroup->CM[j]   = cm[j];
           subgroup->Spin[j] = spin[j];
 #ifdef SUBFIND_EXTENDED_PROPERTIES
-          subgroup->J[j] = Jtot[j];
-          subgroup->Jdm[j] = Jdm[j];
-          subgroup->Jgas[j] = Jgas[j];
-          subgroup->Jstars[j] = Jstars[j];
-          subgroup->J_inHalfRad[j] = Jtot_inHalfRad[j];
-          subgroup->Jdm_inHalfRad[j] = Jdm_inHalfRad[j];
-          subgroup->Jgas_inHalfRad[j] = Jgas_inHalfRad[j];
+          subgroup->J[j]                = Jtot[j];
+          subgroup->Jdm[j]              = Jdm[j];
+          subgroup->Jgas[j]             = Jgas[j];
+          subgroup->Jstars[j]           = Jstars[j];
+          subgroup->J_inHalfRad[j]      = Jtot_inHalfRad[j];
+          subgroup->Jdm_inHalfRad[j]    = Jdm_inHalfRad[j];
+          subgroup->Jgas_inHalfRad[j]   = Jgas_inHalfRad[j];
           subgroup->Jstars_inHalfRad[j] = Jstars_inHalfRad[j];
-          subgroup->J_inRad[j] = Jtot_inRad[j];
-          subgroup->Jdm_inRad[j] = Jdm_inRad[j];
-          subgroup->Jgas_inRad[j] = Jgas_inRad[j];
-          subgroup->Jstars_inRad[j] = Jstars_inRad[j];
+          subgroup->J_inRad[j]          = Jtot_inRad[j];
+          subgroup->Jdm_inRad[j]        = Jdm_inRad[j];
+          subgroup->Jgas_inRad[j]       = Jgas_inRad[j];
+          subgroup->Jstars_inRad[j]     = Jstars_inRad[j];
 #endif /* #ifdef SUBFIND_EXTENDED_PROPERTIES */
         }
 
       subgroup->SubMostBoundID = mostboundid;
-      subgroup->SubVelDisp = veldisp;
-      subgroup->SubVmax = vmax;
-      subgroup->SubVmaxRad = vmaxrad;
+      subgroup->SubVelDisp     = veldisp;
+      subgroup->SubVmax        = vmax;
+      subgroup->SubVmaxRad     = vmaxrad;
       subgroup->SubHalfMassRad = halfmassrad;
 
 #ifdef USE_SFR
-      subgroup->Sfr = sfr;
-      subgroup->SfrInRad = sfrinrad;
+      subgroup->Sfr          = sfr;
+      subgroup->SfrInRad     = sfrinrad;
       subgroup->SfrInHalfRad = sfrinhalfrad;
-      subgroup->SfrInMaxRad = sfrinmaxrad;
-      subgroup->GasMassSfr = gasMassSfr;
+      subgroup->SfrInMaxRad  = sfrinmaxrad;
+      subgroup->GasMassSfr   = gasMassSfr;
 #endif /* #ifdef USE_SFR */
-
     }
 }
-
 
 #endif /* #ifdef SUBFIND */

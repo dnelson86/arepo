@@ -65,64 +65,55 @@
  *                  *func, const char *file, int line)
  *                void *myrealloc_movable_fullinfo(void *p, size_t n,
  *                  const char *func, const char *file, int line)
- * 
+ *
  * \par Major modifications and contributions:
- * 
+ *
  * - DD.MM.YYYY Description
  * - 07.05.2018 Prepared file for public release -- Rainer Weinberger
  */
 
-
+#include <gsl/gsl_math.h>
+#include <math.h>
 #include <mpi.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <math.h>
-#include <gsl/gsl_math.h>
-
 
 #include "../main/allvars.h"
 #include "../main/proto.h"
 
-
 #define CACHELINESIZE 64
 
-
 #define MAXBLOCKS 5000
-#define MAXCHARS  40
-
+#define MAXCHARS 40
 
 static size_t AllocatedBytesGeneric;
-
 
 static size_t HighMarkBytes;
 static size_t HighMarkBytesWithoutGeneric;
 
-
 static double OldGlobHighMarkMB;
 static double OldGlobHighMarkMBWithoutGeneric;
 
+static size_t TotBytes; /*!< The total dimension (in bytes) of dynamic memory available to the current task. */
+static void *Base;      /*!< Base pointer (initial memory address) of the stack. */
 
-static size_t TotBytes;         /*!< The total dimension (in bytes) of dynamic memory available to the current task. */
-static void *Base;              /*!< Base pointer (initial memory address) of the stack. */
+static unsigned long Nblocks; /*!< The current number of allocated memory blocks. */
 
-
-static unsigned long Nblocks;   /*!< The current number of allocated memory blocks. */
-
-
-static void **Table;            /*!< Table containing the initial addresses of the allocated memory blocks. */
-static size_t *BlockSize;       /*!< Array containing the size (in bytes) of all the allocated memory blocks. */
-static char *MovableFlag;       /*!< Identifies whether a block is movable. */
-static char *GenericFlag;       /*!< Identifies whether a block has been identified in the generic allocation routines. */
-static void ***BasePointers;    /*!< Base pointers containing the initial addresses of movable memory blocks */
-static char *VarName;           /*!< The name of the variable with which the block has been allocated. */
-static char *FunctionName;      /*!< The function name that has allocated the memory block. */
-static char *ParentFileName;    /*!< The location from which the generich routines were called */
-static char *FileName;          /*!< The file name where the function that has allocated the block is called. */
-static int *LineNumber;         /*!< The line number in FileName where the function that allocated the block has been called. */
-static char *HighMarkTabBuf;    /*!< This is a buffer that holds the log-file output corresponding to the largest memory use that has occurred on this task */
-static char *HighMarkTabBufWithoutGeneric;      /*!< This is a buffer that holds the log-file output corresponding to the largest memory use that has occurred on this task */
-
+static void **Table;         /*!< Table containing the initial addresses of the allocated memory blocks. */
+static size_t *BlockSize;    /*!< Array containing the size (in bytes) of all the allocated memory blocks. */
+static char *MovableFlag;    /*!< Identifies whether a block is movable. */
+static char *GenericFlag;    /*!< Identifies whether a block has been identified in the generic allocation routines. */
+static void ***BasePointers; /*!< Base pointers containing the initial addresses of movable memory blocks */
+static char *VarName;        /*!< The name of the variable with which the block has been allocated. */
+static char *FunctionName;   /*!< The function name that has allocated the memory block. */
+static char *ParentFileName; /*!< The location from which the generich routines were called */
+static char *FileName;       /*!< The file name where the function that has allocated the block is called. */
+static int *LineNumber;      /*!< The line number in FileName where the function that allocated the block has been called. */
+static char *HighMarkTabBuf; /*!< This is a buffer that holds the log-file output corresponding to the largest memory use that has
+                                occurred on this task */
+static char *HighMarkTabBufWithoutGeneric; /*!< This is a buffer that holds the log-file output corresponding to the largest memory use
+                                              that has occurred on this task */
 
 #ifdef HUGEPAGES
 #include <hugetlbfs.h>
@@ -151,8 +142,7 @@ static void *hmalloc(size_t size)
 
   return p;
 }
-#else /* #ifdef HUGEPAGES */
-
+#else  /* #ifdef HUGEPAGES */
 
 /*! \brief Allocation function wrapper without hugepages usage.
  *
@@ -160,12 +150,8 @@ static void *hmalloc(size_t size)
  *
  *  \return void pointer to address in memory.
  */
-static void *hmalloc(size_t size)
-{
-  return malloc(size);
-}
+static void *hmalloc(size_t size) { return malloc(size); }
 #endif /* #ifdef HUGEPAGES #else */
-
 
 /*! \brief Initializes memory manager.
  *
@@ -177,25 +163,25 @@ static void *hmalloc(size_t size)
  */
 void mymalloc_init(void)
 {
-  BlockSize = (size_t *) hmalloc(MAXBLOCKS * sizeof(size_t));
-  Table = (void **) hmalloc(MAXBLOCKS * sizeof(void *));
-  MovableFlag = (char *) hmalloc(MAXBLOCKS * sizeof(char));
-  GenericFlag = (char *) hmalloc(MAXBLOCKS * sizeof(char));
-  BasePointers = (void ***) hmalloc(MAXBLOCKS * sizeof(void **));
-  VarName = (char *) hmalloc(MAXBLOCKS * MAXCHARS * sizeof(char));
-  FunctionName = (char *) hmalloc(MAXBLOCKS * MAXCHARS * sizeof(char));
-  ParentFileName = (char *) hmalloc(MAXBLOCKS * MAXCHARS * sizeof(char));
-  FileName = (char *) hmalloc(MAXBLOCKS * MAXCHARS * sizeof(char));
-  LineNumber = (int *) hmalloc(MAXBLOCKS * sizeof(int));
-  HighMarkTabBuf = (char *) hmalloc((100 + 4 * MAXCHARS) * (MAXBLOCKS + 10));
-  HighMarkTabBufWithoutGeneric = (char *) hmalloc((100 + 4 * MAXCHARS) * (MAXBLOCKS + 10));
+  BlockSize                    = (size_t *)hmalloc(MAXBLOCKS * sizeof(size_t));
+  Table                        = (void **)hmalloc(MAXBLOCKS * sizeof(void *));
+  MovableFlag                  = (char *)hmalloc(MAXBLOCKS * sizeof(char));
+  GenericFlag                  = (char *)hmalloc(MAXBLOCKS * sizeof(char));
+  BasePointers                 = (void ***)hmalloc(MAXBLOCKS * sizeof(void **));
+  VarName                      = (char *)hmalloc(MAXBLOCKS * MAXCHARS * sizeof(char));
+  FunctionName                 = (char *)hmalloc(MAXBLOCKS * MAXCHARS * sizeof(char));
+  ParentFileName               = (char *)hmalloc(MAXBLOCKS * MAXCHARS * sizeof(char));
+  FileName                     = (char *)hmalloc(MAXBLOCKS * MAXCHARS * sizeof(char));
+  LineNumber                   = (int *)hmalloc(MAXBLOCKS * sizeof(int));
+  HighMarkTabBuf               = (char *)hmalloc((100 + 4 * MAXCHARS) * (MAXBLOCKS + 10));
+  HighMarkTabBufWithoutGeneric = (char *)hmalloc((100 + 4 * MAXCHARS) * (MAXBLOCKS + 10));
 
   memset(VarName, 0, MAXBLOCKS * MAXCHARS);
   memset(FunctionName, 0, MAXBLOCKS * MAXCHARS);
   memset(ParentFileName, 0, MAXBLOCKS * MAXCHARS);
   memset(FileName, 0, MAXBLOCKS * MAXCHARS);
 
-  size_t n = All.MaxMemSize * ((size_t) 1024 * 1024);
+  size_t n = All.MaxMemSize * ((size_t)1024 * 1024);
 
   n = roundup_to_multiple_of_cacheline_size(n);
 
@@ -204,14 +190,13 @@ void mymalloc_init(void)
 
   TotBytes = FreeBytes = n;
 
-  AllocatedBytes = 0;
-  Nblocks = 0;
-  HighMarkBytes = 0;
-  HighMarkBytesWithoutGeneric = 0;
-  OldGlobHighMarkMB = 0;
+  AllocatedBytes                  = 0;
+  Nblocks                         = 0;
+  HighMarkBytes                   = 0;
+  HighMarkBytesWithoutGeneric     = 0;
+  OldGlobHighMarkMB               = 0;
   OldGlobHighMarkMBWithoutGeneric = 0;
 }
-
 
 /*! \brief Writes memory usage in FdMemory.
  *
@@ -225,8 +210,9 @@ void report_memory_usage(int rank, char *tabbuf)
   if(ThisTask == rank)
     {
       char *buf = mymalloc("buf", (100 + 4 * MAXCHARS) * (Nblocks + 10));
-      int cc = 0;
-      cc += sprintf(buf + cc, "\nMEMORY:  Largest Allocation = %g Mbyte  |  Largest Allocation Without Generic = %g Mbyte\n\n", OldGlobHighMarkMB, OldGlobHighMarkMBWithoutGeneric);
+      int cc    = 0;
+      cc += sprintf(buf + cc, "\nMEMORY:  Largest Allocation = %g Mbyte  |  Largest Allocation Without Generic = %g Mbyte\n\n",
+                    OldGlobHighMarkMB, OldGlobHighMarkMBWithoutGeneric);
 
       cc += sprintf(buf + cc, "%s", tabbuf);
       if(ThisTask == 0)
@@ -258,9 +244,7 @@ void report_memory_usage(int rank, char *tabbuf)
         }
       myfree(buf);
     }
-
 }
-
 
 /*! \brief Writes memory useage of largest task in FdMemory.
  *
@@ -276,7 +260,7 @@ void report_detailed_memory_usage_of_largest_task(void)
     int rank;
   } local, global;
 
-  local.mem = HighMarkBytes / (1024.0 * 1024.0);
+  local.mem  = HighMarkBytes / (1024.0 * 1024.0);
   local.rank = ThisTask;
 
   MPI_Allreduce(&local, &global, 1, MPI_DOUBLE_INT, MPI_MAXLOC, MPI_COMM_WORLD);
@@ -287,7 +271,7 @@ void report_detailed_memory_usage_of_largest_task(void)
       flag |= 1;
     }
 
-  local.mem = HighMarkBytesWithoutGeneric / (1024.0 * 1024.0);
+  local.mem  = HighMarkBytesWithoutGeneric / (1024.0 * 1024.0);
   local.rank = ThisTask;
 
   MPI_Allreduce(&local, &global, 1, MPI_DOUBLE_INT, MPI_MAXLOC, MPI_COMM_WORLD);
@@ -305,7 +289,6 @@ void report_detailed_memory_usage_of_largest_task(void)
     report_memory_usage(global.rank, HighMarkTabBuf);
 }
 
-
 /*! \brief Dumps the buffer where the memory information is stored to the
  *         standard output.
  *
@@ -319,7 +302,6 @@ void dump_memory_table(void)
   free(buf);
 }
 
-
 /*! \brief Fills the output buffer with the memory log.
  *
  *  \param[out] p Output buffer.
@@ -328,25 +310,25 @@ void dump_memory_table(void)
  */
 int dump_memory_table_buffer(char *p)
 {
-  int cc = 0;
+  int cc              = 0;
   size_t totBlocksize = 0;
 
-  cc += sprintf(p + cc, "-------------------------- Allocated Memory Blocks---- ( Step %8d )------------------\n", All.NumCurrentTiStep);
+  cc +=
+      sprintf(p + cc, "-------------------------- Allocated Memory Blocks---- ( Step %8d )------------------\n", All.NumCurrentTiStep);
   cc += sprintf(p + cc, "Task    Nr F                  Variable      MBytes   Cumulative  Function|File|Linenumber\n");
   cc += sprintf(p + cc, "------------------------------------------------------------------------------------------\n");
   for(int i = 0; i < Nblocks; i++)
     {
       totBlocksize += BlockSize[i];
 
-      cc += sprintf(p + cc, "%4d %5d %d %40s  %10.4f   %10.4f  %s%s()|%s|%d\n",
-                    ThisTask, i, MovableFlag[i], VarName + i * MAXCHARS, BlockSize[i] / (1024.0 * 1024.0),
-                    totBlocksize / (1024.0 * 1024.0), ParentFileName + i * MAXCHARS, FunctionName + i * MAXCHARS, FileName + i * MAXCHARS, LineNumber[i]);
+      cc += sprintf(p + cc, "%4d %5d %d %40s  %10.4f   %10.4f  %s%s()|%s|%d\n", ThisTask, i, MovableFlag[i], VarName + i * MAXCHARS,
+                    BlockSize[i] / (1024.0 * 1024.0), totBlocksize / (1024.0 * 1024.0), ParentFileName + i * MAXCHARS,
+                    FunctionName + i * MAXCHARS, FileName + i * MAXCHARS, LineNumber[i]);
     }
   cc += sprintf(p + cc, "------------------------------------------------------------------------------------------\n");
 
   return cc;
 }
-
 
 /*! \brief Allocates a non-movable memory block and store the relative
  *         information.
@@ -372,14 +354,16 @@ void *mymalloc_fullinfo(const char *varname, size_t n, const char *func, const c
     n = CACHELINESIZE;
 
   if(Nblocks >= MAXBLOCKS)
-    terminate("Task=%d: No blocks left in mymalloc_fullinfo() at %s()/%s/line %d. MAXBLOCKS=%d\n", ThisTask, func, file, line, MAXBLOCKS);
+    terminate("Task=%d: No blocks left in mymalloc_fullinfo() at %s()/%s/line %d. MAXBLOCKS=%d\n", ThisTask, func, file, line,
+              MAXBLOCKS);
 
   if(n > FreeBytes)
     {
       dump_memory_table();
-      terminate
-        ("\nTask=%d: Not enough memory in mymalloc_fullinfo() to allocate %g MB for variable '%s' at %s()/%s/line %d (FreeBytes=%g MB).\n",
-         ThisTask, n / (1024.0 * 1024.0), varname, func, file, line, FreeBytes / (1024.0 * 1024.0));
+      terminate(
+          "\nTask=%d: Not enough memory in mymalloc_fullinfo() to allocate %g MB for variable '%s' at %s()/%s/line %d (FreeBytes=%g "
+          "MB).\n",
+          ThisTask, n / (1024.0 * 1024.0), varname, func, file, line, FreeBytes / (1024.0 * 1024.0));
     }
   Table[Nblocks] = Base + (TotBytes - FreeBytes);
   FreeBytes -= n;
@@ -401,7 +385,7 @@ void *mymalloc_fullinfo(const char *varname, size_t n, const char *func, const c
   LineNumber[Nblocks] = line;
 
   AllocatedBytes += n;
-  BlockSize[Nblocks] = n;
+  BlockSize[Nblocks]   = n;
   MovableFlag[Nblocks] = 0;
 
   Nblocks += 1;
@@ -424,7 +408,6 @@ void *mymalloc_fullinfo(const char *varname, size_t n, const char *func, const c
   return Table[Nblocks - 1];
 }
 
-
 /*! \brief Allocates a movable memory block and store the relative information.
  *
  *  \param[in] ptr Pointer to the initial memory address of the block.
@@ -439,7 +422,8 @@ void *mymalloc_fullinfo(const char *varname, size_t n, const char *func, const c
  *
  *  \return A pointer to the beginning of the allocated memory block.
  */
-void *mymalloc_movable_fullinfo(void *ptr, const char *varname, size_t n, const char *func, const char *file, int line, char *callorigin)
+void *mymalloc_movable_fullinfo(void *ptr, const char *varname, size_t n, const char *func, const char *file, int line,
+                                char *callorigin)
 {
   if((n % CACHELINESIZE) > 0)
     n = (n / CACHELINESIZE + 1) * CACHELINESIZE;
@@ -448,14 +432,16 @@ void *mymalloc_movable_fullinfo(void *ptr, const char *varname, size_t n, const 
     n = CACHELINESIZE;
 
   if(Nblocks >= MAXBLOCKS)
-    terminate("Task=%d: No blocks left in mymalloc_fullinfo() at %s()/%s/line %d. MAXBLOCKS=%d\n", ThisTask, func, file, line, MAXBLOCKS);
+    terminate("Task=%d: No blocks left in mymalloc_fullinfo() at %s()/%s/line %d. MAXBLOCKS=%d\n", ThisTask, func, file, line,
+              MAXBLOCKS);
 
   if(n > FreeBytes)
     {
       dump_memory_table();
-      terminate
-        ("\nTask=%d: Not enough memory in mymalloc_fullinfo() to allocate %g MB for variable '%s' at %s()/%s/line %d (FreeBytes=%g MB).\n",
-         ThisTask, n / (1024.0 * 1024.0), varname, func, file, line, FreeBytes / (1024.0 * 1024.0));
+      terminate(
+          "\nTask=%d: Not enough memory in mymalloc_fullinfo() to allocate %g MB for variable '%s' at %s()/%s/line %d (FreeBytes=%g "
+          "MB).\n",
+          ThisTask, n / (1024.0 * 1024.0), varname, func, file, line, FreeBytes / (1024.0 * 1024.0));
     }
   Table[Nblocks] = Base + (TotBytes - FreeBytes);
   FreeBytes -= n;
@@ -477,8 +463,8 @@ void *mymalloc_movable_fullinfo(void *ptr, const char *varname, size_t n, const 
   LineNumber[Nblocks] = line;
 
   AllocatedBytes += n;
-  BlockSize[Nblocks] = n;
-  MovableFlag[Nblocks] = 1;
+  BlockSize[Nblocks]    = n;
+  MovableFlag[Nblocks]  = 1;
   BasePointers[Nblocks] = ptr;
 
   Nblocks += 1;
@@ -498,7 +484,6 @@ void *mymalloc_movable_fullinfo(void *ptr, const char *varname, size_t n, const 
   return Table[Nblocks - 1];
 }
 
-
 /*! \brief Rounds up size to cachline size.
  *
  *  \param[in] n Size.
@@ -512,7 +497,6 @@ size_t roundup_to_multiple_of_cacheline_size(size_t n)
 
   return n;
 }
-
 
 /*! \brief Deallocates a non-movable memory block.
  *
@@ -547,7 +531,6 @@ void myfree_fullinfo(void *p, const char *func, const char *file, int line)
   FreeBytes += BlockSize[Nblocks];
 }
 
-
 /*! \brief Finds last allocated block.
  *
  *  \return void pointer to last allocated block.
@@ -559,7 +542,6 @@ void *myfree_query_last_block(void)
 
   return Table[Nblocks - 1];
 }
-
 
 /*! \brief Deallocates a movable memory block.
  *
@@ -593,10 +575,11 @@ void myfree_movable_fullinfo(void *p, const char *func, const char *file, int li
   if(nr < 0)
     {
       dump_memory_table();
-      terminate("Task=%d: Wrong call of myfree_movable() from %s()/%s/line %d - this block has not been allocated!\n", ThisTask, func, file, line);
+      terminate("Task=%d: Wrong call of myfree_movable() from %s()/%s/line %d - this block has not been allocated!\n", ThisTask, func,
+                file, line);
     }
 
-  if(nr < Nblocks - 1)          /* the block is not the last allocated block */
+  if(nr < Nblocks - 1) /* the block is not the last allocated block */
     {
       /* check that all subsequent blocks are actually movable */
       for(i = nr + 1; i < Nblocks; i++)
@@ -604,7 +587,10 @@ void myfree_movable_fullinfo(void *p, const char *func, const char *file, int li
           {
             dump_memory_table();
             myflush(stdout);
-            terminate("Task=%d: Wrong call of myfree_movable() from %s()/%s/line %d - behind block=%d there are subsequent non-movable allocated blocks\n", ThisTask, func, file, line, nr);
+            terminate(
+                "Task=%d: Wrong call of myfree_movable() from %s()/%s/line %d - behind block=%d there are subsequent non-movable "
+                "allocated blocks\n",
+                ThisTask, func, file, line, nr);
           }
     }
 
@@ -615,7 +601,7 @@ void myfree_movable_fullinfo(void *p, const char *func, const char *file, int li
   FreeBytes += BlockSize[nr];
 
   ptrdiff_t offset = -BlockSize[nr];
-  size_t length = 0;
+  size_t length    = 0;
 
   for(i = nr + 1; i < Nblocks; i++)
     length += BlockSize[i];
@@ -631,11 +617,11 @@ void myfree_movable_fullinfo(void *p, const char *func, const char *file, int li
 
   for(i = nr + 1; i < Nblocks; i++)
     {
-      Table[i - 1] = Table[i];
+      Table[i - 1]        = Table[i];
       BasePointers[i - 1] = BasePointers[i];
-      BlockSize[i - 1] = BlockSize[i];
-      MovableFlag[i - 1] = MovableFlag[i];
-      GenericFlag[i - 1] = GenericFlag[i];
+      BlockSize[i - 1]    = BlockSize[i];
+      MovableFlag[i - 1]  = MovableFlag[i];
+      GenericFlag[i - 1]  = GenericFlag[i];
 
       strncpy(VarName + (i - 1) * MAXCHARS, VarName + i * MAXCHARS, MAXCHARS - 1);
       strncpy(FunctionName + (i - 1) * MAXCHARS, FunctionName + i * MAXCHARS, MAXCHARS - 1);
@@ -646,7 +632,6 @@ void myfree_movable_fullinfo(void *p, const char *func, const char *file, int li
 
   Nblocks -= 1;
 }
-
 
 /*! \brief Reallocates an existing non-movable memory block.
  *
@@ -689,9 +674,8 @@ void *myrealloc_fullinfo(void *p, size_t n, const char *func, const char *file, 
   if(n > FreeBytes)
     {
       dump_memory_table();
-      terminate
-        ("Task=%d: Not enough memory in myremalloc(n=%g MB) at %s()/%s/line %d. previous=%g FreeBytes=%g MB\n",
-         ThisTask, n / (1024.0 * 1024.0), func, file, line, BlockSize[Nblocks - 1] / (1024.0 * 1024.0), FreeBytes / (1024.0 * 1024.0));
+      terminate("Task=%d: Not enough memory in myremalloc(n=%g MB) at %s()/%s/line %d. previous=%g FreeBytes=%g MB\n", ThisTask,
+                n / (1024.0 * 1024.0), func, file, line, BlockSize[Nblocks - 1] / (1024.0 * 1024.0), FreeBytes / (1024.0 * 1024.0));
     }
   Table[Nblocks - 1] = Base + (TotBytes - FreeBytes);
   FreeBytes -= n;
@@ -707,7 +691,6 @@ void *myrealloc_fullinfo(void *p, size_t n, const char *func, const char *file, 
 
   return Table[Nblocks - 1];
 }
-
 
 /*! \brief Reallocates an existing movable memory block.
  *
@@ -748,17 +731,21 @@ void *myrealloc_movable_fullinfo(void *p, size_t n, const char *func, const char
   if(nr < 0)
     {
       dump_memory_table();
-      terminate("Task=%d: Wrong call of myrealloc_movable() from %s()/%s/line %d - this block has not been allocated!\n", ThisTask, func, file, line);
+      terminate("Task=%d: Wrong call of myrealloc_movable() from %s()/%s/line %d - this block has not been allocated!\n", ThisTask,
+                func, file, line);
     }
 
-  if(nr < Nblocks - 1)          /* the block is not the last allocated block */
+  if(nr < Nblocks - 1) /* the block is not the last allocated block */
     {
       /* check that all subsequent blocks are actually movable */
       for(i = nr + 1; i < Nblocks; i++)
         if(MovableFlag[i] == 0)
           {
             dump_memory_table();
-            terminate("Task=%d: Wrong call of myrealloc_movable() from %s()/%s/line %d - behind block=%d there are subsequent non-movable allocated blocks\n", ThisTask, func, file, line, nr);
+            terminate(
+                "Task=%d: Wrong call of myrealloc_movable() from %s()/%s/line %d - behind block=%d there are subsequent non-movable "
+                "allocated blocks\n",
+                ThisTask, func, file, line, nr);
           }
     }
 
@@ -771,13 +758,12 @@ void *myrealloc_movable_fullinfo(void *p, size_t n, const char *func, const char
   if(n > FreeBytes)
     {
       dump_memory_table();
-      terminate
-        ("Task=%d: at %s()/%s/line %d: Not enough memory in myremalloc_movable(n=%g MB). previous=%g FreeBytes=%g MB\n",
-         ThisTask, func, file, line, n / (1024.0 * 1024.0), BlockSize[nr] / (1024.0 * 1024.0), FreeBytes / (1024.0 * 1024.0));
+      terminate("Task=%d: at %s()/%s/line %d: Not enough memory in myremalloc_movable(n=%g MB). previous=%g FreeBytes=%g MB\n",
+                ThisTask, func, file, line, n / (1024.0 * 1024.0), BlockSize[nr] / (1024.0 * 1024.0), FreeBytes / (1024.0 * 1024.0));
     }
 
   ptrdiff_t offset = n - BlockSize[nr];
-  size_t length = 0;
+  size_t length    = 0;
 
   for(i = nr + 1; i < Nblocks; i++)
     length += BlockSize[i];

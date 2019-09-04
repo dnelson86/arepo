@@ -32,24 +32,21 @@
  *                void find_gravity_timesteps_and_do_gravity_step_first_half(
  *                  void)
  *                void do_gravity_step_second_half(void)
- * 
+ *
  * \par Major modifications and contributions:
- * 
+ *
  * - DD.MM.YYYY Description
  * - 04.05.2018 Prepared file for public release -- Rainer Weinberger
  */
 
-
+#include <math.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <math.h>
-
 
 #include "../main/allvars.h"
 #include "../main/proto.h"
 #include "../mesh/voronoi/voronoi.h"
-
 
 /*! \brief Applies gravity kick to particles.
  *
@@ -62,14 +59,14 @@
  *
  *  \return void
  */
-static inline void kick_particle(int i, double dt_gravkick, MySingle * Grav)
+static inline void kick_particle(int i, double dt_gravkick, MySingle* Grav)
 {
   int j;
   double dvel[3];
   if(P[i].Type == 0)
     {
       SphP[i].Energy -= 0.5 * P[i].Mass * (P[i].Vel[0] * P[i].Vel[0] + P[i].Vel[1] * P[i].Vel[1] + P[i].Vel[2] * P[i].Vel[2]);
-      for(j = 0; j < 3; j++)    /* do the kick for gas cells */
+      for(j = 0; j < 3; j++) /* do the kick for gas cells */
         {
           dvel[j] = Grav[j] * dt_gravkick;
           P[i].Vel[j] += dvel[j];
@@ -79,11 +76,10 @@ static inline void kick_particle(int i, double dt_gravkick, MySingle * Grav)
     }
   else
     {
-      for(j = 0; j < 3; j++)    /* do the kick, only collisionless particles */
+      for(j = 0; j < 3; j++) /* do the kick, only collisionless particles */
         P[i].Vel[j] += Grav[j] * dt_gravkick;
     }
 }
-
 
 /*! \brief Performs the first half step kick operator.
  *
@@ -97,8 +93,7 @@ static inline void kick_particle(int i, double dt_gravkick, MySingle * Grav)
  */
 void find_gravity_timesteps_and_do_gravity_step_first_half(void)
 {
-
-#if (defined(SELFGRAVITY) || defined(EXTERNALGRAVITY) || defined(EXACT_GRAVITY_FOR_PARTICLE_TYPE)) && !defined(MESHRELAX)
+#if(defined(SELFGRAVITY) || defined(EXTERNALGRAVITY) || defined(EXACT_GRAVITY_FOR_PARTICLE_TYPE)) && !defined(MESHRELAX)
 
   TIMER_START(CPU_DRIFTS);
 
@@ -106,9 +101,8 @@ void find_gravity_timesteps_and_do_gravity_step_first_half(void)
   integertime ti_step, tstart, tend;
   double dt_gravkick;
 
-
 #ifdef PMGRID
-  if(All.PM_Ti_endstep == All.Ti_Current)       /* need to do long-range kick */
+  if(All.PM_Ti_endstep == All.Ti_Current) /* need to do long-range kick */
     {
       ti_step = get_timestep_pm();
 
@@ -116,7 +110,7 @@ void find_gravity_timesteps_and_do_gravity_step_first_half(void)
       All.PM_Ti_endstep = All.PM_Ti_begstep + ti_step;
 
       tstart = All.PM_Ti_begstep;
-      tend = tstart + ti_step / 2;
+      tend   = tstart + ti_step / 2;
 
       if(All.ComovingIntegrationOn)
         dt_gravkick = get_gravkick_factor(tstart, tend);
@@ -138,7 +132,7 @@ void find_gravity_timesteps_and_do_gravity_step_first_half(void)
       int i = TimeBinsGravity.ActiveParticleList[idx];
       if(i < 0)
         continue;
-      int bin = All.HighestSynchronizedTimeBin;
+      int bin    = All.HighestSynchronizedTimeBin;
       int binold = P[i].TimeBinGrav;
 
       timebin_move_particle(&TimeBinsGravity, i, binold, bin);
@@ -159,7 +153,7 @@ void find_gravity_timesteps_and_do_gravity_step_first_half(void)
       timebin_add_particles_of_timebin_to_list_of_active_particles(&TimeBinsGravity, timebin);
       sumup_large_ints(1, &TimeBinsGravity.NActiveParticles, &TimeBinsGravity.GlobalNActiveParticles);
 
-      if(TimeBinsGravity.GlobalNActiveParticles == 0)   /* we are done at this point */
+      if(TimeBinsGravity.GlobalNActiveParticles == 0) /* we are done at this point */
         break;
 
       /* calculate gravity for all active particles */
@@ -188,7 +182,6 @@ void find_gravity_timesteps_and_do_gravity_step_first_half(void)
       int push_down_flag = 0;
       if(nfine_tot > 0.33 * TimeBinsGravity.GlobalNActiveParticles)
         push_down_flag = 1;
-
 
       for(idx = 0; idx < TimeBinsGravity.NActiveParticles; idx++)
         {
@@ -231,9 +224,9 @@ void find_gravity_timesteps_and_do_gravity_step_first_half(void)
 
       if(TimeBinsGravity.GlobalNActiveParticles)
         {
-          ti_step = timebin ? (((integertime) 1) << timebin) : 0;
-          tstart = All.Ti_begstep[timebin];     /* beginning of step */
-          tend = tstart + ti_step / 2;  /* midpoint of step */
+          ti_step = timebin ? (((integertime)1) << timebin) : 0;
+          tstart  = All.Ti_begstep[timebin]; /* beginning of step */
+          tend    = tstart + ti_step / 2;    /* midpoint of step */
 
           if(All.ComovingIntegrationOn)
             dt_gravkick = get_gravkick_factor(tstart, tend);
@@ -242,10 +235,10 @@ void find_gravity_timesteps_and_do_gravity_step_first_half(void)
 
           if(timebin < All.HighestSynchronizedTimeBin)
             {
-              ti_step = (timebin + 1) ? (((integertime) 1) << (timebin + 1)) : 0;
+              ti_step = (timebin + 1) ? (((integertime)1) << (timebin + 1)) : 0;
 
-              tstart = All.Ti_begstep[timebin + 1];     /* beginning of step */
-              tend = tstart + ti_step / 2;      /* midpoint of step */
+              tstart = All.Ti_begstep[timebin + 1]; /* beginning of step */
+              tend   = tstart + ti_step / 2;        /* midpoint of step */
 
               if(All.ComovingIntegrationOn)
                 dt_gravkick -= get_gravkick_factor(tstart, tend);
@@ -255,7 +248,8 @@ void find_gravity_timesteps_and_do_gravity_step_first_half(void)
 
           dt_gravsum += dt_gravkick;
 
-          mpi_printf("KICKS: 1st gravity for hierarchical timebin=%d:  %lld particles\n", timebin, TimeBinsGravity.GlobalNActiveParticles);
+          mpi_printf("KICKS: 1st gravity for hierarchical timebin=%d:  %lld particles\n", timebin,
+                     TimeBinsGravity.GlobalNActiveParticles);
 
           for(idx = 0; idx < TimeBinsGravity.NActiveParticles; idx++)
             {
@@ -275,7 +269,8 @@ void find_gravity_timesteps_and_do_gravity_step_first_half(void)
 #else /* #ifdef HIERARCHICAL_GRAVITY */
 
 #ifdef FORCE_EQUAL_TIMESTEPS
-  //gravity timebin is already set, and not anymore 0 as All.HighestActiveTimeBin, but all particles should receive a first half kick in the 0-th timestep
+  // gravity timebin is already set, and not anymore 0 as All.HighestActiveTimeBin, but all particles should receive a first half kick
+  // in the 0-th timestep
   if(All.NumCurrentTiStep == 0)
     timebin_make_list_of_active_particles_up_to_timebin(&TimeBinsGravity, TIMEBINS);
   else
@@ -283,7 +278,8 @@ void find_gravity_timesteps_and_do_gravity_step_first_half(void)
     timebin_make_list_of_active_particles_up_to_timebin(&TimeBinsGravity, All.HighestActiveTimeBin);
   sumup_large_ints(1, &TimeBinsGravity.NActiveParticles, &TimeBinsGravity.GlobalNActiveParticles);
 
-  mpi_printf("KICKS: 1st gravity for highest active timebin=%d:  particles %lld\n", All.HighestActiveTimeBin, TimeBinsGravity.GlobalNActiveParticles);
+  mpi_printf("KICKS: 1st gravity for highest active timebin=%d:  particles %lld\n", All.HighestActiveTimeBin,
+             TimeBinsGravity.GlobalNActiveParticles);
 
   for(idx = 0; idx < TimeBinsGravity.NActiveParticles; idx++)
     {
@@ -293,7 +289,7 @@ void find_gravity_timesteps_and_do_gravity_step_first_half(void)
 
 #ifndef FORCE_EQUAL_TIMESTEPS
       int binold = P[i].TimeBinGrav;
-      int bin = -1;
+      int bin    = -1;
 
       ti_step = get_timestep_gravity(i);
       timebins_get_bin_and_do_validity_checks(ti_step, &bin, P[i].TimeBinGrav);
@@ -305,17 +301,17 @@ void find_gravity_timesteps_and_do_gravity_step_first_half(void)
             bin = bin_hydro;
         }
 
-      ti_step = bin ? (((integertime) 1) << bin) : 0;
+      ti_step = bin ? (((integertime)1) << bin) : 0;
 
       timebin_move_particle(&TimeBinsGravity, i, binold, bin);
       P[i].TimeBinGrav = bin;
-#else /* #ifndef FORCE_EQUAL_TIMESTEPS */
+#else  /* #ifndef FORCE_EQUAL_TIMESTEPS */
       int bin = P[i].TimeBinGrav;
-      ti_step = bin ? (((integertime) 1) << bin) : 0;
+      ti_step = bin ? (((integertime)1) << bin) : 0;
 #endif /* #ifndef FORCE_EQUAL_TIMESTEPS #else */
 
-      tstart = All.Ti_begstep[bin];     /* beginning of step */
-      tend = tstart + ti_step / 2;      /* midpoint of step */
+      tstart = All.Ti_begstep[bin];  /* beginning of step */
+      tend   = tstart + ti_step / 2; /* midpoint of step */
 
       if(All.ComovingIntegrationOn)
         dt_gravkick = get_gravkick_factor(tstart, tend);
@@ -330,7 +326,6 @@ void find_gravity_timesteps_and_do_gravity_step_first_half(void)
 #endif
 }
 
-
 /*! \brief Performs the second half step kick operator.
  *
  * This function applies a half step kick similar to
@@ -341,7 +336,7 @@ void find_gravity_timesteps_and_do_gravity_step_first_half(void)
  */
 void do_gravity_step_second_half(void)
 {
-#if (defined(SELFGRAVITY) || defined(EXTERNALGRAVITY)|| defined(EXACT_GRAVITY_FOR_PARTICLE_TYPE)) && !defined(MESHRELAX)
+#if(defined(SELFGRAVITY) || defined(EXTERNALGRAVITY) || defined(EXACT_GRAVITY_FOR_PARTICLE_TYPE)) && !defined(MESHRELAX)
   TIMER_START(CPU_DRIFTS);
   int idx;
   char fullmark[8];
@@ -353,11 +348,12 @@ void do_gravity_step_second_half(void)
 
   if(ThisTask == 0)
     fprintf(FdTimings, "\nStep%s: %d, t: %g, dt: %g, highest active timebin: %d  (lowest active: %d, highest occupied: %d)\n",
-            fullmark, All.NumCurrentTiStep, All.Time, All.TimeStep, All.HighestActiveTimeBin, All.LowestActiveTimeBin, All.HighestOccupiedTimeBin);
+            fullmark, All.NumCurrentTiStep, All.Time, All.TimeStep, All.HighestActiveTimeBin, All.LowestActiveTimeBin,
+            All.HighestOccupiedTimeBin);
 
   double dt_gravkick;
 #ifdef PMGRID
-  if(All.PM_Ti_endstep == All.Ti_Current)       /* need to do long-range kick */
+  if(All.PM_Ti_endstep == All.Ti_Current) /* need to do long-range kick */
     {
       TIMER_STOP(CPU_DRIFTS);
       long_range_force();
@@ -382,12 +378,14 @@ void do_gravity_step_second_half(void)
 
               TIMER_START(CPU_DRIFTS);
 
-              mpi_printf("KICKS: 2nd gravity for hierarchical timebin=%d:  particles %lld\n", timebin, TimeBinsGravity.GlobalNActiveParticles);
+              mpi_printf("KICKS: 2nd gravity for hierarchical timebin=%d:  particles %lld\n", timebin,
+                         TimeBinsGravity.GlobalNActiveParticles);
 
-              integertime ti_step = timebin ? (((integertime) 1) << timebin) : 0;
+              integertime ti_step = timebin ? (((integertime)1) << timebin) : 0;
 
-              integertime tend = All.Ti_begstep[timebin];       /* end of step (Note: All.Ti_begstep[] has already been advanced for the next step at this point)   */
-              integertime tstart = tend - ti_step / 2;  /* midpoint of step */
+              integertime tend = All.Ti_begstep[timebin]; /* end of step (Note: All.Ti_begstep[] has already been advanced for the next
+                                                             step at this point)   */
+              integertime tstart = tend - ti_step / 2;    /* midpoint of step */
 
               if(All.ComovingIntegrationOn)
                 dt_gravkick = get_gravkick_factor(tstart, tend);
@@ -396,10 +394,11 @@ void do_gravity_step_second_half(void)
 
               if(timebin < All.HighestActiveTimeBin)
                 {
-                  ti_step = (timebin + 1) ? (((integertime) 1) << (timebin + 1)) : 0;
+                  ti_step = (timebin + 1) ? (((integertime)1) << (timebin + 1)) : 0;
 
-                  tend = All.Ti_begstep[timebin + 1];   /* end of step (Note: All.Ti_begstep[] has already been advanced for the next step at this point)   */
-                  tstart = tend - ti_step / 2;  /* midpoint of step */
+                  tend = All.Ti_begstep[timebin + 1]; /* end of step (Note: All.Ti_begstep[] has already been advanced for the next
+                                                         step at this point)   */
+                  tstart = tend - ti_step / 2;        /* midpoint of step */
 
                   if(All.ComovingIntegrationOn)
                     dt_gravkick -= get_gravkick_factor(tstart, tend);
@@ -426,7 +425,7 @@ void do_gravity_step_second_half(void)
         }
     }
 
-#else /* #ifdef HIERARCHICAL_GRAVITY */
+#else  /* #ifdef HIERARCHICAL_GRAVITY */
   timebin_make_list_of_active_particles_up_to_timebin(&TimeBinsGravity, All.HighestActiveTimeBin);
   sumup_large_ints(1, &TimeBinsGravity.NActiveParticles, &TimeBinsGravity.GlobalNActiveParticles);
 
@@ -439,7 +438,8 @@ void do_gravity_step_second_half(void)
 
       TIMER_START(CPU_DRIFTS);
 
-      mpi_printf("KICKS: 2nd gravity for highest active timebin=%d:  particles %lld\n", All.HighestActiveTimeBin, TimeBinsGravity.GlobalNActiveParticles);
+      mpi_printf("KICKS: 2nd gravity for highest active timebin=%d:  particles %lld\n", All.HighestActiveTimeBin,
+                 TimeBinsGravity.GlobalNActiveParticles);
 
       for(idx = 0; idx < TimeBinsGravity.NActiveParticles; idx++)
         {
@@ -447,9 +447,9 @@ void do_gravity_step_second_half(void)
           if(i < 0)
             continue;
 
-          integertime ti_step = P[i].TimeBinGrav ? (((integertime) 1) << P[i].TimeBinGrav) : 0;
-          integertime tend = All.Ti_begstep[P[i].TimeBinGrav];
-          integertime tstart = tend - ti_step / 2;      /* midpoint of step */
+          integertime ti_step = P[i].TimeBinGrav ? (((integertime)1) << P[i].TimeBinGrav) : 0;
+          integertime tend    = All.Ti_begstep[P[i].TimeBinGrav];
+          integertime tstart  = tend - ti_step / 2; /* midpoint of step */
 
           if(All.ComovingIntegrationOn)
             dt_gravkick = get_gravkick_factor(tstart, tend);
@@ -462,11 +462,11 @@ void do_gravity_step_second_half(void)
 #endif /* #ifdef HIERARCHICAL_GRAVITY #else */
 
 #ifdef PMGRID
-  if(All.PM_Ti_endstep == All.Ti_Current)       /* need to do long-range kick */
+  if(All.PM_Ti_endstep == All.Ti_Current) /* need to do long-range kick */
     {
       integertime ti_step = All.PM_Ti_endstep - All.PM_Ti_begstep;
-      integertime tstart = All.PM_Ti_begstep + ti_step / 2;
-      integertime tend = tstart + ti_step / 2;
+      integertime tstart  = All.PM_Ti_begstep + ti_step / 2;
+      integertime tend    = tstart + ti_step / 2;
 
       if(All.ComovingIntegrationOn)
         dt_gravkick = get_gravkick_factor(tstart, tend);

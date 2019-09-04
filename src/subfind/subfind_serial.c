@@ -27,33 +27,28 @@
  *                  *len_non_gas)
  *                int subfind_fof_calc_am_serial(int gr, int Offs, int snapnr,
  *                  int ngroups_cat)
- * 
- * 
+ *
+ *
  * \par Major modifications and contributions:
- * 
+ *
  * - DD.MM.YYYY Description
  * - 14.05.2018 Prepared file for public release -- Rainer Weinberger
  */
 
-
+#include <math.h>
 #include <mpi.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <math.h>
-
 
 #include "../main/allvars.h"
 #include "../main/proto.h"
 
-
 #ifdef SUBFIND
-#include "subfind.h"
 #include "../fof/fof.h"
-
+#include "subfind.h"
 
 static int *Head, *Next, *Tail, *Len;
-
 
 /*! \brief Subhalo finding on each core individually.
  *
@@ -83,22 +78,23 @@ int subfind_process_group_serial(int gr, int Offs, int nsubgroups_cat)
         }
     }
 
-  N = Group[gr].Len;
+  N    = Group[gr].Len;
   GrNr = Group[gr].GrNr;
 
-  subfind_loctree_treeallocate((int) (All.TreeAllocFactor * N) + NTopnodes, NumPart);
+  subfind_loctree_treeallocate((int)(All.TreeAllocFactor * N) + NTopnodes, NumPart);
 
   for(int i = 0; i < N; i++)
     if(PS[Offs + i].GrNr != Group[gr].GrNr)
-      terminate("task=%d, gr=%d: don't have the number of particles for GrNr=%d i=%d group-len:N=%d found=%d before=%d\n", ThisTask, gr, Group[gr].GrNr, i, N, PS[Offs + i].GrNr, PS[Offs - 1].GrNr);
+      terminate("task=%d, gr=%d: don't have the number of particles for GrNr=%d i=%d group-len:N=%d found=%d before=%d\n", ThisTask,
+                gr, Group[gr].GrNr, i, N, PS[Offs + i].GrNr, PS[Offs - 1].GrNr);
 
-  candidates = (struct cand_dat *) mymalloc_movable(&candidates, "candidates", N * sizeof(struct cand_dat));
+  candidates = (struct cand_dat *)mymalloc_movable(&candidates, "candidates", N * sizeof(struct cand_dat));
 
-  Head = (int *) mymalloc_movable(&Head, "Head", N * sizeof(int));
-  Next = (int *) mymalloc_movable(&Next, "Next", N * sizeof(int));
-  Tail = (int *) mymalloc_movable(&Tail, "Tail", N * sizeof(int));
-  Len = (int *) mymalloc_movable(&Len, "Len", N * sizeof(int));
-  ud = (struct unbind_data *) mymalloc_movable(&ud, "ud", N * sizeof(struct unbind_data));
+  Head = (int *)mymalloc_movable(&Head, "Head", N * sizeof(int));
+  Next = (int *)mymalloc_movable(&Next, "Next", N * sizeof(int));
+  Tail = (int *)mymalloc_movable(&Tail, "Tail", N * sizeof(int));
+  Len  = (int *)mymalloc_movable(&Len, "Len", N * sizeof(int));
+  ud   = (struct unbind_data *)mymalloc_movable(&ud, "ud", N * sizeof(struct unbind_data));
 
   Head -= Offs;
   Next -= Offs;
@@ -110,18 +106,18 @@ int subfind_process_group_serial(int gr, int Offs, int nsubgroups_cat)
 
   subfind_loctree_findExtent(N, ud);
 
-  subfind_loctree_treebuild(N, &ud);    /* build tree for all particles of this group */
+  subfind_loctree_treebuild(N, &ud); /* build tree for all particles of this group */
 
 #ifdef SUBFIND_EXTENDED_PROPERTIES
   // compute the binding energy of FOF group
   double Epot = 0;
   for(int i = 0; i < N; i++)
     {
-      int p = ud[i].index;
+      int p      = ud[i].index;
       double pot = subfind_loctree_treeevaluate_potential(p);
 
       // note: add self-energy
-      pot += P[p].Mass / (All.ForceSoftening[P[p].SofteningType] / 2.8);        // (P[p].Soft / 2.8);
+      pot += P[p].Mass / (All.ForceSoftening[P[p].SofteningType] / 2.8);  // (P[p].Soft / 2.8);
 
       // multiply with G, scale by scale factor
       pot *= All.G / All.cf_atime;
@@ -161,14 +157,14 @@ int subfind_process_group_serial(int gr, int Offs, int nsubgroups_cat)
         {
           ngb_index = R2list[k].index;
 
-          if(ngb_index != part_index)   /* to exclude the particle itself */
+          if(ngb_index != part_index) /* to exclude the particle itself */
             {
               /* we only look at neighbours that are denser */
               if(PS[ngb_index].Density > PS[part_index].Density)
                 {
                   ngbs++;
 
-                  if(Head[ngb_index] >= 0)      /* neighbor is attached to a group */
+                  if(Head[ngb_index] >= 0) /* neighbor is attached to a group */
                     {
                       if(ndiff == 1)
                         if(listofdifferent[0] == Head[ngb_index])
@@ -178,73 +174,77 @@ int subfind_process_group_serial(int gr, int Offs, int nsubgroups_cat)
                       listofdifferent[ndiff++] = Head[ngb_index];
                     }
                   else
-                    terminate
-                      ("this may not occur: ThisTask=%d gr=%d k=%d i=%d part_index=%d ngb_index = %d  head[ngb_index]=%d P[part_index].DM_Density=%g %g GrNrs= %d %d \n",
-                       ThisTask, gr, k, i, part_index, ngb_index, Head[ngb_index], PS[part_index].Density, PS[ngb_index].Density, PS[part_index].GrNr, PS[ngb_index].GrNr);
+                    terminate(
+                        "this may not occur: ThisTask=%d gr=%d k=%d i=%d part_index=%d ngb_index = %d  head[ngb_index]=%d "
+                        "P[part_index].DM_Density=%g %g GrNrs= %d %d \n",
+                        ThisTask, gr, k, i, part_index, ngb_index, Head[ngb_index], PS[part_index].Density, PS[ngb_index].Density,
+                        PS[part_index].GrNr, PS[ngb_index].GrNr);
                 }
             }
         }
 
-      switch (ndiff)            /* treat the different possible cases */
+      switch(ndiff) /* treat the different possible cases */
         {
-        case 0:                /* this appears to be a lonely maximum -> new group */
-          head = part_index;
-          Head[part_index] = Tail[part_index] = part_index;
-          Len[part_index] = 1;
-          Next[part_index] = -1;
-          break;
+          case 0: /* this appears to be a lonely maximum -> new group */
+            head             = part_index;
+            Head[part_index] = Tail[part_index] = part_index;
+            Len[part_index]                     = 1;
+            Next[part_index]                    = -1;
+            break;
 
-        case 1:                /* the particle is attached to exactly one group */
-          head = listofdifferent[0];
-          Head[part_index] = head;
-          Next[Tail[head]] = part_index;
-          Tail[head] = part_index;
-          Len[head]++;
-          Next[part_index] = -1;
-          break;
+          case 1: /* the particle is attached to exactly one group */
+            head             = listofdifferent[0];
+            Head[part_index] = head;
+            Next[Tail[head]] = part_index;
+            Tail[head]       = part_index;
+            Len[head]++;
+            Next[part_index] = -1;
+            break;
 
-        case 2:                /* the particle merges two groups together */
-          head = listofdifferent[0];
-          head_attach = listofdifferent[1];
-          if(Len[head_attach] > Len[head] || (Len[head_attach] == Len[head] && head_attach < head))     /* other group is longer, swap them. for equal length, take the larger head value */
-            {
-              head = listofdifferent[1];
-              head_attach = listofdifferent[0];
-            }
+          case 2: /* the particle merges two groups together */
+            head        = listofdifferent[0];
+            head_attach = listofdifferent[1];
+            if(Len[head_attach] > Len[head] ||
+               (Len[head_attach] == Len[head] &&
+                head_attach < head)) /* other group is longer, swap them. for equal length, take the larger head value */
+              {
+                head        = listofdifferent[1];
+                head_attach = listofdifferent[0];
+              }
 
-          /* only in case the attached group is long enough we bother to register is 
-             as a subhalo candidate */
+            /* only in case the attached group is long enough we bother to register is
+               as a subhalo candidate */
 
-          if(Len[head_attach] >= All.DesLinkNgb)
-            {
-              candidates[count_cand].len = Len[head_attach];
-              candidates[count_cand].head = Head[head_attach];
-              count_cand++;
-            }
+            if(Len[head_attach] >= All.DesLinkNgb)
+              {
+                candidates[count_cand].len  = Len[head_attach];
+                candidates[count_cand].head = Head[head_attach];
+                count_cand++;
+              }
 
-          /* now join the two groups */
-          Next[Tail[head]] = head_attach;
-          Tail[head] = Tail[head_attach];
-          Len[head] += Len[head_attach];
+            /* now join the two groups */
+            Next[Tail[head]] = head_attach;
+            Tail[head]       = Tail[head_attach];
+            Len[head] += Len[head_attach];
 
-          ss = head_attach;
-          do
-            {
-              Head[ss] = head;
-            }
-          while((ss = Next[ss]) >= 0);
+            ss = head_attach;
+            do
+              {
+                Head[ss] = head;
+              }
+            while((ss = Next[ss]) >= 0);
 
-          /* finally, attach the particle */
-          Head[part_index] = head;
-          Next[Tail[head]] = part_index;
-          Tail[head] = part_index;
-          Len[head]++;
-          Next[part_index] = -1;
-          break;
+            /* finally, attach the particle */
+            Head[part_index] = head;
+            Next[Tail[head]] = part_index;
+            Tail[head]       = part_index;
+            Len[head]++;
+            Next[part_index] = -1;
+            break;
 
-        default:
-          terminate("can't be!");
-          break;
+          default:
+            terminate("can't be!");
+            break;
         }
     }
 
@@ -263,7 +263,7 @@ int subfind_process_group_serial(int gr, int Offs, int nsubgroups_cat)
           }
     }
 
-  candidates[count_cand].len = N;
+  candidates[count_cand].len  = N;
   candidates[count_cand].head = head;
   count_cand++;
 
@@ -271,7 +271,7 @@ int subfind_process_group_serial(int gr, int Offs, int nsubgroups_cat)
   for(i = 0, p = head, rank = 0; i < N; i++)
     {
       Len[p] = rank++;
-      p = Next[p];
+      p      = Next[p];
     }
 
   /* for each candidate, we now pull out the rank of its head */
@@ -295,15 +295,15 @@ int subfind_process_group_serial(int gr, int Offs, int nsubgroups_cat)
           /* ok, we found a substructure */
 
           for(i = 0; i < len; i++)
-            Tail[ud[i].index] = nsubs;  /* we use this to flag the substructures */
+            Tail[ud[i].index] = nsubs; /* we use this to flag the substructures */
 
-          candidates[k].nsub = nsubs;
+          candidates[k].nsub         = nsubs;
           candidates[k].bound_length = len;
           nsubs++;
         }
       else
         {
-          candidates[k].nsub = -1;
+          candidates[k].nsub         = -1;
           candidates[k].bound_length = 0;
         }
     }
@@ -318,7 +318,7 @@ int subfind_process_group_serial(int gr, int Offs, int nsubgroups_cat)
   /* now we determine the parent subhalo for each candidate */
   for(k = 0; k < count_cand; k++)
     {
-      candidates[k].subnr = k;
+      candidates[k].subnr  = k;
       candidates[k].parent = 0;
     }
 
@@ -339,8 +339,9 @@ int subfind_process_group_serial(int gr, int Offs, int nsubgroups_cat)
           else
             {
               char buf[1000];
-              sprintf(buf, "k=%d|%d has rank=%d and len=%d.  j=%d has rank=%d and len=%d bound=%d\n",
-                      k, count_cand, (int) candidates[k].rank, candidates[k].len, (int) candidates[k].bound_length, candidates[j].rank, (int) candidates[j].len, candidates[j].bound_length);
+              sprintf(buf, "k=%d|%d has rank=%d and len=%d.  j=%d has rank=%d and len=%d bound=%d\n", k, count_cand,
+                      (int)candidates[k].rank, candidates[k].len, (int)candidates[k].bound_length, candidates[j].rank,
+                      (int)candidates[j].len, candidates[j].bound_length);
               terminate(buf);
             }
         }
@@ -349,7 +350,7 @@ int subfind_process_group_serial(int gr, int Offs, int nsubgroups_cat)
   mysort(candidates, count_cand, sizeof(struct cand_dat), subfind_compare_serial_candidates_subnr);
 
   /* now determine the properties */
-  Group[gr].Nsubs = nsubs;
+  Group[gr].Nsubs  = nsubs;
   Group[gr].Pos[0] = Group[gr].CM[0];
   Group[gr].Pos[1] = Group[gr].CM[1];
   Group[gr].Pos[2] = Group[gr].CM[2];
@@ -381,8 +382,8 @@ int subfind_process_group_serial(int gr, int Offs, int nsubgroups_cat)
       subfind_determine_sub_halo_properties(ud, len, &SubGroup[Nsubgroups], GrNr, subnr, 0, nsubgroups_cat);
 
       SubGroup[Nsubgroups].SubParent = candidates[k].parent;
-      SubGroup[Nsubgroups].SubNr = subnr;
-      SubGroup[Nsubgroups].GrNr = Group[gr].GrNr;
+      SubGroup[Nsubgroups].SubNr     = subnr;
+      SubGroup[Nsubgroups].GrNr      = Group[gr].GrNr;
 
       if(subnr == 0)
         {
@@ -417,7 +418,6 @@ int subfind_process_group_serial(int gr, int Offs, int nsubgroups_cat)
   return Offs;
 }
 
-
 /*! \brief Unbinding algorithm.
  *
  *  \param[in, out] ud Unbind data.
@@ -440,18 +440,18 @@ int subfind_unbind(struct unbind_data *ud, int len, int *len_non_gas)
   if(All.ComovingIntegrationOn)
     {
       vel_to_phys = 1.0 / All.Time;
-      H_of_a = hubble_function(All.Time);
-      atime = All.Time;
+      H_of_a      = hubble_function(All.Time);
+      atime       = All.Time;
     }
   else
     {
       vel_to_phys = atime = 1;
-      H_of_a = 0;
+      H_of_a              = 0;
     }
 
-  bnd_energy = (double *) mymalloc("bnd_energy", len * sizeof(double));
+  bnd_energy = (double *)mymalloc("bnd_energy", len * sizeof(double));
 
-  phaseflag = 0;                /* this means we will recompute the potential for all particles */
+  phaseflag = 0; /* this means we will recompute the potential for all particles */
 
   do
     {
@@ -459,7 +459,7 @@ int subfind_unbind(struct unbind_data *ud, int len, int *len_non_gas)
 
       /* let's compute the potential  */
 
-      if(phaseflag == 0)        /* redo it for all the particles */
+      if(phaseflag == 0) /* redo it for all the particles */
         {
           for(i = 0, minindex = -1, minpot = 1.0e30; i < len; i++)
             {
@@ -471,7 +471,7 @@ int subfind_unbind(struct unbind_data *ud, int len, int *len_non_gas)
 
               if(PS[p].Potential < minpot || minindex == -1)
                 {
-                  minpot = PS[p].Potential;
+                  minpot   = PS[p].Potential;
                   minindex = p;
                 }
             }
@@ -480,13 +480,13 @@ int subfind_unbind(struct unbind_data *ud, int len, int *len_non_gas)
           if(P[minindex].Type == 0)
             {
               for(j = 0; j < 3; j++)
-                pos[j] = PS[minindex].Center[j];        /* position of minimum potential */
+                pos[j] = PS[minindex].Center[j]; /* position of minimum potential */
             }
           else
 #endif /* #ifdef CELL_CENTER_GRAVITY */
             {
               for(j = 0; j < 3; j++)
-                pos[j] = P[minindex].Pos[j];    /* position of minimum potential */
+                pos[j] = P[minindex].Pos[j]; /* position of minimum potential */
             }
         }
       else
@@ -531,7 +531,7 @@ int subfind_unbind(struct unbind_data *ud, int len, int *len_non_gas)
       for(j = 0; j < 3; j++)
         {
           v[j] /= TotMass;
-          s[j] /= TotMass;      /* center-of-mass */
+          s[j] /= TotMass; /* center-of-mass */
 
           s[j] += pos[j];
 
@@ -559,7 +559,8 @@ int subfind_unbind(struct unbind_data *ud, int len, int *len_non_gas)
             }
 
           PS[p].BindingEnergy = PS[p].Potential + 0.5 * (dv[0] * dv[0] + dv[1] * dv[1] + dv[2] * dv[2]);
-          PS[p].BindingEnergy += All.G / All.cf_atime * P[p].Mass / (All.ForceSoftening[P[p].SofteningType] / 2.8);     /* note: add self-energy */
+          PS[p].BindingEnergy +=
+              All.G / All.cf_atime * P[p].Mass / (All.ForceSoftening[P[p].SofteningType] / 2.8); /* note: add self-energy */
 
           if(P[p].Type == 0)
             PS[p].BindingEnergy += PS[p].Utherm;
@@ -567,9 +568,9 @@ int subfind_unbind(struct unbind_data *ud, int len, int *len_non_gas)
           bnd_energy[i] = PS[p].BindingEnergy;
         }
 
-      mysort(bnd_energy, len, sizeof(double), subfind_compare_binding_energy);  /* largest comes first! */
+      mysort(bnd_energy, len, sizeof(double), subfind_compare_binding_energy); /* largest comes first! */
 
-      energy_limit = bnd_energy[(int) (0.25 * len)];
+      energy_limit = bnd_energy[(int)(0.25 * len)];
 
       for(i = 0, unbound = 0; i < len - 1; i++)
         {
@@ -611,8 +612,8 @@ int subfind_unbind(struct unbind_data *ud, int len, int *len_non_gas)
         {
           if(unbound == 0)
             {
-              phaseflag = 0;    /* this will make us repeat everything once more for all particles */
-              unbound = 1;
+              phaseflag = 0; /* this will make us repeat everything once more for all particles */
+              unbound   = 1;
             }
         }
 
@@ -625,7 +626,6 @@ int subfind_unbind(struct unbind_data *ud, int len, int *len_non_gas)
 
   return (len);
 }
-
 
 #ifdef SUBFIND_EXTENDED_PROPERTIES
 /*! \brief Serial version of angular momentum calculation.
@@ -662,7 +662,7 @@ int subfind_fof_calc_am_serial(int gr, int Offs, int snapnr, int ngroups_cat)
 
   len = Group[gr].Len;
 
-  struct unbind_data *ud = (struct unbind_data *) mymalloc("ud", len * sizeof(struct unbind_data));
+  struct unbind_data *ud = (struct unbind_data *)mymalloc("ud", len * sizeof(struct unbind_data));
 
   // get all fof particles
   for(i = 0; i < len; i++)
@@ -670,14 +670,14 @@ int subfind_fof_calc_am_serial(int gr, int Offs, int snapnr, int ngroups_cat)
 
   // initialize
   gr_CMFrac = 0;
-  gr_Ekin = 0;
-  gr_Ethr = 0;
+  gr_Ekin   = 0;
+  gr_Ethr   = 0;
 
   for(k = 0; k < 3; k++)
     {
-      gr_Jtot[k] = 0;
-      gr_Jdm[k] = 0;
-      gr_Jgas[k] = 0;
+      gr_Jtot[k]   = 0;
+      gr_Jdm[k]    = 0;
+      gr_Jgas[k]   = 0;
       gr_Jstars[k] = 0;
     }
   for(k = 0; k < NTYPES; k++)
@@ -698,7 +698,7 @@ int subfind_fof_calc_am_serial(int gr, int Offs, int snapnr, int ngroups_cat)
         Pos_pbc[i] = fof_periodic(Pos_pbc[i]);
 
       for(i = 0; i < 3; i++)
-        Pos_pbc[i] = Pos_pbc[i] * All.cf_atime; // units: phys kpc/h 
+        Pos_pbc[i] = Pos_pbc[i] * All.cf_atime;  // units: phys kpc/h
 
       for(i = 0; i < 3; i++)
         Vel_tot[i] = P[index].Vel[i] / All.cf_atime - Group[gr].Vel[i] / All.cf_atime + All.cf_Hrate * Pos_pbc[i];
@@ -711,19 +711,19 @@ int subfind_fof_calc_am_serial(int gr, int Offs, int snapnr, int ngroups_cat)
       gr_Jtot[1] += P[index].Mass * (Pos_pbc[2] * Vel_tot[0] - Pos_pbc[0] * Vel_tot[2]);
       gr_Jtot[2] += P[index].Mass * (Pos_pbc[0] * Vel_tot[1] - Pos_pbc[1] * Vel_tot[0]);
 
-      if(ptype == 1)            // dm illustris
+      if(ptype == 1)  // dm illustris
         {
           gr_Jdm[0] += P[index].Mass * (Pos_pbc[1] * Vel_tot[2] - Pos_pbc[2] * Vel_tot[1]);
           gr_Jdm[1] += P[index].Mass * (Pos_pbc[2] * Vel_tot[0] - Pos_pbc[0] * Vel_tot[2]);
           gr_Jdm[2] += P[index].Mass * (Pos_pbc[0] * Vel_tot[1] - Pos_pbc[1] * Vel_tot[0]);
         }
-      if(ptype == 0)            // gas (incl. winds)
+      if(ptype == 0)  // gas (incl. winds)
         {
           gr_Jgas[0] += P[index].Mass * (Pos_pbc[1] * Vel_tot[2] - Pos_pbc[2] * Vel_tot[1]);
           gr_Jgas[1] += P[index].Mass * (Pos_pbc[2] * Vel_tot[0] - Pos_pbc[0] * Vel_tot[2]);
           gr_Jgas[2] += P[index].Mass * (Pos_pbc[0] * Vel_tot[1] - Pos_pbc[1] * Vel_tot[0]);
         }
-      if(ptype == 4)            // stars
+      if(ptype == 4)  // stars
         {
           gr_Jstars[0] += P[index].Mass * (Pos_pbc[1] * Vel_tot[2] - Pos_pbc[2] * Vel_tot[1]);
           gr_Jstars[1] += P[index].Mass * (Pos_pbc[2] * Vel_tot[0] - Pos_pbc[0] * Vel_tot[2]);
@@ -735,9 +735,9 @@ int subfind_fof_calc_am_serial(int gr, int Offs, int snapnr, int ngroups_cat)
   Group[gr].Ethr = gr_Ethr;
   for(i = 0; i < 3; i++)
     {
-      Group[gr].J[i] = gr_Jtot[i];
-      Group[gr].JDM[i] = gr_Jdm[i];
-      Group[gr].JGas[i] = gr_Jgas[i];
+      Group[gr].J[i]      = gr_Jtot[i];
+      Group[gr].JDM[i]    = gr_Jdm[i];
+      Group[gr].JGas[i]   = gr_Jgas[i];
       Group[gr].JStars[i] = gr_Jstars[i];
     }
 
@@ -757,7 +757,7 @@ int subfind_fof_calc_am_serial(int gr, int Offs, int snapnr, int ngroups_cat)
         Pos_pbc[i] = fof_periodic(Pos_pbc[i]);
 
       for(i = 0; i < 3; i++)
-        Pos_pbc[i] = Pos_pbc[i] * All.cf_atime; // units: phys kpc/h 
+        Pos_pbc[i] = Pos_pbc[i] * All.cf_atime;  // units: phys kpc/h
 
       for(i = 0; i < 3; i++)
         Vel_tot[i] = P[index].Vel[i] / All.cf_atime - Group[gr].Vel[i] / All.cf_atime + All.cf_Hrate * Pos_pbc[i];
@@ -768,21 +768,21 @@ int subfind_fof_calc_am_serial(int gr, int Offs, int snapnr, int ngroups_cat)
 
       gr_mass += P[index].Mass;
       if((gr_Jtot[0] * jpart[0] + gr_Jtot[1] * jpart[1] + gr_Jtot[2] * jpart[2]) < 0.)
-        gr_CMFrac += P[index].Mass;     // / Group[gr].Mass;
+        gr_CMFrac += P[index].Mass;  // / Group[gr].Mass;
 
-      if(ptype == 1)            // dm illustris
+      if(ptype == 1)  // dm illustris
         {
           gr_len_dm++;
           if((gr_Jdm[0] * jpart[0] + gr_Jdm[1] * jpart[1] + gr_Jdm[2] * jpart[2]) < 0.)
             gr_CMFracType[1]++;
         }
-      if(ptype == 0)            // gas (incl. winds)
+      if(ptype == 0)  // gas (incl. winds)
         {
           gr_mass_gas += P[index].Mass;
           if((gr_Jgas[0] * jpart[0] + gr_Jgas[1] * jpart[1] + gr_Jgas[2] * jpart[2]) < 0.)
             gr_CMFracType[0] += P[index].Mass;  // / Group[gr].MassType[0];
         }
-      if(ptype == 4)            // stars
+      if(ptype == 4)  // stars
         {
           gr_mass_stars += P[index].Mass;
           if((gr_Jstars[0] * jpart[0] + gr_Jstars[1] * jpart[1] + gr_Jstars[2] * jpart[2]) < 0.)
@@ -790,10 +790,10 @@ int subfind_fof_calc_am_serial(int gr, int Offs, int snapnr, int ngroups_cat)
         }
     }
 
-  gr_CMFrac /= gr_mass;         //Group[gr].Mass;
+  gr_CMFrac /= gr_mass;  // Group[gr].Mass;
   gr_CMFracType[1] /= gr_len_dm;
-  gr_CMFracType[0] /= gr_mass_gas;      //Group[gr].MassType[0];
-  gr_CMFracType[4] /= gr_mass_stars;    //Group[gr].MassType[4];
+  gr_CMFracType[0] /= gr_mass_gas;    // Group[gr].MassType[0];
+  gr_CMFracType[4] /= gr_mass_stars;  // Group[gr].MassType[4];
 
   Group[gr].CMFrac = gr_CMFrac;
   for(i = 0; i < NTYPES; i++)
@@ -803,6 +803,5 @@ int subfind_fof_calc_am_serial(int gr, int Offs, int snapnr, int ngroups_cat)
   return Offs;
 }
 #endif /* #ifdef SUBFIND_EXTENDED_PROPERTIES */
-
 
 #endif /* #ifdef SUBFIND */

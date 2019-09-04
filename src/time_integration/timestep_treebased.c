@@ -31,24 +31,21 @@
  *                void tree_based_timesteps(void)
  *                int timestep_evaluate(int target, int mode, int threadid)
  *                void tree_based_timesteps_setsoundspeeds(void)
- * 
+ *
  * \par Major modifications and contributions:
- * 
+ *
  * - DD.MM.YYYY Description
  * - 11.05.2018 Prepared file for public release -- Rainer Weinberger
  */
 
-
+#include <math.h>
 #include <mpi.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <math.h>
-
 
 #include "../main/allvars.h"
 #include "../main/proto.h"
-
 
 #ifdef TREE_BASED_TIMESTEPS
 /*! \brief Local data structure for collecting particle/cell data that is sent
@@ -63,11 +60,10 @@ typedef struct
   MyFloat cellrad;
   MyFloat CurrentMaxTiStep;
 
-  int Firstnode;                /* this is needed as part of the communication alogorithm */
+  int Firstnode; /* this is needed as part of the communication alogorithm */
 } data_in;
 
 static data_in *DataIn, *DataGet;
-
 
 /*! \brief Routine that fills the relevant particle/cell data into the input
  *         structure defined above. Needed by generic_comm_helpers2.
@@ -78,7 +74,7 @@ static data_in *DataIn, *DataGet;
  *
  *  \return void
  */
-static void particle2in(data_in * in, int i, int firstnode)
+static void particle2in(data_in *in, int i, int firstnode)
 {
   int k;
 
@@ -88,13 +84,12 @@ static void particle2in(data_in * in, int i, int firstnode)
       in->Vel[k] = P[i].Vel[k];
     }
 
-  in->Csnd = SphP[i].Csnd;
-  in->cellrad = get_cell_radius(i);
+  in->Csnd             = SphP[i].Csnd;
+  in->cellrad          = get_cell_radius(i);
   in->CurrentMaxTiStep = SphP[i].CurrentMaxTiStep;
 
   in->Firstnode = firstnode;
 }
-
 
 /*! \brief Local data structure that holds results acquired on remote
  *         processors. Type called data_out and static pointers DataResult and
@@ -107,7 +102,6 @@ typedef struct
 
 static data_out *DataResult, *DataOut;
 
-
 /*! \brief Routine to store or combine result data. Needed by
  *         generic_comm_helpers2.
  *
@@ -119,22 +113,20 @@ static data_out *DataResult, *DataOut;
  *
  *  \return void
  */
-static void out2particle(data_out * out, int i, int mode)
+static void out2particle(data_out *out, int i, int mode)
 {
-  if(mode == MODE_LOCAL_PARTICLES)      /* initial store */
+  if(mode == MODE_LOCAL_PARTICLES) /* initial store */
     {
       SphP[i].CurrentMaxTiStep = out->CurrentMaxTiStep;
     }
-  else                          /* combine */
+  else /* combine */
     {
       if(SphP[i].CurrentMaxTiStep > out->CurrentMaxTiStep)
         SphP[i].CurrentMaxTiStep = out->CurrentMaxTiStep;
     }
 }
 
-
 #include "../utils/generic_comm_helpers2.h"
-
 
 /*! \brief Routine that defines what to do with local particles.
  *
@@ -175,7 +167,6 @@ static void kernel_local(void)
   }
 }
 
-
 /*! \brief Routine that defines what to do with imported particles.
  *
  *  Calls the *_evaluate function in MODE_IMPORTED_PARTICLES.
@@ -201,7 +192,6 @@ static void kernel_imported(void)
   }
 }
 
-
 /*! \brief Main function to call tree-based timesteps.
  *
  *  This function is called in find_timesteps_without_gravity() (timestep.c).
@@ -226,7 +216,6 @@ void tree_based_timesteps(void)
 
   CPU_Step[CPU_TREE_TIMESTEPS] += measure_time();
 }
-
 
 /*! \brief The 'core' of the tree-based timestep computation.
  *
@@ -257,7 +246,7 @@ int timestep_evaluate(int target, int mode, int threadid)
       particle2in(&local, target, 0);
       target_data = &local;
 
-      numnodes = 1;
+      numnodes  = 1;
       firstnode = NULL;
     }
   else
@@ -267,9 +256,9 @@ int timestep_evaluate(int target, int mode, int threadid)
       generic_get_numnodes(target, &numnodes, &firstnode);
     }
 
-  pos = target_data->Pos;
-  vel = target_data->Vel;
-  csnd = target_data->Csnd;
+  pos     = target_data->Pos;
+  vel     = target_data->Vel;
+  csnd    = target_data->Csnd;
   cellrad = target_data->cellrad;
 
   out.CurrentMaxTiStep = target_data->CurrentMaxTiStep;
@@ -293,27 +282,27 @@ int timestep_evaluate(int target, int mode, int threadid)
     {
       if(mode == MODE_LOCAL_PARTICLES)
         {
-          no = Ngb_MaxPart;     /* root node */
+          no = Ngb_MaxPart; /* root node */
         }
       else
         {
           no = firstnode[k];
-          no = Ngb_Nodes[no].u.d.nextnode;      /* open it */
+          no = Ngb_Nodes[no].u.d.nextnode; /* open it */
         }
 
       while(no >= 0)
         {
           cost++;
 
-          if(no < Ngb_MaxPart)  /* single particle */
+          if(no < Ngb_MaxPart) /* single particle */
             {
-              p = no;
+              p  = no;
               no = Ngb_Nextnode[no];
 
               if(P[p].Type > 0)
                 continue;
 
-              if(P[p].Mass == 0 && P[p].ID == 0)        /* skip eliminated cells */
+              if(P[p].Mass == 0 && P[p].ID == 0) /* skip eliminated cells */
                 continue;
 
               if(P[p].Ti_Current != All.Ti_Current)
@@ -329,22 +318,24 @@ int timestep_evaluate(int target, int mode, int threadid)
 
               if(dist > 0)
                 {
-                  double vsig = csnd + SphP[p].Csnd - ((P[p].Vel[0] - vel[0]) * dx + (P[p].Vel[1] - vel[1]) * dy + (P[p].Vel[2] - vel[2]) * dz) / dist;
+                  double vsig = csnd + SphP[p].Csnd -
+                                ((P[p].Vel[0] - vel[0]) * dx + (P[p].Vel[1] - vel[1]) * dy + (P[p].Vel[2] - vel[2]) * dz) / dist;
 
                   if(vsig > 0)
                     {
-                      dist += cellrad;  /* take one cell radius as minimum distance in order to protect against unreasonably small steps if
-                                           two mesh-generating points are extremely close */
+                      dist += cellrad; /* take one cell radius as minimum distance in order to protect against unreasonably small steps
+                                          if two mesh-generating points are extremely close */
                       if(out.CurrentMaxTiStep > dist / vsig)
                         out.CurrentMaxTiStep = dist / vsig;
                     }
                 }
             }
-          else if(no < Ngb_MaxPart + Ngb_MaxNodes)      /* internal  */
+          else if(no < Ngb_MaxPart + Ngb_MaxNodes) /* internal  */
             {
               if(mode == MODE_IMPORTED_PARTICLES)
                 {
-                  if(no < Ngb_FirstNonTopLevelNode)     /* we reached a top-level node again, which means that we are done with the branch */
+                  if(no <
+                     Ngb_FirstNonTopLevelNode) /* we reached a top-level node again, which means that we are done with the branch */
                     break;
                 }
 
@@ -358,12 +349,12 @@ int timestep_evaluate(int target, int mode, int threadid)
               if(pos[0] > current->u.d.range_max[0] && pos_m[0] < current->u.d.range_min[0])
                 {
                   dxp = pos[0] - current->u.d.range_max[0];
-                  dxm = pos_m[0] - current->u.d.range_min[0];   /* negative */
+                  dxm = pos_m[0] - current->u.d.range_min[0]; /* negative */
                 }
               else if(pos_p[0] > current->u.d.range_max[0] && pos[0] < current->u.d.range_min[0])
                 {
                   dxp = pos_p[0] - current->u.d.range_max[0];
-                  dxm = pos[0] - current->u.d.range_min[0];     /* negative */
+                  dxm = pos[0] - current->u.d.range_min[0]; /* negative */
                 }
               else
                 dxp = dxm = 0;
@@ -371,12 +362,12 @@ int timestep_evaluate(int target, int mode, int threadid)
               if(pos[1] > current->u.d.range_max[1] && pos_m[1] < current->u.d.range_min[1])
                 {
                   dyp = pos[1] - current->u.d.range_max[1];
-                  dym = pos_m[1] - current->u.d.range_min[1];   /* negative */
+                  dym = pos_m[1] - current->u.d.range_min[1]; /* negative */
                 }
               else if(pos_p[1] > current->u.d.range_max[1] && pos[1] < current->u.d.range_min[1])
                 {
                   dyp = pos_p[1] - current->u.d.range_max[1];
-                  dym = pos[1] - current->u.d.range_min[1];     /* negative */
+                  dym = pos[1] - current->u.d.range_min[1]; /* negative */
                 }
               else
                 dyp = dym = 0;
@@ -384,12 +375,12 @@ int timestep_evaluate(int target, int mode, int threadid)
               if(pos[2] > current->u.d.range_max[2] && pos_m[2] < current->u.d.range_min[2])
                 {
                   dzp = pos[2] - current->u.d.range_max[2];
-                  dzm = pos_m[2] - current->u.d.range_min[2];   /* negative */
+                  dzm = pos_m[2] - current->u.d.range_min[2]; /* negative */
                 }
               else if(pos_p[2] > current->u.d.range_max[2] && pos[2] < current->u.d.range_min[2])
                 {
                   dzp = pos_p[2] - current->u.d.range_max[2];
-                  dzm = pos[2] - current->u.d.range_min[2];     /* negative */
+                  dzm = pos[2] - current->u.d.range_min[2]; /* negative */
                 }
               else
                 dzp = dzm = 0;
@@ -424,12 +415,12 @@ int timestep_evaluate(int target, int mode, int threadid)
               no = current->u.d.sibling;
               continue;
             }
-          else                  /* pseudo particle */
+          else /* pseudo particle */
             {
               if(mode == MODE_IMPORTED_PARTICLES)
                 terminate("mode == 1");
 
-              if(target >= 0)   /* if no target is given, export will not occur */
+              if(target >= 0) /* if no target is given, export will not occur */
                 ngb_treefind_export_node_threads(no, target, threadid, 0);
 
               no = Ngb_Nextnode[no - Ngb_MaxNodes];
@@ -447,7 +438,6 @@ int timestep_evaluate(int target, int mode, int threadid)
   return cost;
 }
 
-
 /*! \brief Sets local sound speed and time-step limits from local conditions.
  *
  *  This is a sort of initialization of the tree-based time-steps algorithm.
@@ -463,7 +453,7 @@ void tree_based_timesteps_setsoundspeeds(void)
   if(All.ComovingIntegrationOn)
     {
       hubble_a = hubble_function(All.Time);
-      atime = All.Time;
+      atime    = All.Time;
     }
   else
     hubble_a = atime = 1;
@@ -485,9 +475,11 @@ void tree_based_timesteps_setsoundspeeds(void)
 
 #ifdef VORONOI_STATIC_MESH
       csnd += sqrt(P[i].Vel[0] * P[i].Vel[0] + P[i].Vel[1] * P[i].Vel[1] + P[i].Vel[2] * P[i].Vel[2]) / All.cf_atime;
-#else /* #ifdef VORONOI_STATIC_MESH */
+#else  /* #ifdef VORONOI_STATIC_MESH */
       csnd += sqrt((P[i].Vel[0] - SphP[i].VelVertex[0]) * (P[i].Vel[0] - SphP[i].VelVertex[0]) +
-                   (P[i].Vel[1] - SphP[i].VelVertex[1]) * (P[i].Vel[1] - SphP[i].VelVertex[1]) + (P[i].Vel[2] - SphP[i].VelVertex[2]) * (P[i].Vel[2] - SphP[i].VelVertex[2])) / All.cf_atime;
+                   (P[i].Vel[1] - SphP[i].VelVertex[1]) * (P[i].Vel[1] - SphP[i].VelVertex[1]) +
+                   (P[i].Vel[2] - SphP[i].VelVertex[2]) * (P[i].Vel[2] - SphP[i].VelVertex[2])) /
+              All.cf_atime;
 #endif /* #ifdef VORONOI_STATIC_MESH #else */
 
       SphP[i].CurrentMaxTiStep = rad / csnd;
@@ -498,6 +490,5 @@ void tree_based_timesteps_setsoundspeeds(void)
         SphP[i].CurrentMaxTiStep = All.MaxSizeTimestep / (atime * hubble_a) / All.CourantFac;
     }
 }
-
 
 #endif /* #ifdef TREE_BASED_TIMESTEPS */

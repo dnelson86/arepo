@@ -42,38 +42,32 @@
  * - 24.05.2018 Prepared file for public release -- Rainer Weinberger
  */
 
-
+#include <gsl/gsl_math.h>
+#include <inttypes.h>
+#include <math.h>
 #include <mpi.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <math.h>
 #include <sys/stat.h>
 #include <sys/types.h>
-#include <gsl/gsl_math.h>
-#include <inttypes.h>
 
-
+#include "../domain/domain.h"
 #include "../main/allvars.h"
 #include "../main/proto.h"
-#include "../domain/domain.h"
-#include "fof.h"
 #include "../subfind/subfind.h"
-
+#include "fof.h"
 
 #ifdef FOF
 
-
 static int fof_find_dmparticles_evaluate(int target, int mode, int threadid);
-static int fof_treefind_fof_primary(MyDouble searchcenter[3], MyFloat hsml, int target, int numnodes, int *firstnode, int mode, int threadid);
-
+static int fof_treefind_fof_primary(MyDouble searchcenter[3], MyFloat hsml, int target, int numnodes, int *firstnode, int mode,
+                                    int threadid);
 
 static int *Tree_Head;
 
-
 static MyIDType *MinID;
 static int *Head, *Len, *Next, *Tail, *MinIDTask;
-
 
 /*! \brief Local data structure for collecting particle/cell data that is sent
  *         to other processors if needed. Type called data_in and static
@@ -91,7 +85,6 @@ typedef struct
 
 static data_in *DataIn, *DataGet;
 
-
 /*! \brief Routine that fills the relevant particle/cell data into the input
  *         structure defined above. Needed by generic_comm_helpers2.
  *
@@ -101,18 +94,17 @@ static data_in *DataIn, *DataGet;
  *
  *  \return void
  */
-static void particle2in(data_in * in, int i, int firstnode)
+static void particle2in(data_in *in, int i, int firstnode)
 {
   in->Pos[0] = P[i].Pos[0];
   in->Pos[1] = P[i].Pos[1];
   in->Pos[2] = P[i].Pos[2];
 
-  in->MinID = MinID[Head[i]];
+  in->MinID     = MinID[Head[i]];
   in->MinIDTask = MinIDTask[Head[i]];
 
   in->Firstnode = firstnode;
 }
-
 
 /*! \brief Local data structure that holds results acquired on remote
  *         processors. Type called data_out and static pointers DataResult and
@@ -125,7 +117,6 @@ typedef struct
 
 static data_out *DataResult, *DataOut;
 
-
 /*! \brief Routine to store or combine result data. Needed by
  *         generic_comm_helpers2.
  *
@@ -137,27 +128,23 @@ static data_out *DataResult, *DataOut;
  *
  *  \return void
  */
-static void out2particle(data_out * out, int i, int mode)
+static void out2particle(data_out *out, int i, int mode)
 {
-  if(mode == MODE_LOCAL_PARTICLES)      /* initial store */
+  if(mode == MODE_LOCAL_PARTICLES) /* initial store */
     {
       terminate("here not used");
     }
-  else                          /* combine */
+  else /* combine */
     {
       if(out->link_count_flag)
         Flags[i].Marked = 1;
     }
-
 }
-
 
 #include "../utils/generic_comm_helpers2.h"
 
-
 static int link_across;
 static int nprocessed;
-
 
 /*! \brief Routine that defines what to do with local particles.
  *
@@ -198,7 +185,6 @@ static void kernel_local(void)
   }
 }
 
-
 /*! \brief Routine that defines what to do with imported particles.
  *
  *  Calls the *_evaluate function in MODE_IMPORTED_PARTICLES.
@@ -222,9 +208,7 @@ static void kernel_imported(void)
         link_across += fof_find_dmparticles_evaluate(i, MODE_IMPORTED_PARTICLES, threadid);
       }
   }
-
 }
-
 
 /*! \brief Links particles to groups.
  *
@@ -237,13 +221,13 @@ static void kernel_imported(void)
  *
  *  \return Time spent in this function.
  */
-double fof_find_groups(MyIDType * vMinID, int *vHead, int *vLen, int *vNext, int *vTail, int *vMinIDTask)
+double fof_find_groups(MyIDType *vMinID, int *vHead, int *vLen, int *vNext, int *vTail, int *vMinIDTask)
 {
-  MinID = vMinID;
-  Head = vHead;
-  Len = vLen;
-  Next = vNext;
-  Tail = vTail;
+  MinID     = vMinID;
+  Head      = vHead;
+  Len       = vLen;
+  Next      = vNext;
+  Tail      = vTail;
   MinIDTask = vMinIDTask;
 
   int i, npart, marked;
@@ -256,11 +240,11 @@ double fof_find_groups(MyIDType * vMinID, int *vHead, int *vLen, int *vNext, int
   mpi_printf("FOF: Start linking particles (presently allocated=%g MB)\n", AllocatedBytes / (1024.0 * 1024.0));
 
   /* allocate a flag field that is used to mark nodes that are fully inside the linking length */
-  flag_node_inside_linkinglength = (unsigned char *) mymalloc("flag_node_inside_linkinglength", Tree_MaxNodes * sizeof(unsigned char));
+  flag_node_inside_linkinglength = (unsigned char *)mymalloc("flag_node_inside_linkinglength", Tree_MaxNodes * sizeof(unsigned char));
   memset(flag_node_inside_linkinglength, 0, Tree_MaxNodes * sizeof(unsigned char));
   flag_node_inside_linkinglength -= Tree_MaxPart;
 
-  Flags = (struct bit_flags *) mymalloc("Flags", NumPart * sizeof(struct bit_flags));
+  Flags = (struct bit_flags *)mymalloc("Flags", NumPart * sizeof(struct bit_flags));
 
   generic_set_MaxNexport();
 
@@ -289,7 +273,8 @@ double fof_find_groups(MyIDType * vMinID, int *vHead, int *vLen, int *vNext, int
   sumup_large_ints(1, &marked, &totmarked);
   sumup_large_ints(1, &npart, &totnpart);
   t1 = second();
-  mpi_printf("FOF: links on local processor done (took %g sec).\nFOF: Marked=%lld out of the %lld primaries which are linked\n", timediff(t0, t1), totmarked, totnpart);
+  mpi_printf("FOF: links on local processor done (took %g sec).\nFOF: Marked=%lld out of the %lld primaries which are linked\n",
+             timediff(t0, t1), totmarked, totnpart);
 
   generic_free_partlist_nodelist_ngblist_threadbufs();
 
@@ -308,15 +293,15 @@ double fof_find_groups(MyIDType * vMinID, int *vHead, int *vLen, int *vNext, int
 
       for(i = 0; i < NumPart; i++)
         {
-          Flags[i].Changed = Flags[i].Marked;
-          Flags[i].Marked = 0;
+          Flags[i].Changed      = Flags[i].Marked;
+          Flags[i].Marked       = 0;
           Flags[i].MinIDChanged = 0;
         }
 
-      NextParticle = 0;         /* begin with this index */
+      NextParticle = 0; /* begin with this index */
 
       link_across = 0;
-      nprocessed = 0;
+      nprocessed  = 0;
 
       generic_comm_pattern(NumPart, kernel_local, kernel_imported);
 
@@ -334,7 +319,6 @@ double fof_find_groups(MyIDType * vMinID, int *vHead, int *vLen, int *vNext, int
             if(Flags[Head[i]].MinIDChanged)
               Flags[i].Marked = 1;
           }
-
     }
   while(link_across_tot > 0);
 
@@ -349,7 +333,6 @@ double fof_find_groups(MyIDType * vMinID, int *vHead, int *vLen, int *vNext, int
   tend = second();
   return timediff(tstart, tend);
 }
-
 
 /*! \brief Links dark matter particles.
  *
@@ -373,7 +356,7 @@ static int fof_find_dmparticles_evaluate(int target, int mode, int threadid)
       particle2in(&local, target, 0);
       target_data = &local;
 
-      numnodes = 1;
+      numnodes  = 1;
       firstnode = NULL;
     }
   else
@@ -392,9 +375,9 @@ static int fof_find_dmparticles_evaluate(int target, int mode, int threadid)
       {
         j = Thread[threadid].Ngblist[n];
 
-        if(Head[target] != Head[j])     /* only if not yet linked */
+        if(Head[target] != Head[j]) /* only if not yet linked */
           {
-            if(Len[Head[target]] > Len[Head[j]])        /* p group is longer */
+            if(Len[Head[target]] > Len[Head[j]]) /* p group is longer */
               {
                 p = target;
                 s = j;
@@ -412,7 +395,7 @@ static int fof_find_dmparticles_evaluate(int target, int mode, int threadid)
 
             if(MinID[Head[s]] < MinID[Head[p]])
               {
-                MinID[Head[p]] = MinID[Head[s]];
+                MinID[Head[p]]     = MinID[Head[s]];
                 MinIDTask[Head[p]] = MinIDTask[Head[s]];
               }
 
@@ -436,7 +419,6 @@ static int fof_find_dmparticles_evaluate(int target, int mode, int threadid)
   return links;
 }
 
-
 /*! \brief Finds the neighbors among the primary link types which are within a
  *         certain distance.
  *
@@ -453,13 +435,14 @@ static int fof_find_dmparticles_evaluate(int target, int mode, int threadid)
  *
  *  \return Number of particles found.
  */
-static int fof_treefind_fof_primary(MyDouble searchcenter[3], MyFloat hsml, int target, int numnodes, int *firstnode, int mode, int threadid)
+static int fof_treefind_fof_primary(MyDouble searchcenter[3], MyFloat hsml, int target, int numnodes, int *firstnode, int mode,
+                                    int threadid)
 {
   int k, numngb, no, p, nexport_flag = 0;
   MyDouble dx, dy, dz, dist, r2;
 
-#define FACT2 0.866025403785    /* sqrt(3)/2 */
-#define FACT3 (2.0*FACT2)       /* sqrt(3)   */
+#define FACT2 0.866025403785 /* sqrt(3)/2 */
+#define FACT3 (2.0 * FACT2)  /* sqrt(3)   */
 
   MyDouble xtmp, ytmp, ztmp;
 
@@ -469,19 +452,19 @@ static int fof_treefind_fof_primary(MyDouble searchcenter[3], MyFloat hsml, int 
     {
       if(mode == MODE_LOCAL_PARTICLES || mode == MODE_LOCAL_NO_EXPORT)
         {
-          no = Tree_MaxPart;    /* root node */
+          no = Tree_MaxPart; /* root node */
         }
       else
         {
           no = firstnode[k];
-          no = Nodes[no].u.d.nextnode;  /* open it */
+          no = Nodes[no].u.d.nextnode; /* open it */
         }
 
       while(no >= 0)
         {
           if(no < Tree_MaxPart) /* single particle */
             {
-              p = no;
+              p  = no;
               no = Nextnode[no];
 
               if(!((1 << P[p].Type) & (FOF_PRIMARY_LINK_TYPES)))
@@ -491,7 +474,7 @@ static int fof_treefind_fof_primary(MyDouble searchcenter[3], MyFloat hsml, int 
                 continue;
 
               dist = hsml;
-              dx = FOF_NEAREST_LONG_X(Tree_Pos_list[3 * p + 0] - searchcenter[0]);
+              dx   = FOF_NEAREST_LONG_X(Tree_Pos_list[3 * p + 0] - searchcenter[0]);
               if(dx > dist)
                 continue;
               dy = FOF_NEAREST_LONG_Y(Tree_Pos_list[3 * p + 1] - searchcenter[1]);
@@ -507,8 +490,8 @@ static int fof_treefind_fof_primary(MyDouble searchcenter[3], MyFloat hsml, int 
                 {
                   if(MinID[Head[p]] > DataGet[target].MinID)
                     {
-                      MinID[Head[p]] = DataGet[target].MinID;
-                      MinIDTask[Head[p]] = DataGet[target].MinIDTask;
+                      MinID[Head[p]]              = DataGet[target].MinID;
+                      MinIDTask[Head[p]]          = DataGet[target].MinIDTask;
                       Flags[Head[p]].MinIDChanged = 1;
                       numngb++;
                     }
@@ -519,24 +502,25 @@ static int fof_treefind_fof_primary(MyDouble searchcenter[3], MyFloat hsml, int 
                   Thread[threadid].Ngblist[numngb++] = p;
                 }
             }
-          else if(no < Tree_MaxPart + Tree_MaxNodes)    /* internal node */
+          else if(no < Tree_MaxPart + Tree_MaxNodes) /* internal node */
             {
               if(mode == MODE_IMPORTED_PARTICLES)
                 {
-                  if(no < Tree_FirstNonTopLevelNode)    /* we reached a top-level node again, which means that we are done with the branch */
+                  if(no <
+                     Tree_FirstNonTopLevelNode) /* we reached a top-level node again, which means that we are done with the branch */
                     break;
 
                   if(Tree_Head[no] >= 0)
                     if(MinID[Tree_Head[no]] <= DataGet[target].MinID)
                       {
-                        no = Nodes[no].u.d.sibling;     /* the node can be discarded */
+                        no = Nodes[no].u.d.sibling; /* the node can be discarded */
                         continue;
                       }
                 }
 
               struct NODE *current = &Nodes[no];
-              int nocur = no;
-              no = current->u.d.sibling;        /* in case the node can be discarded */
+              int nocur            = no;
+              no                   = current->u.d.sibling; /* in case the node can be discarded */
 
               if(mode == MODE_LOCAL_PARTICLES)
                 {
@@ -548,7 +532,7 @@ static int fof_treefind_fof_primary(MyDouble searchcenter[3], MyFloat hsml, int 
                 }
 
               dist = hsml + 0.5 * current->len;
-              dx = FOF_NEAREST_LONG_X(current->center[0] - searchcenter[0]);
+              dx   = FOF_NEAREST_LONG_X(current->center[0] - searchcenter[0]);
               if(dx > dist)
                 continue;
               dy = FOF_NEAREST_LONG_Y(current->center[1] - searchcenter[1]);
@@ -582,8 +566,8 @@ static int fof_treefind_fof_primary(MyDouble searchcenter[3], MyFloat hsml, int 
                                   {
                                     if(MinID[Head[p]] > DataGet[target].MinID)
                                       {
-                                        MinID[Head[p]] = DataGet[target].MinID;
-                                        MinIDTask[Head[p]] = DataGet[target].MinIDTask;
+                                        MinID[Head[p]]              = DataGet[target].MinID;
+                                        MinIDTask[Head[p]]          = DataGet[target].MinIDTask;
                                         Flags[Head[p]].MinIDChanged = 1;
                                         numngb++;
                                       }
@@ -602,9 +586,9 @@ static int fof_treefind_fof_primary(MyDouble searchcenter[3], MyFloat hsml, int 
                       }
                 }
 
-              no = current->u.d.nextnode;       /* ok, we need to open the node */
+              no = current->u.d.nextnode; /* ok, we need to open the node */
             }
-          else if(no >= Tree_ImportedNodeOffset)        /* point from imported nodelist */
+          else if(no >= Tree_ImportedNodeOffset) /* point from imported nodelist */
             {
               terminate("do not expect imported points here");
             }
@@ -639,7 +623,6 @@ static int fof_treefind_fof_primary(MyDouble searchcenter[3], MyFloat hsml, int 
   return numngb;
 }
 
-
 /*! \brief Walks a tree recursively and sets Tree_Head of node.
  *
  *  \param[in] no Index of node we are in.
@@ -648,15 +631,15 @@ static int fof_treefind_fof_primary(MyDouble searchcenter[3], MyFloat hsml, int 
  */
 void fof_check_for_full_nodes_recursive(int no)
 {
-  if(no >= Tree_MaxPart && no < Tree_MaxPart + Tree_MaxNodes)   /* internal node */
+  if(no >= Tree_MaxPart && no < Tree_MaxPart + Tree_MaxNodes) /* internal node */
     {
-      int head = -1;            /* no particle yet */
+      int head = -1; /* no particle yet */
 
       int p = Nodes[no].u.d.nextnode;
 
       while(p != Nodes[no].u.d.sibling)
         {
-          if(p < Tree_MaxPart)  /* a particle */
+          if(p < Tree_MaxPart) /* a particle */
             {
               if((1 << P[p].Type) & (FOF_PRIMARY_LINK_TYPES))
                 {
@@ -671,7 +654,7 @@ void fof_check_for_full_nodes_recursive(int no)
 
               p = Nextnode[p];
             }
-          else if(p < Tree_MaxPart + Tree_MaxNodes)     /* an internal node  */
+          else if(p < Tree_MaxPart + Tree_MaxNodes) /* an internal node  */
             {
               fof_check_for_full_nodes_recursive(p);
 
@@ -685,14 +668,13 @@ void fof_check_for_full_nodes_recursive(int no)
 
               p = Nodes[p].u.d.sibling;
             }
-          else                  /* a pseudo particle */
+          else /* a pseudo particle */
             p = Nextnode[p - Tree_MaxNodes];
         }
 
       Tree_Head[no] = head;
     }
 }
-
 
 /*! \brief Finds a particle in node.
  *
@@ -702,13 +684,13 @@ void fof_check_for_full_nodes_recursive(int no)
  */
 int fof_return_a_particle_in_cell_recursive(int no)
 {
-  if(no >= Tree_MaxPart && no < Tree_MaxPart + Tree_MaxNodes)   /* internal node */
+  if(no >= Tree_MaxPart && no < Tree_MaxPart + Tree_MaxNodes) /* internal node */
     {
       int p = Nodes[no].u.d.nextnode;
 
       while(p != Nodes[no].u.d.sibling)
         {
-          if(p < Tree_MaxPart)  /* a particle */
+          if(p < Tree_MaxPart) /* a particle */
             {
               if((1 << P[p].Type) & (FOF_PRIMARY_LINK_TYPES))
                 {
@@ -717,7 +699,7 @@ int fof_return_a_particle_in_cell_recursive(int no)
 
               p = Nextnode[p];
             }
-          else if(p < Tree_MaxPart + Tree_MaxNodes)     /* an internal node  */
+          else if(p < Tree_MaxPart + Tree_MaxNodes) /* an internal node  */
             {
               int ret = fof_return_a_particle_in_cell_recursive(p);
 
@@ -726,13 +708,12 @@ int fof_return_a_particle_in_cell_recursive(int no)
 
               p = Nodes[p].u.d.sibling;
             }
-          else                  /* a pseudo particle */
+          else /* a pseudo particle */
             p = Nextnode[p - Tree_MaxNodes];
         }
     }
 
   return -1;
 }
-
 
 #endif /* #ifdef FOF */

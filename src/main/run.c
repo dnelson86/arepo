@@ -40,26 +40,22 @@
  * - 06.05.2018 Prepared file for public release -- Rainer Weinberger
  */
 
-
+#include <ctype.h>
+#include <math.h>
 #include <mpi.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <math.h>
 #include <unistd.h>
-#include <ctype.h>
 
-
+#include "../domain/domain.h"
 #include "../main/allvars.h"
 #include "../main/proto.h"
 #include "../mesh/voronoi/voronoi.h"
-#include "../domain/domain.h"
-
 
 static void do_second_order_source_terms_first_half(void);
 static void do_second_order_source_terms_second_half(void);
 static void create_end_file(void);
-
 
 /*! \brief Contains the main simulation loop that iterates over
  *  single timesteps.
@@ -95,7 +91,7 @@ void run(void)
 {
   CPU_Step[CPU_MISC] += measure_time();
 
-  if(RestartFlag != 1)          /* if we have restarted from restart files, no need to do the setup sequence */
+  if(RestartFlag != 1) /* if we have restarted from restart files, no need to do the setup sequence */
     {
       mark_active_timebins();
 
@@ -105,7 +101,7 @@ void run(void)
 
       ngb_treefree();
       domain_free();
-      domain_Decomposition();   /* do domain decomposition if needed */
+      domain_Decomposition(); /* do domain decomposition if needed */
 
       ngb_treeallocate();
       ngb_treebuild(NumGas);
@@ -124,9 +120,9 @@ void run(void)
 
       calculate_gradients();
 
-      set_vertex_velocities();  /* determine the speed of the mesh-generating vertices */
+      set_vertex_velocities(); /* determine the speed of the mesh-generating vertices */
 
-      ngb_update_velocities();  /* update the neighbor tree with the new vertex and cell velocities */
+      ngb_update_velocities(); /* update the neighbor tree with the new vertex and cell velocities */
 
       do_second_order_source_terms_second_half();
 
@@ -136,16 +132,16 @@ void run(void)
 #if defined(VORONOI_STATIC_MESH)
   if(RestartFlag == 1)
     {
-      int n_hydro_backup = TimeBinsHydro.NActiveParticles;
-      int *time_bin_hydro = (int *) malloc(NumGas * sizeof(int));
-      int *hydro_particles = (int *) malloc(n_hydro_backup * sizeof(int));
+      int n_hydro_backup   = TimeBinsHydro.NActiveParticles;
+      int *time_bin_hydro  = (int *)malloc(NumGas * sizeof(int));
+      int *hydro_particles = (int *)malloc(n_hydro_backup * sizeof(int));
       for(int j = 0; j < TimeBinsHydro.NActiveParticles; j++)
         hydro_particles[j] = TimeBinsHydro.ActiveParticleList[j];
 
       for(int j = 0; j < NumGas; j++)
         {
-          time_bin_hydro[j] = P[j].TimeBinHydro;
-          P[j].TimeBinHydro = All.HighestActiveTimeBin;
+          time_bin_hydro[j]                   = P[j].TimeBinHydro;
+          P[j].TimeBinHydro                   = All.HighestActiveTimeBin;
           TimeBinsHydro.ActiveParticleList[j] = j;
         }
       TimeBinsHydro.NActiveParticles = NumGas;
@@ -165,37 +161,38 @@ void run(void)
     }
 #endif /* #if defined(VORONOI_STATIC_MESH) */
 
-  while(1)                      /* main loop */
+  while(1) /* main loop */
     {
-      if(RestartFlag != 1)      /* if we are starting from restart files, skip in the first iteration the parts until the restart files were written  */
+      if(RestartFlag !=
+         1) /* if we are starting from restart files, skip in the first iteration the parts until the restart files were written  */
         {
-
           compute_statistics();
 
           flush_everything();
 
           create_snapshot_if_desired();
 
-          if(All.Ti_Current >= TIMEBASE)        /* we reached the final time */
+          if(All.Ti_Current >= TIMEBASE) /* we reached the final time */
             {
               mpi_printf("\nFinal time=%g reached. Simulation ends.\n", All.TimeMax);
 
-              if(All.Ti_lastoutput != All.Ti_Current)   /* make a snapshot at the final time in case none has produced at this time */
+              if(All.Ti_lastoutput != All.Ti_Current) /* make a snapshot at the final time in case none has produced at this time */
                 produce_dump(); /* this will be overwritten if All.TimeMax is increased and the run is continued */
 
-              create_end_file(); // create empty file called end in output directory
+              create_end_file();  // create empty file called end in output directory
 
               break;
             }
 
-          find_timesteps_without_gravity();     /* find-timesteps */
+          find_timesteps_without_gravity(); /* find-timesteps */
 
-          find_gravity_timesteps_and_do_gravity_step_first_half();      /* gravity half-step for hydrodynamics */
-          /* kicks collisionless particles by half a step */
+          find_gravity_timesteps_and_do_gravity_step_first_half(); /* gravity half-step for hydrodynamics */
+                                                                   /* kicks collisionless particles by half a step */
 
-#if (defined(SELFGRAVITY) || defined(EXTERNALGRAVITY) || defined(EXACT_GRAVITY_FOR_PARTICLE_TYPE)) && !defined(MESHRELAX)
+#if(defined(SELFGRAVITY) || defined(EXTERNALGRAVITY) || defined(EXACT_GRAVITY_FOR_PARTICLE_TYPE)) && !defined(MESHRELAX)
           update_timesteps_from_gravity();
-#endif /* #if (defined(SELFGRAVITY) || defined(EXTERNALGRAVITY) || defined(EXACT_GRAVITY_FOR_PARTICLE_TYPE)) && !defined(MESHRELAX) */
+#endif /* #if (defined(SELFGRAVITY) || defined(EXTERNALGRAVITY) || defined(EXACT_GRAVITY_FOR_PARTICLE_TYPE)) && !defined(MESHRELAX) \
+        */
 
           do_second_order_source_terms_first_half();
 
@@ -225,18 +222,19 @@ void run(void)
           do_derefinements_and_refinements();
 #endif /* #ifdef REFINEMENT */
 
-          write_cpu_log();      /* output some CPU usage log-info (accounts for everything needed up to completion of the current sync-point) */
+          write_cpu_log(); /* output some CPU usage log-info (accounts for everything needed up to completion of the current
+                              sync-point) */
 
-          find_next_sync_point();       /* find next synchronization time */
+          find_next_sync_point(); /* find next synchronization time */
 
           make_list_of_active_particles();
 
-          output_log_messages();        /* write some info to log-files */
+          output_log_messages(); /* write some info to log-files */
 
 #if !defined(VORONOI_STATIC_MESH)
 #ifdef OPTIMIZE_MESH_MEMORY_FOR_REFINEMENT
           free_all_remaining_mesh_structures();
-#else /* #ifdef OPTIMIZE_MESH_MEMORY_FOR_REFINEMENT */
+#else  /* #ifdef OPTIMIZE_MESH_MEMORY_FOR_REFINEMENT */
           free_mesh();
 #endif /* #ifdef OPTIMIZE_MESH_MEMORY_FOR_REFINEMENT #else */
 #endif /* #if !defined(VORONOI_STATIC_MESH) */
@@ -251,10 +249,11 @@ void run(void)
 
       set_non_standard_physics_for_current_time();
 
-#if defined(VORONOI_STATIC_MESH) && !defined(VORONOI_STATIC_MESH_DO_DOMAIN_DECOMPOSITION)       /* may only be used if there is no gravity */
+#if defined(VORONOI_STATIC_MESH) && !defined(VORONOI_STATIC_MESH_DO_DOMAIN_DECOMPOSITION) /* may only be used if there is no gravity \
+                                                                                           */
 #else /* #if defined(VORONOI_STATIC_MESH) && !defined(VORONOI_STATIC_MESH_DO_DOMAIN_DECOMPOSITION) */
 
-      if(All.HighestActiveTimeBin >= All.SmallestTimeBinWithDomainDecomposition)        /* only do this for sufficiently large steps */
+      if(All.HighestActiveTimeBin >= All.SmallestTimeBinWithDomainDecomposition) /* only do this for sufficiently large steps */
         {
 #ifdef VORONOI_STATIC_MESH
           free_mesh();
@@ -265,7 +264,7 @@ void run(void)
 
           drift_all_particles();
 
-          domain_Decomposition();       /* do new domain decomposition, will also make a new chained-list of synchronized particles */
+          domain_Decomposition(); /* do new domain decomposition, will also make a new chained-list of synchronized particles */
 
           ngb_treeallocate();
           ngb_treebuild(NumGas);
@@ -276,8 +275,6 @@ void run(void)
 #endif /* #if defined(VORONOI_STATIC_MESH) */
         }
 #endif /* #if defined(VORONOI_STATIC_MESH) && !defined(VORONOI_STATIC_MESH_DO_DOMAIN_DECOMPOSITION) #else */
-
-
 
 #ifdef EXACT_GRAVITY_FOR_PARTICLE_TYPE
       special_particle_update_list();
@@ -294,24 +291,22 @@ void run(void)
 
       compute_interface_fluxes(&Mesh);
 
-      update_primitive_variables();     /* these effectively closes off the hydro step */
-
+      update_primitive_variables(); /* these effectively closes off the hydro step */
 
       /* the masses and positions are updated, let's get new forces and potentials */
 
       do_second_order_source_terms_second_half();
 
-      do_gravity_step_second_half();    /* this closes off the gravity half-step */
+      do_gravity_step_second_half(); /* this closes off the gravity half-step */
 
       /* do any extra physics, Strang-split (update both primitive and conserved variables as needed ) */
       calculate_non_standard_physics_end_of_step();
     }
 
-  restart(0);                   /* write a restart file at final time - can be used to continue simulation beyond final time */
+  restart(0); /* write a restart file at final time - can be used to continue simulation beyond final time */
 
-  write_cpu_log();              /* output final cpu measurements */
+  write_cpu_log(); /* output final cpu measurements */
 }
-
 
 /*! \brief Source terms before hydrodynamics timestep.
  *
@@ -323,7 +318,6 @@ void do_second_order_source_terms_first_half(void)
   do_mhd_source_terms_first_half();
 #endif /* #ifdef MHD */
 }
-
 
 /* \brief Source terms after hydrodynamics timestep.
  *
@@ -340,7 +334,6 @@ void do_second_order_source_terms_second_half(void)
 #endif /* #ifdef MHD */
 }
 
-
 /*! \brief Calls extra modules after drift operator.
  *
  *  This routine is called after the active particles are drifted
@@ -351,12 +344,10 @@ void do_second_order_source_terms_second_half(void)
  */
 void set_non_standard_physics_for_current_time(void)
 {
-
 #if defined(COOLING)
-  IonizeParams();               /* set UV background for the current time */
-#endif /* #if defined(COOLING) */
+  IonizeParams(); /* set UV background for the current time */
+#endif            /* #if defined(COOLING) */
 }
-
 
 /*! \brief calls extra modules after the gravitational force is recomputed.
  *
@@ -368,10 +359,7 @@ void set_non_standard_physics_for_current_time(void)
  *
  *  \return void
  */
-void calculate_non_standard_physics_with_valid_gravity_tree(void)
-{
-}
-
+void calculate_non_standard_physics_with_valid_gravity_tree(void) {}
 
 /*! \brief Calls extra modules after the gravitational force is recomputed
  *
@@ -380,11 +368,7 @@ void calculate_non_standard_physics_with_valid_gravity_tree(void)
  *
  *  \return void
  */
-void calculate_non_standard_physics_with_valid_gravity_tree_always(void)
-{
-
-}
-
+void calculate_non_standard_physics_with_valid_gravity_tree_always(void) {}
 
 /*! \brief Calls extra modules before the Voronoi mesh is built.
  *
@@ -396,7 +380,6 @@ void calculate_non_standard_physics_prior_mesh_construction(void)
   sfr_create_star_particles();
 #endif /* #if defined(COOLING) && defined(USE_SFR) */
 }
-
 
 /*! \brief Calls extra modules at the end of the run loop.
  *
@@ -410,12 +393,11 @@ void calculate_non_standard_physics_end_of_step(void)
 #ifdef COOLING
 #ifdef USE_SFR
   cooling_and_starformation();
-#else /* #ifdef USE_SFR */
+#else  /* #ifdef USE_SFR */
   cooling_only();
 #endif /* #ifdef USE_SFR #else */
 #endif /* #ifdef COOLING */
 }
-
 
 /*! \brief Checks whether the run must interrupted.
  *
@@ -436,7 +418,7 @@ int check_for_interruption_of_run(void)
       char stopfname[MAXLEN_PATH];
 
       sprintf(stopfname, "%sstop", All.OutputDir);
-      if((fd = fopen(stopfname, "r")))  /* Is the stop-file present? If yes, interrupt the run. */
+      if((fd = fopen(stopfname, "r"))) /* Is the stop-file present? If yes, interrupt the run. */
         {
           fclose(fd);
           printf("stop-file detected. stopping.\n");
@@ -445,7 +427,7 @@ int check_for_interruption_of_run(void)
         }
 
       sprintf(stopfname, "%srestart", All.OutputDir);
-      if((fd = fopen(stopfname, "r")))  /* Is the restart-file present? If yes, write a user-requested restart file. */
+      if((fd = fopen(stopfname, "r"))) /* Is the restart-file present? If yes, write a user-requested restart file. */
         {
           fclose(fd);
           printf("restart-file detected. writing restart files.\n");
@@ -453,7 +435,7 @@ int check_for_interruption_of_run(void)
           unlink(stopfname);
         }
 
-      if(CPUThisRun > 0.85 * All.TimeLimitCPU)  /* are we running out of CPU-time ? If yes, interrupt run. */
+      if(CPUThisRun > 0.85 * All.TimeLimitCPU) /* are we running out of CPU-time ? If yes, interrupt run. */
         {
           printf("reaching time-limit. stopping.\n");
           stopflag = 2;
@@ -464,7 +446,7 @@ int check_for_interruption_of_run(void)
 
   if(stopflag)
     {
-      restart(0);               /* write restart file */
+      restart(0); /* write restart file */
 
       MPI_Barrier(MPI_COMM_WORLD);
 
@@ -491,7 +473,7 @@ int check_for_interruption_of_run(void)
       if((CPUThisRun - All.TimeLastRestartFile) >= All.CpuTimeBetRestartFile)
         {
           All.TimeLastRestartFile = CPUThisRun;
-          stopflag = 3;
+          stopflag                = 3;
         }
       else
         stopflag = 0;
@@ -501,12 +483,11 @@ int check_for_interruption_of_run(void)
 
   if(stopflag == 3)
     {
-      restart(0);               /* write an occasional restart file */
+      restart(0); /* write an occasional restart file */
       stopflag = 0;
     }
   return 0;
 }
-
 
 /*! \brief Returns the next output time that is equal or larger than
  *         ti_curr.
@@ -522,7 +503,7 @@ integertime find_next_outputtime(integertime ti_curr)
   double next, time;
 
   DumpFlagNextSnap = 1;
-  ti_next = -1;
+  ti_next          = -1;
 
   if(All.OutputListOn)
     {
@@ -533,13 +514,13 @@ integertime find_next_outputtime(integertime ti_curr)
           if(time >= All.TimeBegin && time <= All.TimeMax)
             {
               if(All.ComovingIntegrationOn)
-                ti = (integertime) (log(time / All.TimeBegin) / All.Timebase_interval);
+                ti = (integertime)(log(time / All.TimeBegin) / All.Timebase_interval);
               else
-                ti = (integertime) ((time - All.TimeBegin) / All.Timebase_interval);
+                ti = (integertime)((time - All.TimeBegin) / All.Timebase_interval);
 
 #ifdef PROCESS_TIMES_OF_OUTPUTLIST
               /* first, determine maximum output interval based on All.MaxSizeTimestep */
-              integertime timax = (integertime) (All.MaxSizeTimestep / All.Timebase_interval);
+              integertime timax = (integertime)(All.MaxSizeTimestep / All.Timebase_interval);
 
               /* make it a power 2 subdivision */
               integertime ti_min = TIMEBASE;
@@ -547,22 +528,22 @@ integertime find_next_outputtime(integertime ti_curr)
                 ti_min >>= 1;
               timax = ti_min;
 
-              double multiplier = ti / ((double) timax);
+              double multiplier = ti / ((double)timax);
 
               /* now round this to the nearest multiple of timax */
-              ti = ((integertime) (multiplier + 0.5)) * timax;
+              ti = ((integertime)(multiplier + 0.5)) * timax;
 #endif /* #ifdef PROCESS_TIMES_OF_OUTPUTLIST */
               if(ti >= ti_curr)
                 {
                   if(ti_next == -1)
                     {
-                      ti_next = ti;
+                      ti_next          = ti;
                       DumpFlagNextSnap = All.OutputListFlag[i];
                     }
 
                   if(ti_next > ti)
                     {
-                      ti_next = ti;
+                      ti_next          = ti;
                       DumpFlagNextSnap = All.OutputListFlag[i];
                     }
                 }
@@ -601,9 +582,9 @@ integertime find_next_outputtime(integertime ti_curr)
       while(time <= All.TimeMax)
         {
           if(All.ComovingIntegrationOn)
-            ti = (integertime) (log(time / All.TimeBegin) / All.Timebase_interval);
+            ti = (integertime)(log(time / All.TimeBegin) / All.Timebase_interval);
           else
-            ti = (integertime) ((time - All.TimeBegin) / All.Timebase_interval);
+            ti = (integertime)((time - All.TimeBegin) / All.Timebase_interval);
 
           if(ti >= ti_curr)
             {
@@ -625,7 +606,7 @@ integertime find_next_outputtime(integertime ti_curr)
 
   if(ti_next == -1)
     {
-      ti_next = 2 * TIMEBASE;   /* this will prevent any further output */
+      ti_next = 2 * TIMEBASE; /* this will prevent any further output */
 
       mpi_printf("\nRUN: There is no valid time for a further snapshot file.\n");
     }
@@ -647,7 +628,6 @@ integertime find_next_outputtime(integertime ti_curr)
   return ti_next;
 }
 
-
 /*! \brief Creates an empty file called 'end' in the output directory.
  *
  *  The existence of this file can be used e.g. for analysis scripts to
@@ -658,13 +638,12 @@ integertime find_next_outputtime(integertime ti_curr)
  */
 static void create_end_file(void)
 {
-    FILE *fd;
-    char contfname[MAXLEN_PATH];
-    sprintf(contfname, "%send", All.OutputDir);
-    if((fd = fopen(contfname, "w")))
-        fclose(fd);
+  FILE *fd;
+  char contfname[MAXLEN_PATH];
+  sprintf(contfname, "%send", All.OutputDir);
+  if((fd = fopen(contfname, "w")))
+    fclose(fd);
 }
-
 
 /*! \brief Executes the resubmit command.
  *

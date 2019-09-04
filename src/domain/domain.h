@@ -20,27 +20,24 @@
  * \file        src/domain.h
  * \date        05/2018
  * \brief       Header for domain decomposition.
- * \details     
- * 
- * 
+ * \details
+ *
+ *
  * \par Major modifications and contributions:
- * 
+ *
  * - DD.MM.YYYY Description
  * - 28.05.2018 Prepared file for public release -- Rainer Weinberger
  */
-
 
 #ifndef ALLVARS_H
 #include "../main/allvars.h"
 #endif /* #ifndef ALLVARS_H */
 
-
 #ifndef DOMAIN_H
 #define DOMAIN_H
 
-
 #define MASK_ACTIVE_FLAG_IN_TYPE 127
-#define SET_ACTIVE_FLAG_IN_TYPE  128
+#define SET_ACTIVE_FLAG_IN_TYPE 128
 
 enum domain_displace_mode
 {
@@ -50,19 +47,17 @@ enum domain_displace_mode
 
 extern struct local_topnode_data
 {
-  peanokey Size;                /*!< number of Peano-Hilbert mesh-cells represented by top-level node */
-  peanokey StartKey;            /*!< first Peano-Hilbert key in top-level node */
-  long long Count;              /*!< counts the number of particles in this top-level node */
+  peanokey Size;     /*!< number of Peano-Hilbert mesh-cells represented by top-level node */
+  peanokey StartKey; /*!< first Peano-Hilbert key in top-level node */
+  long long Count;   /*!< counts the number of particles in this top-level node */
   double Cost;
   double SphCost;
-  int Daughter;                 /*!< index of first daughter cell (out of 8) of top-level node */
-  int Leaf;                     /*!< if the node is a leaf, this gives its number when all leaves are traversed in Peano-Hilbert order */
+  int Daughter; /*!< index of first daughter cell (out of 8) of top-level node */
+  int Leaf;     /*!< if the node is a leaf, this gives its number when all leaves are traversed in Peano-Hilbert order */
   int Parent;
-  int PIndex;                   /*!< first particle in node */
+  int PIndex; /*!< first particle in node */
 
-}
- *topNodes, *branchNodes;       /*!< points to the root node of the top-level tree */
-
+} * topNodes, *branchNodes; /*!< points to the root node of the top-level tree */
 
 struct domain_count_data
 {
@@ -71,14 +66,11 @@ struct domain_count_data
   int origintask;
 };
 
-
 extern struct domain_peano_hilbert_data
 {
   peanokey key;
   int index;
-}
- *mp;
-
+} * mp;
 
 extern struct trans_data
 {
@@ -86,33 +78,25 @@ extern struct trans_data
   int new_task;
   int new_index;
   int wrapped;
-}
- *trans_table;
-
+} * trans_table;
 
 extern int N_trans;
 
-
 extern int Nbranch;
-
 
 extern double fac_work, fac_load, fac_worksph;
 extern double normsum_work, normsum_load, normsum_worksph;
 
-
 extern double totgravcost, totpartcount, gravcost, totsphcost, sphcost;
-
 
 extern struct domain_cost_data
 {
   int no;
-  float Work;                   /*!< total "work" due to the particles stored by a leave node */
-  float WorkSph;                /*!< total "work" due to the particles stored by a leave node */
-  int Count;                    /*!< a table that gives the total number of particles held by each processor */
-  int CountSph;                 /*!< a table that gives the total number of SPH particles held by each processor */
-}
- *DomainLeaveNode;
-
+  float Work;    /*!< total "work" due to the particles stored by a leave node */
+  float WorkSph; /*!< total "work" due to the particles stored by a leave node */
+  int Count;     /*!< a table that gives the total number of particles held by each processor */
+  int CountSph;  /*!< a table that gives the total number of SPH particles held by each processor */
+} * DomainLeaveNode;
 
 /* toGo[partner] gives the number of particles on the current task that have to go to task 'partner'
  */
@@ -124,7 +108,6 @@ extern int *list_load;
 extern int *list_loadsph;
 extern double *list_work;
 extern double *list_worksph;
-
 
 /* functions for domain decomposition */
 peano1D domain_double_to_int(double d);
@@ -168,7 +151,6 @@ int domain_compare_local_trans_data_ID(const void *a, const void *b);
 int domain_compare_recv_trans_data_ID(const void *a, const void *b);
 int domain_compare_recv_trans_data_oldtask(const void *a, const void *b);
 void mysort_domain(void *b, size_t n, size_t s);
-void domain_displacePosition( MyDouble *pos, enum domain_displace_mode mode );
-
+void domain_displacePosition(MyDouble *pos, enum domain_displace_mode mode);
 
 #endif /* #ifndef DOMAIN_H */

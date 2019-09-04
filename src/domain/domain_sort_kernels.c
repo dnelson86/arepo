@@ -27,27 +27,24 @@
  *                  domain_peano_hilbert_data *b, size_t n, struct
  *                  domain_peano_hilbert_data *t)
  *                void mysort_domain(void *b, size_t n, size_t s)
- * 
+ *
  * \par Major modifications and contributions:
- * 
+ *
  * - DD.MM.YYYY Description
  * - 04.05.2018 Prepared file for public release -- Rainer Weinberger
  */
 
-
+#include <math.h>
 #include <mpi.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <strings.h>
-#include <math.h>
-
 
 #include "../main/allvars.h"
 #include "../main/proto.h"
-#include "domain.h"
 #include "../mesh/voronoi/voronoi.h"
-
+#include "domain.h"
 
 /*! \brief Comparison function for domain_count_data objects.
  *
@@ -60,15 +57,14 @@
  */
 int domain_compare_count(const void *a, const void *b)
 {
-  if(((struct domain_count_data *) a)->count > (((struct domain_count_data *) b)->count))
+  if(((struct domain_count_data *)a)->count > (((struct domain_count_data *)b)->count))
     return -1;
 
-  if(((struct domain_count_data *) a)->count < (((struct domain_count_data *) b)->count))
+  if(((struct domain_count_data *)a)->count < (((struct domain_count_data *)b)->count))
     return +1;
 
   return 0;
 }
-
 
 /*! \brief Comparison function for domain_peano_hilbert_data objects.
  *
@@ -81,15 +77,14 @@ int domain_compare_count(const void *a, const void *b)
  */
 int domain_compare_key(const void *a, const void *b)
 {
-  if(((struct domain_peano_hilbert_data *) a)->key < (((struct domain_peano_hilbert_data *) b)->key))
+  if(((struct domain_peano_hilbert_data *)a)->key < (((struct domain_peano_hilbert_data *)b)->key))
     return -1;
 
-  if(((struct domain_peano_hilbert_data *) a)->key > (((struct domain_peano_hilbert_data *) b)->key))
+  if(((struct domain_peano_hilbert_data *)a)->key > (((struct domain_peano_hilbert_data *)b)->key))
     return +1;
 
   return 0;
 }
-
 
 /*! \brief Customized mergesort sorting routine, requires temporary array.
  *
@@ -138,7 +133,6 @@ static void msort_domain_with_tmp(struct domain_peano_hilbert_data *b, size_t n,
   memcpy(b, t, (n - n2) * sizeof(struct domain_peano_hilbert_data));
 }
 
-
 /*! \brief Customized mergesort sorting routine.
  *
  *  This function tends to work slightly faster than a call of qsort() for
@@ -155,9 +149,9 @@ void mysort_domain(void *b, size_t n, size_t s)
   const size_t size = n * s;
   struct domain_peano_hilbert_data *tmp;
 
-  tmp = (struct domain_peano_hilbert_data *) mymalloc("tmp", size);
+  tmp = (struct domain_peano_hilbert_data *)mymalloc("tmp", size);
 
-  msort_domain_with_tmp((struct domain_peano_hilbert_data *) b, n, tmp);
+  msort_domain_with_tmp((struct domain_peano_hilbert_data *)b, n, tmp);
 
   myfree(tmp);
 }

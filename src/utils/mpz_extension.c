@@ -27,28 +27,24 @@
  *                  int val)
  *                void MY_mpz_sub_ui(mpz_t prod, mpz_t mult,
  *                  unsigned long long int val)
- * 
+ *
  * \par Major modifications and contributions:
- * 
+ *
  * - DD.MM.YYYY Description
  * - 20.05.2018 Prepared file for public release -- Rainer Weinberger
  */
 
-
+#include <gmp.h>
+#include <math.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <math.h>
-#include <gmp.h>
-
 
 #include "../main/allvars.h"
 #include "../main/proto.h"
 #include "../mesh/voronoi/voronoi.h"
 
-
 #if USEDBITS > 31
-
 
 /*! \brief Sets mpz variable from signed long long int.
  *
@@ -63,8 +59,8 @@ void MY_mpz_set_si(mpz_t dest, signed long long int val)
 {
   mpz_t tmp, tmp2;
 
-  unsigned long int lower = (unsigned long int) (val & 0xffffffffL);
-  signed long int higher = (signed long int) (val >> 32);
+  unsigned long int lower = (unsigned long int)(val & 0xffffffffL);
+  signed long int higher  = (signed long int)(val >> 32);
 
   mpz_init(tmp);
   mpz_init(tmp2);
@@ -76,7 +72,6 @@ void MY_mpz_set_si(mpz_t dest, signed long long int val)
   mpz_clear(tmp2);
   mpz_clear(tmp);
 }
-
 
 /*! \brief Multiplies an mpz type with a signed long long int.
  *
@@ -99,7 +94,6 @@ void MY_mpz_mul_si(mpz_t prod, mpz_t mult, signed long long int val)
   mpz_clear(tmp);
 }
 
-
 /*! \brief Subtracts 'val' from 'mult'.
  *
  *  \param[out] prod Result of subtraction.
@@ -120,6 +114,5 @@ void MY_mpz_sub_ui(mpz_t prod, mpz_t mult, unsigned long long int val)
 
   mpz_clear(tmp);
 }
-
 
 #endif

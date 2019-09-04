@@ -20,11 +20,11 @@
  * \file        src/debug_md5/Md5.h
  * \date        05/2018
  * \brief       Header for implementation of MD5 checksums.
- * \details     
- * 
- * 
+ * \details
+ *
+ *
  * \par Major modifications and contributions:
- * 
+ *
  * - DD.MM.YYYY Description
  * - 27.05.2018 Prepared file for public release -- Rainer Weinberger
  */
@@ -74,17 +74,16 @@ typedef unsigned long int UINT4;
 /* Data structure for MD5 (Message Digest) computation */
 typedef struct
 {
-  UINT4 i[2];                   /* number of _bits_ handled mod 2^64 */
-  UINT4 buf[4];                 /* scratch buffer */
-  unsigned char in[64];         /* input buffer */
-  unsigned char digest[16];     /* actual digest after MD5Final call */
+  UINT4 i[2];               /* number of _bits_ handled mod 2^64 */
+  UINT4 buf[4];             /* scratch buffer */
+  unsigned char in[64];     /* input buffer */
+  unsigned char digest[16]; /* actual digest after MD5Final call */
 } MD5_CTX;
 
-void MD5Final(MD5_CTX * mdContext);
-//void MD5Update(MD5_CTX * mdContext, unsigned char *inBuf, unsigned int inLen);
-void MD5UpdateLong(MD5_CTX * mdContext, unsigned char *inBuf, unsigned long long inLenLong);
-void MD5Init(MD5_CTX * mdContext);
-
+void MD5Final(MD5_CTX *mdContext);
+// void MD5Update(MD5_CTX * mdContext, unsigned char *inBuf, unsigned int inLen);
+void MD5UpdateLong(MD5_CTX *mdContext, unsigned char *inBuf, unsigned long long inLenLong);
+void MD5Init(MD5_CTX *mdContext);
 
 /*
  **********************************************************************

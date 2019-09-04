@@ -31,29 +31,25 @@
  *                double ewald_psi(double x, double y, double z)
  *                void ewald_force(double x, double y, double z, double
  *                  force[3])
- * 
+ *
  * \par Major modifications and contributions:
- * 
+ *
  * - DD.MM.YYYY Description
  * - 20.05.2018 Prepared file for public release -- Rainer Weinberger
  */
 
-
+#include <math.h>
 #include <mpi.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <math.h>
 #include <time.h>
-
 
 #include "../main/allvars.h"
 #include "../main/proto.h"
 
-
 #if !defined(PMGRID) && defined(SELFGRAVITY) && !defined(GRAVITY_NOT_PERIODIC) && !defined(ONEDIMS_SPHERICAL)
 #include <gsl/gsl_sf_bessel.h>
-
 
 /* variables for Ewald correction lookup table */
 MyFloat Ewd_fcorrx[ENX + 1][ENY + 1][ENZ + 1];
@@ -62,14 +58,12 @@ MyFloat Ewd_fcorrz[ENX + 1][ENY + 1][ENZ + 1];
 MyFloat Ewd_potcorr[ENX + 1][ENY + 1][ENZ + 1];
 double Ewd_fac_intp;
 
-
 /*! \brief Structure that holds information of Ewald correction table.
  */
 typedef struct
 {
   int resx, resy, resz, varsize, ewaldtype;
 } ewald_header;
-
 
 /*! \brief This function initializes tables with the correction force and the
  *  correction potential due to the periodic images of a point mass located
@@ -102,17 +96,17 @@ void ewald_init(void)
   mpi_printf("EWALD: initialize Ewald correction...\n");
 
 #ifdef LONG_X
-  if(LONG_X != (int) (LONG_X))
+  if(LONG_X != (int)(LONG_X))
     terminate("LONG_X must be an integer");
 #endif /* #ifdef LONG_X */
 
 #ifdef LONG_Y
-  if(LONG_Y != (int) (LONG_Y))
+  if(LONG_Y != (int)(LONG_Y))
     terminate("LONG_Y must be an integer");
 #endif /* #ifdef LONG_Y */
 
 #ifdef LONG_Z
-  if(LONG_Z != (int) (LONG_Z))
+  if(LONG_Z != (int)(LONG_Z))
     terminate("LONG_Z must be an integer");
 #endif /* #ifdef LONG_Z */
 
@@ -129,7 +123,8 @@ void ewald_init(void)
 
           int ewaldtype = -1;
 
-          if(tabh.resx != ENX || tabh.resy != ENY || tabh.resz != ENZ || tabh.varsize != sizeof(MyFloat) || tabh.ewaldtype != ewaldtype)
+          if(tabh.resx != ENX || tabh.resy != ENY || tabh.resz != ENZ || tabh.varsize != sizeof(MyFloat) ||
+             tabh.ewaldtype != ewaldtype)
             {
               mpi_printf("\nEWALD: something's wrong with this table file. Discarding it.\n");
               recomputeflag = 1;
@@ -176,9 +171,9 @@ void ewald_init(void)
                 }
             }
 
-          double xx = 0.5 * DBX * STRETCHX * ((double) i) / ENX;
-          double yy = 0.5 * DBY * STRETCHY * ((double) j) / ENY;
-          double zz = 0.5 * DBZ * STRETCHZ * ((double) k) / ENZ;
+          double xx = 0.5 * DBX * STRETCHX * ((double)i) / ENX;
+          double yy = 0.5 * DBY * STRETCHY * ((double)j) / ENY;
+          double zz = 0.5 * DBZ * STRETCHZ * ((double)k) / ENZ;
 
           Ewd_potcorr[i][j][k] = ewald_psi(xx, yy, zz);
 
@@ -189,8 +184,8 @@ void ewald_init(void)
           Ewd_fcorrz[i][j][k] = force[2];
         }
 
-      int *recvcnts = (int *) mymalloc("recvcnts", NTask * sizeof(int));
-      int *recvoffs = (int *) mymalloc("recvoffs", NTask * sizeof(int));
+      int *recvcnts = (int *)mymalloc("recvcnts", NTask * sizeof(int));
+      int *recvoffs = (int *)mymalloc("recvoffs", NTask * sizeof(int));
 
       for(int i = 0; i < NTask; i++)
         {
@@ -214,10 +209,10 @@ void ewald_init(void)
           if((fd = fopen(buf, "w")))
             {
               ewald_header tabh;
-              tabh.resx = ENX;
-              tabh.resy = ENY;
-              tabh.resz = ENZ;
-              tabh.varsize = sizeof(MyFloat);
+              tabh.resx      = ENX;
+              tabh.resy      = ENY;
+              tabh.resz      = ENZ;
+              tabh.varsize   = sizeof(MyFloat);
               tabh.ewaldtype = -1;
 
               my_fwrite(&tabh, sizeof(ewald_header), 1, fd);
@@ -256,7 +251,6 @@ void ewald_init(void)
   mpi_printf("EWALD: Initialization of periodic boundaries finished.\n");
 }
 
-
 /*! \brief This function looks up the correction force due to the infinite
  *  number of periodic particle/node images.
  *
@@ -280,60 +274,58 @@ void ewald_corr(double dx, double dy, double dz, double *fper)
 
   if(dx < 0)
     {
-      dx = -dx;
+      dx    = -dx;
       signx = +1;
     }
   else
     signx = -1;
   if(dy < 0)
     {
-      dy = -dy;
+      dy    = -dy;
       signy = +1;
     }
   else
     signy = -1;
   if(dz < 0)
     {
-      dz = -dz;
+      dz    = -dz;
       signz = +1;
     }
   else
     signz = -1;
   u = dx * Ewd_fac_intp;
-  i = (int) u;
+  i = (int)u;
   if(i >= ENX)
     i = ENX - 1;
   u -= i;
   v = dy * Ewd_fac_intp;
-  j = (int) v;
+  j = (int)v;
   if(j >= ENY)
     j = ENY - 1;
   v -= j;
   w = dz * Ewd_fac_intp;
-  k = (int) w;
+  k = (int)w;
   if(k >= ENZ)
     k = ENZ - 1;
   w -= k;
-  f1 = (1 - u) * (1 - v) * (1 - w);
-  f2 = (1 - u) * (1 - v) * (w);
-  f3 = (1 - u) * (v) * (1 - w);
-  f4 = (1 - u) * (v) * (w);
-  f5 = (u) * (1 - v) * (1 - w);
-  f6 = (u) * (1 - v) * (w);
-  f7 = (u) * (v) * (1 - w);
-  f8 = (u) * (v) * (w);
-  fper[0] = signx * (Ewd_fcorrx[i][j][k] * f1 +
-                     Ewd_fcorrx[i][j][k + 1] * f2 +
-                     Ewd_fcorrx[i][j + 1][k] * f3 +
-                     Ewd_fcorrx[i][j + 1][k + 1] * f4 + Ewd_fcorrx[i + 1][j][k] * f5 + Ewd_fcorrx[i + 1][j][k + 1] * f6 + Ewd_fcorrx[i + 1][j + 1][k] * f7 + Ewd_fcorrx[i + 1][j + 1][k + 1] * f8);
-  fper[1] =
-    signy * (Ewd_fcorry[i][j][k] * f1 + Ewd_fcorry[i][j][k + 1] * f2 + Ewd_fcorry[i][j + 1][k] * f3 + Ewd_fcorry[i][j + 1][k + 1] * f4 +
-             Ewd_fcorry[i + 1][j][k] * f5 + Ewd_fcorry[i + 1][j][k + 1] * f6 + Ewd_fcorry[i + 1][j + 1][k] * f7 + Ewd_fcorry[i + 1][j + 1][k + 1] * f8);
-  fper[2] =
-    signz * (Ewd_fcorrz[i][j][k] * f1 + Ewd_fcorrz[i][j][k + 1] * f2 + Ewd_fcorrz[i][j + 1][k] * f3 + Ewd_fcorrz[i][j + 1][k + 1] * f4 +
-             Ewd_fcorrz[i + 1][j][k] * f5 + Ewd_fcorrz[i + 1][j][k + 1] * f6 + Ewd_fcorrz[i + 1][j + 1][k] * f7 + Ewd_fcorrz[i + 1][j + 1][k + 1] * f8);
+  f1      = (1 - u) * (1 - v) * (1 - w);
+  f2      = (1 - u) * (1 - v) * (w);
+  f3      = (1 - u) * (v) * (1 - w);
+  f4      = (1 - u) * (v) * (w);
+  f5      = (u) * (1 - v) * (1 - w);
+  f6      = (u) * (1 - v) * (w);
+  f7      = (u) * (v) * (1 - w);
+  f8      = (u) * (v) * (w);
+  fper[0] = signx * (Ewd_fcorrx[i][j][k] * f1 + Ewd_fcorrx[i][j][k + 1] * f2 + Ewd_fcorrx[i][j + 1][k] * f3 +
+                     Ewd_fcorrx[i][j + 1][k + 1] * f4 + Ewd_fcorrx[i + 1][j][k] * f5 + Ewd_fcorrx[i + 1][j][k + 1] * f6 +
+                     Ewd_fcorrx[i + 1][j + 1][k] * f7 + Ewd_fcorrx[i + 1][j + 1][k + 1] * f8);
+  fper[1] = signy * (Ewd_fcorry[i][j][k] * f1 + Ewd_fcorry[i][j][k + 1] * f2 + Ewd_fcorry[i][j + 1][k] * f3 +
+                     Ewd_fcorry[i][j + 1][k + 1] * f4 + Ewd_fcorry[i + 1][j][k] * f5 + Ewd_fcorry[i + 1][j][k + 1] * f6 +
+                     Ewd_fcorry[i + 1][j + 1][k] * f7 + Ewd_fcorry[i + 1][j + 1][k + 1] * f8);
+  fper[2] = signz * (Ewd_fcorrz[i][j][k] * f1 + Ewd_fcorrz[i][j][k + 1] * f2 + Ewd_fcorrz[i][j + 1][k] * f3 +
+                     Ewd_fcorrz[i][j + 1][k + 1] * f4 + Ewd_fcorrz[i + 1][j][k] * f5 + Ewd_fcorrz[i + 1][j][k + 1] * f6 +
+                     Ewd_fcorrz[i + 1][j + 1][k] * f7 + Ewd_fcorrz[i + 1][j + 1][k + 1] * f8);
 }
-
 
 /*! \brief This function looks up the correction potential due to the infinite
  *  number of periodic particle/node images.
@@ -362,17 +354,17 @@ double ewald_pot_corr(double dx, double dy, double dz)
   if(dz < 0)
     dz = -dz;
   u = dx * Ewd_fac_intp;
-  i = (int) u;
+  i = (int)u;
   if(i >= ENX)
     i = ENX - 1;
   u -= i;
   v = dy * Ewd_fac_intp;
-  j = (int) v;
+  j = (int)v;
   if(j >= ENY)
     j = ENY - 1;
   v -= j;
   w = dz * Ewd_fac_intp;
-  k = (int) w;
+  k = (int)w;
   if(k >= ENZ)
     k = ENZ - 1;
   w -= k;
@@ -384,12 +376,10 @@ double ewald_pot_corr(double dx, double dy, double dz)
   f6 = (u) * (1 - v) * (w);
   f7 = (u) * (v) * (1 - w);
   f8 = (u) * (v) * (w);
-  return Ewd_potcorr[i][j][k] * f1 +
-    Ewd_potcorr[i][j][k + 1] * f2 +
-    Ewd_potcorr[i][j + 1][k] * f3 +
-    Ewd_potcorr[i][j + 1][k + 1] * f4 + Ewd_potcorr[i + 1][j][k] * f5 + Ewd_potcorr[i + 1][j][k + 1] * f6 + Ewd_potcorr[i + 1][j + 1][k] * f7 + Ewd_potcorr[i + 1][j + 1][k + 1] * f8;
+  return Ewd_potcorr[i][j][k] * f1 + Ewd_potcorr[i][j][k + 1] * f2 + Ewd_potcorr[i][j + 1][k] * f3 +
+         Ewd_potcorr[i][j + 1][k + 1] * f4 + Ewd_potcorr[i + 1][j][k] * f5 + Ewd_potcorr[i + 1][j][k + 1] * f6 +
+         Ewd_potcorr[i + 1][j + 1][k] * f7 + Ewd_potcorr[i + 1][j + 1][k + 1] * f8;
 }
-
 
 /*! \brief This function computes the potential correction term by means of
  *  Ewald summation.
@@ -409,7 +399,7 @@ double ewald_psi(double x, double y, double z)
   if(r == 0)
     return 0;
 
-  double lmin = imin(imin(STRETCHX, STRETCHY), STRETCHZ);
+  double lmin  = imin(imin(STRETCHX, STRETCHY), STRETCHZ);
   double alpha = 3.0 / lmin;
 
   const int nmax = 4;
@@ -422,15 +412,15 @@ double ewald_psi(double x, double y, double z)
           double dx = x - nx * STRETCHX;
           double dy = y - ny * STRETCHY;
           double dz = z - nz * STRETCHZ;
-          double r = sqrt(dx * dx + dy * dy + dz * dz);
+          double r  = sqrt(dx * dx + dy * dy + dz * dz);
           sum1 += erfc(alpha * r) / r;
         }
 
   double alpha2 = alpha * alpha;
 
-  int nxmax = (int) (2 * alpha * (STRETCHX / lmin) + 0.5);
-  int nymax = (int) (2 * alpha * (STRETCHY / lmin) + 0.5);
-  int nzmax = (int) (2 * alpha * (STRETCHZ / lmin) + 0.5);
+  int nxmax = (int)(2 * alpha * (STRETCHX / lmin) + 0.5);
+  int nymax = (int)(2 * alpha * (STRETCHY / lmin) + 0.5);
+  int nzmax = (int)(2 * alpha * (STRETCHZ / lmin) + 0.5);
 
   if(printed == 0)
     {
@@ -459,7 +449,6 @@ double ewald_psi(double x, double y, double z)
   return psi;
 }
 
-
 /*! \brief This function computes the force correction term (difference
  *  between full force of infinite lattice and nearest image) by Ewald
  *  summation.
@@ -481,8 +470,8 @@ void ewald_force(double x, double y, double z, double force[3])
   if(r2 == 0)
     return;
 
-  double lmin = imin(imin(STRETCHX, STRETCHY), STRETCHZ);
-  double alpha = 2.0 / lmin;
+  double lmin   = imin(imin(STRETCHX, STRETCHY), STRETCHZ);
+  double alpha  = 2.0 / lmin;
   double alpha2 = alpha * alpha;
 
   double r3inv = 1.0 / (r2 * sqrt(r2));
@@ -497,12 +486,12 @@ void ewald_force(double x, double y, double z, double force[3])
     for(int ny = -nmax; ny <= nmax; ny++)
       for(int nz = -nmax; nz <= nmax; nz++)
         {
-          double dx = x - nx * STRETCHX;
-          double dy = y - ny * STRETCHY;
-          double dz = z - nz * STRETCHZ;
-          double r2 = dx * dx + dy * dy + dz * dz;
-          double r = sqrt(r2);
-          double val = erfc(alpha * r) + 2.0 * alpha * r / sqrt(M_PI) * exp(-alpha2 * r2);
+          double dx   = x - nx * STRETCHX;
+          double dy   = y - ny * STRETCHY;
+          double dz   = z - nz * STRETCHZ;
+          double r2   = dx * dx + dy * dy + dz * dz;
+          double r    = sqrt(r2);
+          double val  = erfc(alpha * r) + 2.0 * alpha * r / sqrt(M_PI) * exp(-alpha2 * r2);
           double val2 = val / (r2 * r);
 
           force[0] -= dx * val2;
@@ -510,9 +499,9 @@ void ewald_force(double x, double y, double z, double force[3])
           force[2] -= dz * val2;
         }
 
-  int nxmax = (int) (2 * alpha * (STRETCHX / lmin) + 0.5);
-  int nymax = (int) (2 * alpha * (STRETCHY / lmin) + 0.5);
-  int nzmax = (int) (2 * alpha * (STRETCHZ / lmin) + 0.5);
+  int nxmax = (int)(2 * alpha * (STRETCHX / lmin) + 0.5);
+  int nymax = (int)(2 * alpha * (STRETCHY / lmin) + 0.5);
+  int nzmax = (int)(2 * alpha * (STRETCHZ / lmin) + 0.5);
 
   if(printed == 0)
     {
@@ -528,7 +517,7 @@ void ewald_force(double x, double y, double z, double force[3])
           if(h2 > 0)
             {
               double hdotx = x * hx + y * hy + z * hz;
-              double val = 2.0 / h2 * exp(-M_PI * M_PI * h2 / alpha2) * sin(2.0 * M_PI * hdotx);
+              double val   = 2.0 / h2 * exp(-M_PI * M_PI * h2 / alpha2) * sin(2.0 * M_PI * hdotx);
 
               force[0] -= hx * val;
               force[1] -= hy * val;
@@ -536,6 +525,5 @@ void ewald_force(double x, double y, double z, double force[3])
             }
         }
 }
-
 
 #endif /* #if !defined(PMGRID) && defined(SELFGRAVITY) && !defined(GRAVITY_NOT_PERIODIC) && !defined(ONEDIMS_SPHERICAL) */

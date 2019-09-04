@@ -30,24 +30,20 @@
  * - 04.05.2018 Prepared file for public release -- Rainer Weinberger
  */
 
-
 #ifdef USE_SUBCOMM_COMMUNICATOR
 #define MYCOMMUNICATOR SubComm
 #define MyThisTask SubThisTask
-#define MyNTask    SubNTask
+#define MyNTask SubNTask
 #else /* #ifdef USE_SUBCOMM_COMMUNICATOR */
 #define MYCOMMUNICATOR MPI_COMM_WORLD
 #define MyThisTask ThisTask
-#define MyNTask    NTask
+#define MyNTask NTask
 #endif /* #ifdef USE_SUBCOMM_COMMUNICATOR #else */
-
 
 #define EXTRA_SPACE 16384
 
-
 typedef struct datanodelist datanodelist;
 typedef struct data_partlist data_partlist;
-
 
 static size_t ExportSpace;
 static size_t MinSpace;
@@ -58,22 +54,20 @@ static long long SumNexport;
 static int *NodeDataIn;
 static int *NodeDataGet;
 
-
 static char callorigin[1000];
-
 
 #ifdef USE_DSDE
 static void generic_prepare_import_counts_ibarrier(void);
 #endif /* #ifdef USE_DSDE */
 
-
 #ifdef USE_INLINED_IBARRIER
 static void generic_prepare_import_counts_inlined_ibarrier(void);
 #endif /* #ifdef USE_INLINED_IBARRIER */
 
-
-#define generic_set_MaxNexport(...) { generic_set_info(__FUNCTION__, __FILE__, __LINE__); }
-
+#define generic_set_MaxNexport(...)                     \
+  {                                                     \
+    generic_set_info(__FUNCTION__, __FILE__, __LINE__); \
+  }
 
 /*! \brief This function determines how much buffer space we may use based on
  *         the memory that is locally still free, and it computes how much
@@ -82,27 +76,33 @@ static void generic_prepare_import_counts_inlined_ibarrier(void);
  */
 static void generic_set_info(const char *func, const char *file, int line)
 {
-   ExportSpace = 0.3 * (FreeBytes);  /* we just grab at most 30% of the still available memory here */
-   ExportSpace /= NUM_THREADS;
-   ExportSpace -= NumPart * sizeof(int);  /* to account for the neighbor list buffer that every thread allocated */
+  ExportSpace = 0.3 * (FreeBytes); /* we just grab at most 30% of the still available memory here */
+  ExportSpace /= NUM_THREADS;
+  ExportSpace -= NumPart * sizeof(int); /* to account for the neighbor list buffer that every thread allocated */
 
-   /* make the size a multiple both of data_partlist and datanodelist */
-   ExportSpace /= (sizeof(data_partlist) * sizeof(datanodelist));
-   ExportSpace *= (sizeof(data_partlist) * sizeof(datanodelist));
+  /* make the size a multiple both of data_partlist and datanodelist */
+  ExportSpace /= (sizeof(data_partlist) * sizeof(datanodelist));
+  ExportSpace *= (sizeof(data_partlist) * sizeof(datanodelist));
 
-   MinSpace = (MyNTask - 1) * (sizeof(data_partlist) + sizeof(data_in) + sizeof(data_out)) + NTopleaves * (sizeof(datanodelist) + sizeof(int));
+  MinSpace =
+      (MyNTask - 1) * (sizeof(data_partlist) + sizeof(data_in) + sizeof(data_out)) + NTopleaves * (sizeof(datanodelist) + sizeof(int));
 
-   sprintf(callorigin, "%s|%d|", file, line);
+  sprintf(callorigin, "%s|%d|", file, line);
 
 #ifdef VERBOSE
-   mpi_printf("GENERIC: function %s(), file %s, line %d: MinSpace = %g MB  NTopleaves = %d  ExportSpace = %g MB sizeof(data_in)=%d sizeof(data_out)=%d\n", func,   file, line, MinSpace / (1024.0 * 1024.0), NTopleaves, ExportSpace / (1024.0 * 1024.0)), (int) sizeof(data_in), (int) sizeof(data_out);
+  mpi_printf(
+      "GENERIC: function %s(), file %s, line %d: MinSpace = %g MB  NTopleaves = %d  ExportSpace = %g MB sizeof(data_in)=%d "
+      "sizeof(data_out)=%d\n",
+      func, file, line, MinSpace / (1024.0 * 1024.0), NTopleaves, ExportSpace / (1024.0 * 1024.0)),
+      (int)sizeof(data_in), (int)sizeof(data_out);
 #endif /* #ifdef VERBOSE */
 
-   if(ExportSpace < MinSpace)
-     terminate("Bummer. Can't even safely process a single particle for the available memory. FreeBytes=%lld  ExportSpace=%lld  MinSpace=%lld  MyNTask=%d  NTopleaves=%d",
-               (long long) FreeBytes, (long long) ExportSpace, (long long) MinSpace, MyNTask, NTopleaves);
+  if(ExportSpace < MinSpace)
+    terminate(
+        "Bummer. Can't even safely process a single particle for the available memory. FreeBytes=%lld  ExportSpace=%lld  "
+        "MinSpace=%lld  MyNTask=%d  NTopleaves=%d",
+        (long long)FreeBytes, (long long)ExportSpace, (long long)MinSpace, MyNTask, NTopleaves);
 }
-
 
 /*! \brief This function does the memory allocation at the beginning of a loop
  *         over the remaining local particles. The fields PartList[] and
@@ -116,22 +116,21 @@ static void generic_alloc_partlist_nodelist_ngblist_threadbufs(void)
 {
   for(int i = 0; i < NUM_THREADS; i++)
     {
-      Thread[i].Nexport = 0;
+      Thread[i].Nexport      = 0;
       Thread[i].NexportNodes = 0;
-      Thread[i].ExportSpace = ExportSpace;
+      Thread[i].ExportSpace  = ExportSpace;
       Thread[i].InitialSpace = ExportSpace;
-      Thread[i].ItemSize = (sizeof(data_partlist) + sizeof(data_in) + sizeof(data_out));
+      Thread[i].ItemSize     = (sizeof(data_partlist) + sizeof(data_in) + sizeof(data_out));
 
-      Thread[i].PartList = (struct data_partlist *) mymalloc_movable_g(&Thread[i].PartList, "PartList", ExportSpace);
+      Thread[i].PartList = (struct data_partlist *)mymalloc_movable_g(&Thread[i].PartList, "PartList", ExportSpace);
       /* note: the NodeList array will be attached to the end of this buffer, growing backwards */
       /* Thread[i].NodeList = (struct datanodelist *) (((char *) Thread[i].PartList) + InitialSpace);
        */
-      Thread[i].Ngblist = (int *) mymalloc_movable_g(&Thread[i].Ngblist, "Ngblist", NumPart * sizeof(int));
-      Thread[i].R2list = (double *) mymalloc_movable_g(&Thread[i].R2list, "R2list", NumPart * sizeof(double));
+      Thread[i].Ngblist    = (int *)mymalloc_movable_g(&Thread[i].Ngblist, "Ngblist", NumPart * sizeof(int));
+      Thread[i].R2list     = (double *)mymalloc_movable_g(&Thread[i].R2list, "R2list", NumPart * sizeof(double));
       Thread[i].Exportflag = Exportflag + i * ((((MyNTask - 1) / 16) + 1) * 16);
     }
 }
-
 
 /*! \brief The corresponding deallocation routine.
  */
@@ -142,22 +141,21 @@ static void generic_free_partlist_nodelist_ngblist_threadbufs(void)
       myfree(Thread[i].R2list);
       myfree(Thread[i].Ngblist);
       myfree(Thread[i].PartList);
-      Thread[i].R2list = NULL;
-      Thread[i].Ngblist = NULL;
+      Thread[i].R2list   = NULL;
+      Thread[i].Ngblist  = NULL;
       Thread[i].PartList = NULL;
     }
 }
-
 
 static void generic_prepare_export_counts(void)
 {
   for(int j = 0; j < MyNTask; j++)
     {
-      Send[j].Count = 0;
+      Send[j].Count      = 0;
       Send[j].CountNodes = 0;
     }
 
-  Nexport = 0;
+  Nexport      = 0;
   NexportNodes = 0;
 
   for(int i = 0; i < NUM_THREADS; i++)
@@ -165,7 +163,7 @@ static void generic_prepare_export_counts(void)
       for(int j = 0; j < Thread[i].Nexport; j++)
         Send[Thread[i].PartList[j].Task].Count++;
 
-      struct datanodelist *nodelist = (struct datanodelist *) (((char *) Thread[i].PartList) + Thread[i].InitialSpace);
+      struct datanodelist *nodelist = (struct datanodelist *)(((char *)Thread[i].PartList) + Thread[i].InitialSpace);
 
       for(int j = 0; j < Thread[i].NexportNodes; j++)
         Send[nodelist[-1 - j].Task].CountNodes++;
@@ -176,7 +174,6 @@ static void generic_prepare_export_counts(void)
 
   SumNexport += Nexport;
 }
-
 
 /*! \brief Establishes the Recv counts from the Send counts (effectively a big
  *         transpose).
@@ -192,51 +189,49 @@ static void generic_prepare_import_counts(void)
 #else /* #ifdef USE_DSDE */
 #ifdef USE_INLINED_IBARRIER
   generic_prepare_import_counts_inlined_ibarrier();
-#else /* #ifdef USE_INLINED_IBARRIER */
+#else  /* #ifdef USE_INLINED_IBARRIER */
   /* the default */
   MPI_Alltoall(Send, sizeof(struct send_recv_counts), MPI_BYTE, Recv, sizeof(struct send_recv_counts), MPI_BYTE, MYCOMMUNICATOR);
 #endif /* #ifdef USE_INLINED_IBARRIER #else */
 #endif /* #ifdef USE_DSDE #else */
 }
 
-
 /*! \brief Initializes offset tables that we need for the communication.
  */
 static void generic_prepare_export_offsets(void)
 {
-  Send_offset[0] = 0;
+  Send_offset[0]       = 0;
   Send_offset_nodes[0] = 0;
 
   for(int j = 1; j < MyNTask; j++)
     {
-      Send_offset[j] = Send_offset[j - 1] + Send[j - 1].Count;
+      Send_offset[j]       = Send_offset[j - 1] + Send[j - 1].Count;
       Send_offset_nodes[j] = Send_offset_nodes[j - 1] + Send[j - 1].CountNodes;
     }
 }
-
 
 /*! \brief Organizes the particle and node data for export in contiguous
  *         memory regions.
  */
 static void generic_prepare_particle_data_for_export(void)
 {
-  int *rel_node_index = (int *) mymalloc_g("rel_node_index", MyNTask * sizeof(int));
+  int *rel_node_index = (int *)mymalloc_g("rel_node_index", MyNTask * sizeof(int));
 
   for(int j = 0; j < MyNTask; j++)
     {
-      Send[j].Count = 0;
+      Send[j].Count      = 0;
       Send[j].CountNodes = 0;
-      rel_node_index[j] = 0;
+      rel_node_index[j]  = 0;
     }
 
   for(int i = 0; i < NUM_THREADS; i++)
     {
-      struct datanodelist *nodelist = (struct datanodelist *) (((char *) Thread[i].PartList) + Thread[i].InitialSpace);
+      struct datanodelist *nodelist = (struct datanodelist *)(((char *)Thread[i].PartList) + Thread[i].InitialSpace);
 
       for(int j = 0, jj = 0; j < Thread[i].Nexport; j++)
         {
           int task = Thread[i].PartList[j].Task;
-          int off = Send_offset[task] + Send[task].Count++;
+          int off  = Send_offset[task] + Send[task].Count++;
 
           int target = Thread[i].PartList[j].Index;
 
@@ -249,7 +244,7 @@ static void generic_prepare_particle_data_for_export(void)
           while(jj < Thread[i].NexportNodes && Thread[i].PartList[j].Index == nodelist[-1 - jj].Index)
             {
               int task = nodelist[-1 - jj].Task;
-              int off = Send_offset_nodes[task] + Send[task].CountNodes++;
+              int off  = Send_offset_nodes[task] + Send[task].CountNodes++;
 
               NodeDataIn[off] = nodelist[-1 - jj].Node;
 
@@ -261,7 +256,6 @@ static void generic_prepare_particle_data_for_export(void)
 
   myfree(rel_node_index);
 }
-
 
 /*! \brief Driver routine to process the results that we obtained for a
  *         particle from a remote processor by working on it with the supplied
@@ -276,14 +270,13 @@ static void generic_add_results_to_local(void)
     for(int j = 0; j < Thread[i].Nexport; j++)
       {
         int task = Thread[i].PartList[j].Task;
-        int off = Send_offset[task] + Send[task].Count++;
+        int off  = Send_offset[task] + Send[task].Count++;
 
         int target = Thread[i].PartList[j].Index;
 
         out2particle(&DataOut[off], target, MODE_IMPORTED_PARTICLES);
       }
 }
-
 
 /*! \brief This function is called in the actual tree walk routine to find out
  *         how the number and starting index of the section in the node-list
@@ -299,7 +292,6 @@ static void generic_get_numnodes(int target, int *numnodes, int **firstnode)
   *firstnode = &NodeDataGet[DataGet[target].Firstnode];
 }
 
-
 /*! \brief Calculates how many space we need to allocate to safely process a
  *         certain number of nodes and particles that are imported.
  */
@@ -312,7 +304,6 @@ static size_t generic_calc_import_storage(int nimport, int nimportnodes)
 
   return needed;
 }
-
 
 /*! \brief This routine carries out the communication step in several phases
  *         if needed.
@@ -328,7 +319,7 @@ static void generic_multiple_phases(void (*kernel)(void))
 
       do
         {
-          Nimport = 0;
+          Nimport      = 0;
           NimportNodes = 0;
 
           for(int ngrp = ngrpstart; ngrp < ngrpstart + ncycles; ngrp++)
@@ -360,19 +351,22 @@ static void generic_multiple_phases(void (*kernel)(void))
       while(ncycles > 0);
 
       if(ncycles == 0)
-        terminate("Seems like we can't even do one cycle: ncycles=%d  ngrpstart=%d  Nimport=%d  NimportNodes=%d  FreeBytes=%lld  needed storage=%lld", 
-		  ncycles, ngrpstart, Nimport, NimportNodes, (long long) FreeBytes, (long long) generic_calc_import_storage(Nimport, NimportNodes));
+        terminate(
+            "Seems like we can't even do one cycle: ncycles=%d  ngrpstart=%d  Nimport=%d  NimportNodes=%d  FreeBytes=%lld  needed "
+            "storage=%lld",
+            ncycles, ngrpstart, Nimport, NimportNodes, (long long)FreeBytes,
+            (long long)generic_calc_import_storage(Nimport, NimportNodes));
 
       if(ngrpstart == 1 && ncycles != ((1 << PTask) - ngrpstart) && MyThisTask == 0)
         warn("need multiple import/export phases to avoid memory overflow");
 
       /* now allocated the import and results buffers */
 
-      DataGet = (data_in *) mymalloc_movable_g(&DataGet, "DataGet", Nimport * sizeof(data_in));
-      NodeDataGet = (int *) mymalloc_movable_g(&NodeDataGet, "NodeDataGet", NimportNodes * sizeof(int));
-      DataResult = (data_out *) mymalloc_movable_g(&DataResult, "DataResult", Nimport * sizeof(data_out));
+      DataGet     = (data_in *)mymalloc_movable_g(&DataGet, "DataGet", Nimport * sizeof(data_in));
+      NodeDataGet = (int *)mymalloc_movable_g(&NodeDataGet, "NodeDataGet", NimportNodes * sizeof(int));
+      DataResult  = (data_out *)mymalloc_movable_g(&DataResult, "DataResult", Nimport * sizeof(data_out));
 
-      Nimport = 0;
+      Nimport      = 0;
       NimportNodes = 0;
 
       /* exchange particle data */
@@ -387,14 +381,14 @@ static void generic_multiple_phases(void (*kernel)(void))
                   size_t len = sizeof(data_in);
 
                   /* get the particles */
-                  MPI_Sendrecv(&DataIn[Send_offset[recvTask]], Send[recvTask].Count * len, MPI_BYTE, recvTask,
-                      TAG_HYDRO_A, &DataGet[Nimport], Recv[recvTask].Count * len, MPI_BYTE, recvTask, TAG_HYDRO_A,
-                      MYCOMMUNICATOR, MPI_STATUS_IGNORE);
+                  MPI_Sendrecv(&DataIn[Send_offset[recvTask]], Send[recvTask].Count * len, MPI_BYTE, recvTask, TAG_HYDRO_A,
+                               &DataGet[Nimport], Recv[recvTask].Count * len, MPI_BYTE, recvTask, TAG_HYDRO_A, MYCOMMUNICATOR,
+                               MPI_STATUS_IGNORE);
 
                   /* get the nodes */
-                  MPI_Sendrecv(&NodeDataIn[Send_offset_nodes[recvTask]], Send[recvTask].CountNodes, MPI_INT, recvTask,
-                      TAG_GRAV_B, &NodeDataGet[NimportNodes], Recv[recvTask].CountNodes, MPI_INT, recvTask, TAG_GRAV_B,
-                      MYCOMMUNICATOR, MPI_STATUS_IGNORE);
+                  MPI_Sendrecv(&NodeDataIn[Send_offset_nodes[recvTask]], Send[recvTask].CountNodes, MPI_INT, recvTask, TAG_GRAV_B,
+                               &NodeDataGet[NimportNodes], Recv[recvTask].CountNodes, MPI_INT, recvTask, TAG_GRAV_B, MYCOMMUNICATOR,
+                               MPI_STATUS_IGNORE);
 
                   for(int k = 0; k < Recv[recvTask].Count; k++)
                     DataGet[Nimport + k].Firstnode += NimportNodes;
@@ -409,7 +403,7 @@ static void generic_multiple_phases(void (*kernel)(void))
       kernel();
 
       /* send the results */
-      Nimport = 0;
+      Nimport      = 0;
       NimportNodes = 0;
 
       for(int ngrp = ngrpstart; ngrp < ngrpstart + ncycles; ngrp++)
@@ -423,8 +417,8 @@ static void generic_multiple_phases(void (*kernel)(void))
 
                   /* exchange the results */
                   MPI_Sendrecv(&DataResult[Nimport], Recv[recvTask].Count * len, MPI_BYTE, recvTask, TAG_HYDRO_B,
-                      &DataOut[Send_offset[recvTask]], Send[recvTask].Count * len, MPI_BYTE, recvTask, TAG_HYDRO_B,
-                      MYCOMMUNICATOR, MPI_STATUS_IGNORE);
+                               &DataOut[Send_offset[recvTask]], Send[recvTask].Count * len, MPI_BYTE, recvTask, TAG_HYDRO_B,
+                               MYCOMMUNICATOR, MPI_STATUS_IGNORE);
 
                   Nimport += Recv[recvTask].Count;
                   NimportNodes += Recv[recvTask].CountNodes;
@@ -437,7 +431,6 @@ static void generic_multiple_phases(void (*kernel)(void))
       myfree(DataGet);
     }
 }
-
 
 /*! \brief This function deals with the communication step, and then processes
  *         the imported particles, and finally computes the results back. If
@@ -457,9 +450,9 @@ static void generic_exchange(void (*kernel)(void))
   generic_prepare_export_offsets();
 
   /* allocate particle data buffers */
-  DataIn = (data_in *) mymalloc_movable_g(&DataIn, "DataIn", Nexport * sizeof(data_in));
-  NodeDataIn = (int *) mymalloc_movable_g(&NodeDataIn, "NodeDataIn", NexportNodes * sizeof(int));
-  DataOut = (data_out *) mymalloc_movable_g(&DataOut, "DataOut", Nexport * sizeof(data_out));
+  DataIn     = (data_in *)mymalloc_movable_g(&DataIn, "DataIn", Nexport * sizeof(data_in));
+  NodeDataIn = (int *)mymalloc_movable_g(&NodeDataIn, "NodeDataIn", NexportNodes * sizeof(int));
+  DataOut    = (data_out *)mymalloc_movable_g(&DataOut, "DataOut", Nexport * sizeof(data_out));
 
   /* prepare particle data for export */
   generic_prepare_particle_data_for_export();
@@ -475,7 +468,6 @@ static void generic_exchange(void (*kernel)(void))
   myfree(DataIn);
 }
 
-
 /* \brief Implements a repeated loop over the local particles in the list,
  *        processing them with the local kernel function, until we're done or
  *        the export buffer is full. Then we exchange the data, and process
@@ -486,9 +478,9 @@ static int generic_comm_pattern(int nactive, void (*kernel_loc)(void), void (*ke
 {
   int ndone_flag, ndone, iter = 0;
 
-  SumNexport = 0;               /* can be queried as a book-keeping variable */
+  SumNexport = 0; /* can be queried as a book-keeping variable */
 
-  NextParticle = 0;             /* first particle index for this task */
+  NextParticle = 0; /* first particle index for this task */
 
   do
     {
@@ -519,17 +511,17 @@ static int generic_comm_pattern(int nactive, void (*kernel_loc)(void), void (*ke
   return iter;
 }
 
-
 /*! \brief Same as generic_comm_pattern but you can pass the indices of the
  *         particles to be processed.
  */
-static int generic_comm_pattern_for_given_particles(int nactive, int indices[], void (*kernel_loc)(int, int*), void (*kernel_imp)(void))
+static int generic_comm_pattern_for_given_particles(int nactive, int indices[], void (*kernel_loc)(int, int *),
+                                                    void (*kernel_imp)(void))
 {
   int ndone_flag, ndone, iter = 0;
 
-  SumNexport = 0;               /* can be queried as a book-keeping variable */
+  SumNexport = 0; /* can be queried as a book-keeping variable */
 
-  NextParticle = 0;             /* first particle index for this task */
+  NextParticle = 0; /* first particle index for this task */
 
   do
     {
@@ -560,7 +552,6 @@ static int generic_comm_pattern_for_given_particles(int nactive, int indices[], 
   return iter;
 }
 
-
 #ifdef USE_INLINED_IBARRIER
 /*! \brief Can replace
  *         MPI_Alltoall(Send, sizeof(struct send_recv_counts), MPI_INT, Recv,
@@ -571,24 +562,24 @@ static int generic_comm_pattern_for_given_particles(int nactive, int indices[], 
  */
 static void generic_prepare_import_counts_inlined_ibarrier(void)
 {
-  int nLevels = my_fls(MyNTask - 1);
+  int nLevels         = my_fls(MyNTask - 1);
   int received_levels = 0, sent_levels = 0;
 
-  int *stagelist = (int *) mymalloc("stagelist", nLevels * sizeof(int) );
+  int *stagelist = (int *)mymalloc("stagelist", nLevels * sizeof(int));
   for(int j = 0; j < nLevels; j++)
     stagelist[j] = j;
 
-  MPI_Request *level_requests = (MPI_Request *) mymalloc("level_requests", nLevels * sizeof(MPI_Request));
+  MPI_Request *level_requests = (MPI_Request *)mymalloc("level_requests", nLevels * sizeof(MPI_Request));
 
-  MPI_Request *requests = (MPI_Request *) mymalloc("requests", MyNTask * sizeof(MPI_Request));
-  int n_requests = 0;
+  MPI_Request *requests = (MPI_Request *)mymalloc("requests", MyNTask * sizeof(MPI_Request));
+  int n_requests        = 0;
 
   for(int j = 0; j < MyNTask; j++)
     {
       if(Send[j].Count > 0)
-          MPI_Issend(&Send[j], sizeof(struct send_recv_counts), MPI_BYTE, j, TAG_N, MYCOMMUNICATOR, &requests[n_requests++]);
+        MPI_Issend(&Send[j], sizeof(struct send_recv_counts), MPI_BYTE, j, TAG_N, MYCOMMUNICATOR, &requests[n_requests++]);
 
-      Recv[j].Count = 0;
+      Recv[j].Count      = 0;
       Recv[j].CountNodes = 0;
     }
 
@@ -604,7 +595,7 @@ static void generic_prepare_import_counts_inlined_ibarrier(void)
       if(flag)
         {
           int source = status.MPI_SOURCE;
-          int tag = status.MPI_TAG;
+          int tag    = status.MPI_TAG;
 
           MPI_Recv(&Recv[source], sizeof(struct send_recv_counts), MPI_BYTE, source, tag, MYCOMMUNICATOR, MPI_STATUS_IGNORE);
         }
@@ -614,7 +605,7 @@ static void generic_prepare_import_counts_inlined_ibarrier(void)
       if(flag)
         {
           int source = status.MPI_SOURCE;
-          int tag = status.MPI_TAG;
+          int tag    = status.MPI_TAG;
 
           int stage;
           MPI_Recv(&stage, 1, MPI_INT, source, tag, MYCOMMUNICATOR, MPI_STATUS_IGNORE);
@@ -650,14 +641,13 @@ static void generic_prepare_import_counts_inlined_ibarrier(void)
         }
     }
 
-  MPI_Waitall(nLevels, level_requests, MPI_STATUSES_IGNORE);  /* as we are going to free stagelist */
+  MPI_Waitall(nLevels, level_requests, MPI_STATUSES_IGNORE); /* as we are going to free stagelist */
 
   myfree(requests);
   myfree(level_requests);
   myfree(stagelist);
 }
 #endif /* #ifdef USE_INLINED_IBARRIER */
-
 
 #ifdef USE_DSDE
 /*! \brief Can replace
@@ -669,15 +659,15 @@ static void generic_prepare_import_counts_inlined_ibarrier(void)
 static int generic_prepare_import_counts_ibarrier(void)
 {
   MPI_Request barrier_request;
-  MPI_Request *requests = (MPI_Request *) mymalloc_movable(&requests, "requests", MyNTask * sizeof(MPI_Request));
-  int n_requests = 0;
+  MPI_Request *requests = (MPI_Request *)mymalloc_movable(&requests, "requests", MyNTask * sizeof(MPI_Request));
+  int n_requests        = 0;
 
   for(int j = 0; j < MyNTask; j++)
     {
       if(Send[j].Count > 0)
-          MPI_Issend(&Send[j], sizeof(struct send_recv_counts), MPI_BYTE, j, TAG_N, MYCOMMUNICATOR, &requests[n_requests++]);
+        MPI_Issend(&Send[j], sizeof(struct send_recv_counts), MPI_BYTE, j, TAG_N, MYCOMMUNICATOR, &requests[n_requests++]);
 
-      Recv[j].Count = 0;
+      Recv[j].Count      = 0;
       Recv[j].CountNodes = 0;
     }
 
@@ -693,7 +683,7 @@ static int generic_prepare_import_counts_ibarrier(void)
       if(flag)
         {
           int source = status.MPI_SOURCE;
-          int tag = status.MPI_TAG;
+          int tag    = status.MPI_TAG;
 
           int count;
           MPI_Get_count(&status, MPI_BYTE, &count);
@@ -732,4 +722,3 @@ static int generic_prepare_import_counts_ibarrier(void)
   myfree(requests);
 }
 #endif /* #ifdef USE_DSDE */
-

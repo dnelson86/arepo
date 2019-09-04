@@ -61,27 +61,24 @@
  * - 07.05.2018 Prepared file for public release -- Rainer Weinberger
  */
 
-
+#include <errno.h>
+#include <math.h>
 #include <mpi.h>
+#include <stdarg.h>
 #include <stdio.h>
 #include <stdlib.h>
-#include <stdarg.h>
 #include <string.h>
-#include <math.h>
-#include <errno.h>
 #include <sys/stat.h>
-#include <sys/types.h>
-#include <unistd.h>
 #include <sys/time.h>
+#include <sys/types.h>
 #include <time.h>
+#include <unistd.h>
 
-
+#include "../fof/fof.h"
+#include "../gitversion/version.h"
 #include "../main/allvars.h"
 #include "../main/proto.h"
 #include "../mesh/voronoi/voronoi.h"
-#include "../fof/fof.h"
-#include "../gitversion/version.h"
-
 
 #ifdef HAVE_HDF5
 #include <hdf5.h>
@@ -91,16 +88,13 @@ void write_compile_time_options_in_hdf5(hid_t handle);
 void write_dataset_attributes(hid_t hdf5_dataset, enum iofields blocknr);
 #endif /* #ifdef HAVE_HDF5 */
 
-
 #ifdef TOLERATE_WRITE_ERROR
 static char alternative_fname[MAXLEN_PATH];
 #endif /* #ifdef TOLERATE_WRITE_ERROR */
 
-
-static int n_type[NTYPES];                   /**< contains the local (for a single task) number of particles of each type in the snapshot file */
-static long long ntot_type_all[NTYPES];      /**< contains the global number of particles of each type in the snapshot file */
+static int n_type[NTYPES]; /**< contains the local (for a single task) number of particles of each type in the snapshot file */
+static long long ntot_type_all[NTYPES]; /**< contains the global number of particles of each type in the snapshot file */
 static int subbox_dump = 0;
-
 
 /*! \brief Function for registering an output field.
  *
@@ -133,32 +127,32 @@ static int subbox_dump = 0;
  *
  *  \return void
  */
-void init_field(enum iofields field, const char *label, const char *datasetname,
-                enum types_in_memory type_in_memory, enum types_in_file type_in_file_output,
-                enum types_in_file type_in_file_input, int values_per_block, enum arrays array, void *pointer_to_field, void (*io_func) (int, int, void *, int), int typelist_bitmask)
+void init_field(enum iofields field, const char *label, const char *datasetname, enum types_in_memory type_in_memory,
+                enum types_in_file type_in_file_output, enum types_in_file type_in_file_input, int values_per_block, enum arrays array,
+                void *pointer_to_field, void (*io_func)(int, int, void *, int), int typelist_bitmask)
 {
   int alloc_step = 5;
 
   if(Max_IO_Fields == 0)
     {
-      IO_Fields = (IO_Field *) mymalloc("IO_Fields", alloc_step * sizeof(IO_Field));
+      IO_Fields     = (IO_Field *)mymalloc("IO_Fields", alloc_step * sizeof(IO_Field));
       Max_IO_Fields = alloc_step;
     }
   else if(Max_IO_Fields == N_IO_Fields)
     {
       Max_IO_Fields = ((Max_IO_Fields / alloc_step) + 1) * alloc_step;
-      IO_Fields = (IO_Field *) myrealloc(IO_Fields, Max_IO_Fields * sizeof(IO_Field));
+      IO_Fields     = (IO_Field *)myrealloc(IO_Fields, Max_IO_Fields * sizeof(IO_Field));
     }
 
   IO_Fields[N_IO_Fields].field = field;
   strncpy(IO_Fields[N_IO_Fields].label, label, 4);
   strncpy(IO_Fields[N_IO_Fields].datasetname, datasetname, 256);
-  IO_Fields[N_IO_Fields].type_in_memory = type_in_memory;
+  IO_Fields[N_IO_Fields].type_in_memory      = type_in_memory;
   IO_Fields[N_IO_Fields].type_in_file_output = type_in_file_output;
-  IO_Fields[N_IO_Fields].type_in_file_input = type_in_file_input;
-  IO_Fields[N_IO_Fields].values_per_block = values_per_block;
-  IO_Fields[N_IO_Fields].snap_type = SN_FULL;
-  IO_Fields[N_IO_Fields].typelist = typelist_bitmask;
+  IO_Fields[N_IO_Fields].type_in_file_input  = type_in_file_input;
+  IO_Fields[N_IO_Fields].values_per_block    = values_per_block;
+  IO_Fields[N_IO_Fields].snap_type           = SN_FULL;
+  IO_Fields[N_IO_Fields].typelist            = typelist_bitmask;
 
   IO_Fields[N_IO_Fields].array = array;
 
@@ -168,47 +162,49 @@ void init_field(enum iofields field, const char *label, const char *datasetname,
     }
   else if(array == A_SPHP)
     {
-      IO_Fields[N_IO_Fields].offset = (size_t) pointer_to_field - (size_t) SphP;
+      IO_Fields[N_IO_Fields].offset = (size_t)pointer_to_field - (size_t)SphP;
     }
   else if(array == A_P)
     {
-      IO_Fields[N_IO_Fields].offset = (size_t) pointer_to_field - (size_t) P;
+      IO_Fields[N_IO_Fields].offset = (size_t)pointer_to_field - (size_t)P;
     }
   else if(array == A_PS)
     {
-      IO_Fields[N_IO_Fields].offset = (size_t) pointer_to_field - (size_t) PS;
+      IO_Fields[N_IO_Fields].offset = (size_t)pointer_to_field - (size_t)PS;
     }
 
   IO_Fields[N_IO_Fields].io_func = io_func;
 
-  //validate types
-  if(type_in_memory == MEM_INT && ((type_in_file_input != FILE_NONE && type_in_file_input != FILE_INT) || type_in_file_output != FILE_INT))
+  // validate types
+  if(type_in_memory == MEM_INT &&
+     ((type_in_file_input != FILE_NONE && type_in_file_input != FILE_INT) || type_in_file_output != FILE_INT))
     {
       terminate("combination of datatypes not supported (field %s)", datasetname);
     }
 
-  if(type_in_memory == MEM_MY_ID_TYPE && ((type_in_file_input != FILE_NONE && type_in_file_input != FILE_MY_ID_TYPE) || type_in_file_output != FILE_MY_ID_TYPE))
+  if(type_in_memory == MEM_MY_ID_TYPE &&
+     ((type_in_file_input != FILE_NONE && type_in_file_input != FILE_MY_ID_TYPE) || type_in_file_output != FILE_MY_ID_TYPE))
     {
       terminate("combination of datatypes not supported (field %s)", datasetname);
     }
 
   if((type_in_memory == MEM_FLOAT || type_in_memory == MEM_MY_SINGLE || type_in_memory == MEM_DOUBLE) &&
-     ((type_in_file_input != FILE_NONE && (type_in_file_input == FILE_MY_ID_TYPE || type_in_file_input == FILE_INT)) || type_in_file_output == FILE_INT || type_in_file_output == FILE_MY_ID_TYPE))
+     ((type_in_file_input != FILE_NONE && (type_in_file_input == FILE_MY_ID_TYPE || type_in_file_input == FILE_INT)) ||
+      type_in_file_output == FILE_INT || type_in_file_output == FILE_MY_ID_TYPE))
     {
       terminate("combination of datatypes not supported (field %s)", datasetname);
     }
 
-  IO_Fields[N_IO_Fields].a = 0.;
-  IO_Fields[N_IO_Fields].h = 0.;
-  IO_Fields[N_IO_Fields].L = 0.;
-  IO_Fields[N_IO_Fields].M = 0.;
-  IO_Fields[N_IO_Fields].V = 0.;
-  IO_Fields[N_IO_Fields].c = 0.;
+  IO_Fields[N_IO_Fields].a       = 0.;
+  IO_Fields[N_IO_Fields].h       = 0.;
+  IO_Fields[N_IO_Fields].L       = 0.;
+  IO_Fields[N_IO_Fields].M       = 0.;
+  IO_Fields[N_IO_Fields].V       = 0.;
+  IO_Fields[N_IO_Fields].c       = 0.;
   IO_Fields[N_IO_Fields].hasunit = 0;
 
   N_IO_Fields++;
 }
-
 
 /*! \brief Function for adding units to output field.
  *
@@ -233,17 +229,16 @@ void init_units(enum iofields field, double a, double h, double L, double M, dou
       if(IO_Fields[i].field == field)
         {
           IO_Fields[i].hasunit = 1;
-          IO_Fields[i].a = a;
-          IO_Fields[i].h = h;
-          IO_Fields[i].L = L;
-          IO_Fields[i].M = M;
-          IO_Fields[i].V = V;
-          IO_Fields[i].c = c;
+          IO_Fields[i].a       = a;
+          IO_Fields[i].h       = h;
+          IO_Fields[i].L       = L;
+          IO_Fields[i].M       = M;
+          IO_Fields[i].V       = V;
+          IO_Fields[i].c       = c;
           break;
         }
     }
 }
-
 
 /*! \brief Function for determining whether a field is dumped in snapshot.
  *
@@ -268,7 +263,6 @@ void init_snapshot_type(enum iofields field, enum sn_type type)
     }
 }
 
-
 #ifdef TOLERATE_WRITE_ERROR
 /*! \brief Print information about a write error.
  *
@@ -292,14 +286,13 @@ void write_error(int check, size_t nwritten, size_t nmemb)
       char hostname[MPI_MAX_PROCESSOR_NAME];
       MPI_Get_processor_name(hostname, &len);
 
-      printf("TOLERATE_WRITE_ERROR: write failed node=%s  nwritten=%lld  nmemb=%lld  errno=%s  task=%d  check=%d\n", hostname, (long long) nwritten, (long long) nmemb, strerror(errno), ThisTask,
-             check);
+      printf("TOLERATE_WRITE_ERROR: write failed node=%s  nwritten=%lld  nmemb=%lld  errno=%s  task=%d  check=%d\n", hostname,
+             (long long)nwritten, (long long)nmemb, strerror(errno), ThisTask, check);
       myflush(stdout);
       WriteErrorFlag = 1;
     }
 }
 #endif /* #ifdef TOLERATE_WRITE_ERROR */
-
 
 /*! \brief Checks if a snapshot should be saved.
  *
@@ -317,7 +310,7 @@ void create_snapshot_if_desired(void)
   All.Ti_nextoutput = All.Ti_Current;
 #endif /* #ifdef OUTPUT_EVERY_STEP */
 
-  if(All.HighestActiveTimeBin == All.HighestOccupiedTimeBin)    /* allow only top-level synchronization points */
+  if(All.HighestActiveTimeBin == All.HighestOccupiedTimeBin) /* allow only top-level synchronization points */
     if(All.Ti_Current >= All.Ti_nextoutput && All.Ti_nextoutput >= 0)
       {
         DumpFlag = DumpFlagNextSnap;
@@ -326,7 +319,6 @@ void create_snapshot_if_desired(void)
         All.Ti_nextoutput = find_next_outputtime(All.Ti_Current + 1);
       }
 }
-
 
 /*! \brief A wrapper function used to create a snapshot.
  *
@@ -343,9 +335,8 @@ void produce_dump(void)
   calculate_gradients();
 #endif /* #ifdef UPDATE_GRADIENTS_FOR_OUTPUT */
 
-  savepositions(All.SnapshotFileCount++, 0);    /* write snapshot file */
+  savepositions(All.SnapshotFileCount++, 0); /* write snapshot file */
 }
-
 
 /*! \brief Saves snapshot to disk.
  *
@@ -389,25 +380,25 @@ void savepositions(int num, int subbox_flag)
 
             fof_fof(num);
           }
-
         }
 #endif /* #ifdef FOF */
 
       if(DumpFlag != 4)
         {
-
           CommBuffer = mymalloc("CommBuffer", COMMBUFFERSIZE);
 
           if(NTask < All.NumFilesPerSnapshot)
             {
-              warn("Number of processors must be larger or equal than All.NumFilesPerSnapshot! Reducing All.NumFilesPerSnapshot accordingly.\n");
+              warn(
+                  "Number of processors must be larger or equal than All.NumFilesPerSnapshot! Reducing All.NumFilesPerSnapshot "
+                  "accordingly.\n");
               All.NumFilesPerSnapshot = NTask;
             }
 
           if(All.SnapFormat < 1 || All.SnapFormat > 3)
             terminate("Unsupported File-Format.  All.SnapFormat=%d\n", All.SnapFormat);
 
-#ifndef  HAVE_HDF5
+#ifndef HAVE_HDF5
           if(All.SnapFormat == 3)
             {
               mpi_terminate("Code wasn't compiled with HDF5 support enabled!\n");
@@ -463,7 +454,7 @@ void savepositions(int num, int subbox_flag)
                 sprintf(buf, "%s/snapdir_%03d/%s-groupordered_%03d.%d", All.OutputDir, num, All.SnapshotFileBase, num, filenr);
               else
                 sprintf(buf, "%s%s-groupordered_%03d", All.OutputDir, All.SnapshotFileBase, num);
-#else /* #ifndef FOF_STOREIDS */
+#else  /* #ifndef FOF_STOREIDS */
               if(All.NumFilesPerSnapshot > 1)
                 sprintf(buf, "%s/snapdir_%03d/%s-storeids_%03d.%d", All.OutputDir, num, All.SnapshotFileBase, num, filenr);
               else
@@ -484,11 +475,11 @@ void savepositions(int num, int subbox_flag)
 
           for(gr = 0; gr < ngroups; gr++)
             {
-              if((filenr / All.NumFilesWrittenInParallel) == gr)        /* ok, it's this processor's turn */
+              if((filenr / All.NumFilesWrittenInParallel) == gr) /* ok, it's this processor's turn */
                 {
                   if(ThisTask == masterTask && (filenr % All.NumFilesWrittenInParallel) == 0)
-                    printf("writing snapshot files group %d out of %d - files %d-%d (total of %d files): '%s'\n", gr + 1, ngroups, filenr,
-                           filenr + All.NumFilesWrittenInParallel - 1, All.NumFilesPerSnapshot, buf);
+                    printf("writing snapshot files group %d out of %d - files %d-%d (total of %d files): '%s'\n", gr + 1, ngroups,
+                           filenr, filenr + All.NumFilesWrittenInParallel - 1, All.NumFilesPerSnapshot, buf);
                   write_file(buf, masterTask, lastTask, subbox_flag);
 #ifdef OUTPUT_XDMF
                   if(All.SnapFormat == 3)
@@ -506,13 +497,11 @@ void savepositions(int num, int subbox_flag)
           CPU_Step[CPU_SNAPSHOT] += measure_time();
 
           mpi_printf("done with writing snapshot (took %g sec).\n", timediff(t0, t1));
-
         }
       else
         {
           mpi_printf("done with writing files: no dump of snapshot (DumpFlag = %d).\n", DumpFlag);
-        }                       // if(DumpFlag !=4)
-
+        }  // if(DumpFlag !=4)
 
 #ifdef FOF
       if(RestartFlag != 3 && RestartFlag != 6 && RestartFlag != 18 && subbox_flag == 0 && DumpFlag != 2)
@@ -522,7 +511,7 @@ void savepositions(int num, int subbox_flag)
             /* now revert from output order to the original order */
             for(n = 0; n < NumPart; n++)
               {
-                PS[n].TargetTask = PS[n].OriginTask;
+                PS[n].TargetTask  = PS[n].OriginTask;
                 PS[n].TargetIndex = PS[n].OriginIndex;
               }
 
@@ -558,7 +547,6 @@ void savepositions(int num, int subbox_flag)
     }
 }
 
-
 /*! \brief This function fills the write buffer with particle data.
  *
  *  \param[out] buffer Buffer to be filled.
@@ -591,15 +579,15 @@ void fill_write_buffer(void *buffer, enum iofields blocknr, int *startindex, int
     }
 
   if(field < 0)
-    terminate("IO field=%d not registered with init_field()", (int) blocknr);
+    terminate("IO field=%d not registered with init_field()", (int)blocknr);
 
   set_cosmo_factors_for_current_time();
 
-  fp = (MyOutputFloat *) buffer;
-  ip = (MyIDType *) buffer;
-  intp = (int *) buffer;
-  double *doublep = (double *) buffer;
-  float *floatp = (float *) buffer;
+  fp              = (MyOutputFloat *)buffer;
+  ip              = (MyIDType *)buffer;
+  intp            = (int *)buffer;
+  double *doublep = (double *)buffer;
+  float *floatp   = (float *)buffer;
 
   pindex = *startindex;
 
@@ -610,159 +598,156 @@ void fill_write_buffer(void *buffer, enum iofields blocknr, int *startindex, int
       /* normal particle output */
       if(P[pindex].Type == type)
         {
-
           if(IO_Fields[field].io_func)
             {
               int particle;
-              switch (IO_Fields[field].array)
+              switch(IO_Fields[field].array)
                 {
-                case A_NONE:
-                case A_SPHP:
-                case A_P:
-                  particle = pindex;
-                  break;
-                case A_PS:
-                  terminate("Not good, trying to read into PS[]?\n");
-                  break;
-                default:
-                  terminate("ERROR in fill_write_buffer: Array not found!\n");
-                  break;
+                  case A_NONE:
+                  case A_SPHP:
+                  case A_P:
+                    particle = pindex;
+                    break;
+                  case A_PS:
+                    terminate("Not good, trying to read into PS[]?\n");
+                    break;
+                  default:
+                    terminate("ERROR in fill_write_buffer: Array not found!\n");
+                    break;
                 }
 
-              switch (IO_Fields[field].type_in_file_output)
+              switch(IO_Fields[field].type_in_file_output)
                 {
-                case FILE_NONE:
-                  terminate("error");
-                  break;
-                case FILE_INT:
-                  IO_Fields[field].io_func(particle, IO_Fields[field].values_per_block, intp, 0);
-                  intp += IO_Fields[field].values_per_block;
-                  n++;
-                  break;
-                case FILE_MY_ID_TYPE:
-                  IO_Fields[field].io_func(particle, IO_Fields[field].values_per_block, ip, 0);
-                  ip += IO_Fields[field].values_per_block;
-                  n++;
-                  break;
-                case FILE_MY_IO_FLOAT:
-                  IO_Fields[field].io_func(particle, IO_Fields[field].values_per_block, fp, 0);
-                  fp += IO_Fields[field].values_per_block;
-                  n++;
-                  break;
-                case FILE_DOUBLE:
-                  IO_Fields[field].io_func(particle, IO_Fields[field].values_per_block, doublep, 0);
-                  doublep += IO_Fields[field].values_per_block;
-                  n++;
-                  break;
-                case FILE_FLOAT:
-                  IO_Fields[field].io_func(particle, IO_Fields[field].values_per_block, floatp, 0);
-                  floatp += IO_Fields[field].values_per_block;
-                  n++;
-                  break;
+                  case FILE_NONE:
+                    terminate("error");
+                    break;
+                  case FILE_INT:
+                    IO_Fields[field].io_func(particle, IO_Fields[field].values_per_block, intp, 0);
+                    intp += IO_Fields[field].values_per_block;
+                    n++;
+                    break;
+                  case FILE_MY_ID_TYPE:
+                    IO_Fields[field].io_func(particle, IO_Fields[field].values_per_block, ip, 0);
+                    ip += IO_Fields[field].values_per_block;
+                    n++;
+                    break;
+                  case FILE_MY_IO_FLOAT:
+                    IO_Fields[field].io_func(particle, IO_Fields[field].values_per_block, fp, 0);
+                    fp += IO_Fields[field].values_per_block;
+                    n++;
+                    break;
+                  case FILE_DOUBLE:
+                    IO_Fields[field].io_func(particle, IO_Fields[field].values_per_block, doublep, 0);
+                    doublep += IO_Fields[field].values_per_block;
+                    n++;
+                    break;
+                  case FILE_FLOAT:
+                    IO_Fields[field].io_func(particle, IO_Fields[field].values_per_block, floatp, 0);
+                    floatp += IO_Fields[field].values_per_block;
+                    n++;
+                    break;
                 }
             }
           else
             {
               void *array_pos;
 
-              switch (IO_Fields[field].array)
+              switch(IO_Fields[field].array)
                 {
-                case A_NONE:
-                  array_pos = 0;
-                  break;
+                  case A_NONE:
+                    array_pos = 0;
+                    break;
 
-                case A_SPHP:
-                  array_pos = SphP + pindex;
-                  break;
+                  case A_SPHP:
+                    array_pos = SphP + pindex;
+                    break;
 
-                case A_P:
-                  array_pos = P + pindex;
-                  break;
-                case A_PS:
-                  array_pos = PS + pindex;
-                  break;
+                  case A_P:
+                    array_pos = P + pindex;
+                    break;
+                  case A_PS:
+                    array_pos = PS + pindex;
+                    break;
 
-                default:
-                  terminate("ERROR in fill_write_buffer: Array not found!\n");
-                  break;
+                  default:
+                    terminate("ERROR in fill_write_buffer: Array not found!\n");
+                    break;
                 }
 
               for(k = 0; k < IO_Fields[field].values_per_block; k++)
                 {
                   double value = 0.;
 
-                  switch (IO_Fields[field].type_in_memory)
+                  switch(IO_Fields[field].type_in_memory)
                     {
-                    case MEM_INT:
-                      *intp = *((int *) ((size_t) array_pos + IO_Fields[field].offset + k * sizeof(int)));
-                      intp++;
-                      break;
+                      case MEM_INT:
+                        *intp = *((int *)((size_t)array_pos + IO_Fields[field].offset + k * sizeof(int)));
+                        intp++;
+                        break;
 
-                    case MEM_MY_ID_TYPE:
-                      *ip = *((MyIDType *) ((size_t) array_pos + IO_Fields[field].offset + k * sizeof(MyIDType)));
-                      ip++;
-                      break;
+                      case MEM_MY_ID_TYPE:
+                        *ip = *((MyIDType *)((size_t)array_pos + IO_Fields[field].offset + k * sizeof(MyIDType)));
+                        ip++;
+                        break;
 
-                    case MEM_FLOAT:
-                      value = *((float *) ((size_t) array_pos + IO_Fields[field].offset + k * sizeof(float)));
-                      break;
+                      case MEM_FLOAT:
+                        value = *((float *)((size_t)array_pos + IO_Fields[field].offset + k * sizeof(float)));
+                        break;
 
-                    case MEM_DOUBLE:
-                      value = *((double *) ((size_t) array_pos + IO_Fields[field].offset + k * sizeof(double)));
-                      break;
+                      case MEM_DOUBLE:
+                        value = *((double *)((size_t)array_pos + IO_Fields[field].offset + k * sizeof(double)));
+                        break;
 
-                    case MEM_MY_SINGLE:
-                      value = *((MySingle *) ((size_t) array_pos + IO_Fields[field].offset + k * sizeof(MySingle)));
-                      break;
+                      case MEM_MY_SINGLE:
+                        value = *((MySingle *)((size_t)array_pos + IO_Fields[field].offset + k * sizeof(MySingle)));
+                        break;
 
-                    case MEM_MY_FLOAT:
-                      value = *((MyFloat *) ((size_t) array_pos + IO_Fields[field].offset + k * sizeof(MyFloat)));
-                      break;
+                      case MEM_MY_FLOAT:
+                        value = *((MyFloat *)((size_t)array_pos + IO_Fields[field].offset + k * sizeof(MyFloat)));
+                        break;
 
-                    case MEM_MY_DOUBLE:
-                      value = *((MyDouble *) ((size_t) array_pos + IO_Fields[field].offset + k * sizeof(MyDouble)));
-                      break;
+                      case MEM_MY_DOUBLE:
+                        value = *((MyDouble *)((size_t)array_pos + IO_Fields[field].offset + k * sizeof(MyDouble)));
+                        break;
 
-                    case MEM_NONE:
-                      terminate("ERROR in fill_write_buffer: reached MEM_NONE with no io_func specified!\n");
-                      break;
+                      case MEM_NONE:
+                        terminate("ERROR in fill_write_buffer: reached MEM_NONE with no io_func specified!\n");
+                        break;
 
-                    default:
-                      terminate("ERROR in fill_write_buffer: Type not found!\n");
-                      break;
+                      default:
+                        terminate("ERROR in fill_write_buffer: Type not found!\n");
+                        break;
                     }
 
-                  switch (IO_Fields[field].type_in_file_output)
+                  switch(IO_Fields[field].type_in_file_output)
                     {
-                    case FILE_MY_IO_FLOAT:
-                      *fp = value;
-                      fp++;
-                      break;
+                      case FILE_MY_IO_FLOAT:
+                        *fp = value;
+                        fp++;
+                        break;
 
-                    case FILE_DOUBLE:
-                      *doublep = value;
-                      doublep++;
-                      break;
+                      case FILE_DOUBLE:
+                        *doublep = value;
+                        doublep++;
+                        break;
 
-                    case FILE_FLOAT:
-                      *floatp = value;
-                      floatp++;
-                      break;
+                      case FILE_FLOAT:
+                        *floatp = value;
+                        floatp++;
+                        break;
 
-                    default:
-                      break;
+                      default:
+                        break;
                     }
                 }
 
               n++;
-            }                   // end io_func/not
-        }                       // end type if
-    }                           // end particle loop
-
+            }  // end io_func/not
+        }      // end type if
+    }          // end particle loop
 
   *startindex = pindex;
 }
-
 
 /*! \brief This function tells the size in bytes of one data entry in each of
  *         the blocks defined for the output file.
@@ -785,50 +770,50 @@ int get_bytes_per_blockelement(enum iofields blocknr, int mode)
         {
           if(mode)
             {
-              switch (IO_Fields[f].type_in_file_input)
+              switch(IO_Fields[f].type_in_file_input)
                 {
-                case FILE_NONE:
-                  terminate("error");
-                  break;
-                case FILE_INT:
-                  bytes_per_blockelement = IO_Fields[f].values_per_block * sizeof(int);
-                  break;
-                case FILE_MY_ID_TYPE:
-                  bytes_per_blockelement = IO_Fields[f].values_per_block * sizeof(MyIDType);
-                  break;
-                case FILE_MY_IO_FLOAT:
-                  bytes_per_blockelement = IO_Fields[f].values_per_block * sizeof(MyInputFloat);
-                  break;
-                case FILE_DOUBLE:
-                  bytes_per_blockelement = IO_Fields[f].values_per_block * sizeof(double);
-                  break;
-                case FILE_FLOAT:
-                  bytes_per_blockelement = IO_Fields[f].values_per_block * sizeof(float);
-                  break;
+                  case FILE_NONE:
+                    terminate("error");
+                    break;
+                  case FILE_INT:
+                    bytes_per_blockelement = IO_Fields[f].values_per_block * sizeof(int);
+                    break;
+                  case FILE_MY_ID_TYPE:
+                    bytes_per_blockelement = IO_Fields[f].values_per_block * sizeof(MyIDType);
+                    break;
+                  case FILE_MY_IO_FLOAT:
+                    bytes_per_blockelement = IO_Fields[f].values_per_block * sizeof(MyInputFloat);
+                    break;
+                  case FILE_DOUBLE:
+                    bytes_per_blockelement = IO_Fields[f].values_per_block * sizeof(double);
+                    break;
+                  case FILE_FLOAT:
+                    bytes_per_blockelement = IO_Fields[f].values_per_block * sizeof(float);
+                    break;
                 }
             }
           else
             {
-              switch (IO_Fields[f].type_in_file_output)
+              switch(IO_Fields[f].type_in_file_output)
                 {
-                case FILE_NONE:
-                  terminate("error");
-                  break;
-                case FILE_INT:
-                  bytes_per_blockelement = IO_Fields[f].values_per_block * sizeof(int);
-                  break;
-                case FILE_MY_ID_TYPE:
-                  bytes_per_blockelement = IO_Fields[f].values_per_block * sizeof(MyIDType);
-                  break;
-                case FILE_MY_IO_FLOAT:
-                  bytes_per_blockelement = IO_Fields[f].values_per_block * sizeof(MyOutputFloat);
-                  break;
-                case FILE_DOUBLE:
-                  bytes_per_blockelement = IO_Fields[f].values_per_block * sizeof(double);
-                  break;
-                case FILE_FLOAT:
-                  bytes_per_blockelement = IO_Fields[f].values_per_block * sizeof(float);
-                  break;
+                  case FILE_NONE:
+                    terminate("error");
+                    break;
+                  case FILE_INT:
+                    bytes_per_blockelement = IO_Fields[f].values_per_block * sizeof(int);
+                    break;
+                  case FILE_MY_ID_TYPE:
+                    bytes_per_blockelement = IO_Fields[f].values_per_block * sizeof(MyIDType);
+                    break;
+                  case FILE_MY_IO_FLOAT:
+                    bytes_per_blockelement = IO_Fields[f].values_per_block * sizeof(MyOutputFloat);
+                    break;
+                  case FILE_DOUBLE:
+                    bytes_per_blockelement = IO_Fields[f].values_per_block * sizeof(double);
+                    break;
+                  case FILE_FLOAT:
+                    bytes_per_blockelement = IO_Fields[f].values_per_block * sizeof(float);
+                    break;
                 }
             }
           break;
@@ -837,7 +822,6 @@ int get_bytes_per_blockelement(enum iofields blocknr, int mode)
 
   return bytes_per_blockelement;
 }
-
 
 /*! \brief This function determines the type of one data entry in each of the
  *         blocks defined for the output file.
@@ -852,7 +836,6 @@ int get_bytes_per_blockelement(enum iofields blocknr, int mode)
 int get_datatype_in_block(enum iofields blocknr, int mode)
 {
   int typekey, f;
-
 
   for(f = 0; f < N_IO_Fields; f++)
     {
@@ -870,7 +853,6 @@ int get_datatype_in_block(enum iofields blocknr, int mode)
   terminate("error invalid field");
   return typekey;
 }
-
 
 /*! \brief This function determines the number of elements composing one data
  *         entry in each of the blocks defined for the output file.
@@ -899,7 +881,6 @@ int get_values_per_blockelement(enum iofields blocknr)
   return values;
 }
 
-
 /*! \brief Gets particle number in an output block.
  *
  *  This function determines how many particles there are in a given block,
@@ -917,54 +898,52 @@ int get_particles_in_block(enum iofields blocknr, int *typelist)
   int i, f;
   int npart = 0;
 
-  switch (blocknr)
+  switch(blocknr)
     {
-
-    case IO_MASS:
-      for(i = 0; i < NTYPES; i++)
-        {
-          typelist[i] = 0;
-          if(All.MassTable[i] == 0)
-            if(header.npart[i] > 0)
-              {
-                typelist[i] = 1;
-                npart += header.npart[i];
-              }
-        }
-      return npart;             /* with masses */
-      break;
-
-    case IO_LASTENTRY:
-      terminate("reached last entry in switch - strange.");
-      break;
-
-    default:
-      for(f = 0; f < N_IO_Fields; f++)
-        {
-          if(IO_Fields[f].field == blocknr)
-            {
-              for(i = 0; i < NTYPES; i++)
+      case IO_MASS:
+        for(i = 0; i < NTYPES; i++)
+          {
+            typelist[i] = 0;
+            if(All.MassTable[i] == 0)
+              if(header.npart[i] > 0)
                 {
-                  if((IO_Fields[f].typelist & (1 << i)) && header.npart[i] > 0)
-                    {
-                      typelist[i] = 1;
-                      npart += header.npart[i];
-                    }
-                  else
-                    typelist[i] = 0;
+                  typelist[i] = 1;
+                  npart += header.npart[i];
                 }
+          }
+        return npart; /* with masses */
+        break;
 
-              return npart;
-            }
-        }
-      break;
+      case IO_LASTENTRY:
+        terminate("reached last entry in switch - strange.");
+        break;
 
-    }                           //end switch
+      default:
+        for(f = 0; f < N_IO_Fields; f++)
+          {
+            if(IO_Fields[f].field == blocknr)
+              {
+                for(i = 0; i < NTYPES; i++)
+                  {
+                    if((IO_Fields[f].typelist & (1 << i)) && header.npart[i] > 0)
+                      {
+                        typelist[i] = 1;
+                        npart += header.npart[i];
+                      }
+                    else
+                      typelist[i] = 0;
+                  }
+
+                return npart;
+              }
+          }
+        break;
+
+    }  // end switch
 
   terminate("reached end of function - this should not happen");
   return 0;
 }
-
 
 /*! \brief Checks if a block is expected for file input or output.
  *
@@ -980,7 +959,6 @@ int get_particles_in_block(enum iofields blocknr, int *typelist)
  */
 int blockpresent(enum iofields blocknr, int write)
 {
-
   int f;
 
   if(!write)
@@ -991,15 +969,15 @@ int blockpresent(enum iofields blocknr, int write)
 #endif /* #ifdef PASSIVE_SCALARS */
 #if defined(MHD) && !defined(MHD_SEEDFIELD)
       if(All.ICFormat != 3 && RestartFlag == 0 && (blocknr > IO_U && blocknr != IO_BFLD))
-#else /* #if defined(MHD) && !defined(MHD_SEEDFIELD) */
+#else  /* #if defined(MHD) && !defined(MHD_SEEDFIELD) */
       if(All.ICFormat != 3 && RestartFlag == 0 && blocknr > IO_U)
 #endif /* #if defined(MHD) && !defined(MHD_SEEDFIELD) #else */
-#ifdef  READ_LEGACY_ICS
+#ifdef READ_LEGACY_ICS
         if(RestartFlag == 0 && blocknr > IO_U && blocknr != IO_BFLD)
-#else /* #ifdef  READ_LEGACY_ICS */
+#else               /* #ifdef  READ_LEGACY_ICS */
         if(RestartFlag == 0)
-#endif /* #ifdef  READ_LEGACY_ICS #else */
-          return 0;             /* ignore all other blocks in non-HDF5 initial conditions */
+#endif              /* #ifdef  READ_LEGACY_ICS #else */
+          return 0; /* ignore all other blocks in non-HDF5 initial conditions */
     }
 
   for(f = 0; f < N_IO_Fields; f++)
@@ -1044,19 +1022,17 @@ int blockpresent(enum iofields blocknr, int write)
                     return 1;
 
                   if(IO_Fields[f].typelist == BHS_ONLY)
-                    return 1;   // temporarily hard-coded that all BH fields are included in mini-snaps
+                    return 1;  // temporarily hard-coded that all BH fields are included in mini-snaps
 
-                  return 0;     // specifically do not include any other fields in mini-snaps
+                  return 0;  // specifically do not include any other fields in mini-snaps
                 }
-
             }
           return 0;
         }
     }
 
-  return 0;                     /* default: not present */
+  return 0; /* default: not present */
 }
-
 
 /*! \brief This function associates a short 4-character block name with each
  *         block number.
@@ -1083,7 +1059,6 @@ void get_Tab_IO_Label(enum iofields blocknr, char *label)
   terminate("error invalid field");
 }
 
-
 /*! \brief This function associates a dataset name with each block number.
  *
  *   This is needed to name the dataset if the output is written in HDF5
@@ -1108,7 +1083,6 @@ void get_dataset_name(enum iofields blocknr, char *buf)
 
   terminate("error invalid field");
 }
-
 
 /*! \brief Actually write the snapshot file to the disk.
  *
@@ -1137,7 +1111,7 @@ void write_file(char *fname, int writeTask, int lastTask, int subbox_flag)
   int bnr;
   int blksize;
   MPI_Status status;
-  FILE *fd = 0;
+  FILE *fd  = 0;
   int pcsum = 0;
 
 #ifdef HAVE_HDF5
@@ -1153,16 +1127,19 @@ void write_file(char *fname, int writeTask, int lastTask, int subbox_flag)
   hid_t hdf5_configgrp = 0;
 #endif /* #ifdef HAVE_HDF5 */
 
-#define SKIP  {my_fwrite(&blksize,sizeof(int),1,fd);}
+#define SKIP                                 \
+  {                                          \
+    my_fwrite(&blksize, sizeof(int), 1, fd); \
+  }
 
 #ifdef TOLERATE_WRITE_ERROR
   for(int try_io = 0; try_io < 2; try_io++)
     {
       WriteErrorFlag = 0;
 #ifdef HAVE_HDF5
-      H5Eget_current_stack();   /* clears current error stack */
-#endif /* #ifdef HAVE_HDF5 */
-#endif /* #ifdef TOLERATE_WRITE_ERROR */
+      H5Eget_current_stack(); /* clears current error stack */
+#endif                        /* #ifdef HAVE_HDF5 */
+#endif                        /* #ifdef TOLERATE_WRITE_ERROR */
 
       /* determine particle numbers of each type in file */
       if(ThisTask == writeTask)
@@ -1189,9 +1166,9 @@ void write_file(char *fname, int writeTask, int lastTask, int subbox_flag)
       /* fill file header */
       for(n = 0; n < NTYPES; n++)
         {
-          header.npart[n] = ntot_type[n];
-          header.npartTotal[n] = (unsigned int) ntot_type_all[n];
-          header.npartTotalHighWord[n] = (unsigned int) (ntot_type_all[n] >> 32);
+          header.npart[n]              = ntot_type[n];
+          header.npartTotal[n]         = (unsigned int)ntot_type_all[n];
+          header.npartTotalHighWord[n] = (unsigned int)(ntot_type_all[n] >> 32);
         }
 
       for(n = 0; n < NTYPES; n++)
@@ -1204,11 +1181,11 @@ void write_file(char *fname, int writeTask, int lastTask, int subbox_flag)
       else
         header.redshift = 0;
 
-      header.flag_sfr = 0;
-      header.flag_feedback = 0;
-      header.flag_cooling = 0;
+      header.flag_sfr        = 0;
+      header.flag_feedback   = 0;
+      header.flag_cooling    = 0;
       header.flag_stellarage = 0;
-      header.flag_metals = 0;
+      header.flag_metals     = 0;
 
       header.flag_tracer_field = 0;
 
@@ -1217,20 +1194,20 @@ void write_file(char *fname, int writeTask, int lastTask, int subbox_flag)
 #endif /* #ifdef COOLING */
 
 #ifdef USE_SFR
-      header.flag_sfr = 1;
+      header.flag_sfr      = 1;
       header.flag_feedback = 1;
 #endif /* #ifdef USE_SFR */
 
-      header.num_files = All.NumFilesPerSnapshot;
-      header.BoxSize = All.BoxSize;
-      header.Omega0 = All.Omega0;
+      header.num_files   = All.NumFilesPerSnapshot;
+      header.BoxSize     = All.BoxSize;
+      header.Omega0      = All.Omega0;
       header.OmegaLambda = All.OmegaLambda;
       header.HubbleParam = All.HubbleParam;
 
 #ifdef OUTPUT_IN_DOUBLEPRECISION
       header.flag_doubleprecision = 1;
-#else /* #ifdef OUTPUT_IN_DOUBLEPRECISION */
-      header.flag_doubleprecision = 0;
+#else  /* #ifdef OUTPUT_IN_DOUBLEPRECISION */
+  header.flag_doubleprecision = 0;
 #endif /* #ifdef OUTPUT_IN_DOUBLEPRECISION #else */
 
       /* open file and write header */
@@ -1275,7 +1252,7 @@ void write_file(char *fname, int writeTask, int lastTask, int subbox_flag)
                 {
                   blksize = sizeof(int) + 4 * sizeof(char);
                   SKIP;
-                  my_fwrite((void *) "HEAD", sizeof(char), 4, fd);
+                  my_fwrite((void *)"HEAD", sizeof(char), 4, fd);
                   nextblock = sizeof(header) + 2 * sizeof(int);
                   my_fwrite(&nextblock, sizeof(int), 1, fd);
                   SKIP;
@@ -1285,13 +1262,12 @@ void write_file(char *fname, int writeTask, int lastTask, int subbox_flag)
               SKIP;
               my_fwrite(&header, sizeof(header), 1, fd);
               SKIP;
-
             }
         }
 
       for(bnr = 0; bnr < 1000; bnr++)
         {
-          blocknr = (enum iofields) bnr;
+          blocknr = (enum iofields)bnr;
 
           if(blocknr == IO_LASTENTRY)
             break;
@@ -1300,7 +1276,7 @@ void write_file(char *fname, int writeTask, int lastTask, int subbox_flag)
             {
               bytes_per_blockelement = get_bytes_per_blockelement(blocknr, 0);
 
-              blockmaxlen = (int) (COMMBUFFERSIZE / bytes_per_blockelement);
+              blockmaxlen = (int)(COMMBUFFERSIZE / bytes_per_blockelement);
 
               npart = get_particles_in_block(blocknr, &typelist[0]);
 
@@ -1317,7 +1293,6 @@ void write_file(char *fname, int writeTask, int lastTask, int subbox_flag)
 
                   if(ThisTask == writeTask)
                     {
-
                       if(All.SnapFormat == 1 || All.SnapFormat == 2)
                         {
                           if(All.SnapFormat == 2)
@@ -1333,7 +1308,6 @@ void write_file(char *fname, int writeTask, int lastTask, int subbox_flag)
 
                           blksize = npart * bytes_per_blockelement;
                           SKIP;
-
                         }
                     }
 
@@ -1344,31 +1318,31 @@ void write_file(char *fname, int writeTask, int lastTask, int subbox_flag)
 #ifdef HAVE_HDF5
                           if(ThisTask == writeTask && All.SnapFormat == 3 && header.npart[type] > 0)
                             {
-                              switch (get_datatype_in_block(blocknr, 0))
+                              switch(get_datatype_in_block(blocknr, 0))
                                 {
-                                case FILE_INT:
-                                  hdf5_datatype = my_H5Tcopy(H5T_NATIVE_UINT);
-                                  break;
-                                case FILE_MY_IO_FLOAT:
+                                  case FILE_INT:
+                                    hdf5_datatype = my_H5Tcopy(H5T_NATIVE_UINT);
+                                    break;
+                                  case FILE_MY_IO_FLOAT:
 #ifdef OUTPUT_IN_DOUBLEPRECISION
-                                  hdf5_datatype = my_H5Tcopy(H5T_NATIVE_DOUBLE);
-#else /* #ifdef OUTPUT_IN_DOUBLEPRECISION */
-                                  hdf5_datatype = my_H5Tcopy(H5T_NATIVE_FLOAT);
+                                    hdf5_datatype = my_H5Tcopy(H5T_NATIVE_DOUBLE);
+#else  /* #ifdef OUTPUT_IN_DOUBLEPRECISION */
+                                    hdf5_datatype = my_H5Tcopy(H5T_NATIVE_FLOAT);
 #endif /* #ifdef OUTPUT_IN_DOUBLEPRECISION #else */
-                                  break;
-                                case FILE_MY_ID_TYPE:
+                                    break;
+                                  case FILE_MY_ID_TYPE:
 #ifdef LONGIDS
-                                  hdf5_datatype = my_H5Tcopy(H5T_NATIVE_UINT64);
-#else /* #ifdef LONGIDS */
-                                  hdf5_datatype = my_H5Tcopy(H5T_NATIVE_UINT32);
+                                    hdf5_datatype = my_H5Tcopy(H5T_NATIVE_UINT64);
+#else  /* #ifdef LONGIDS */
+                                    hdf5_datatype = my_H5Tcopy(H5T_NATIVE_UINT32);
 #endif /* #ifdef LONGIDS #else */
-                                  break;
-                                case FILE_DOUBLE:
-                                  hdf5_datatype = my_H5Tcopy(H5T_NATIVE_DOUBLE);
-                                  break;
-                                case FILE_FLOAT:
-                                  hdf5_datatype = my_H5Tcopy(H5T_NATIVE_FLOAT);
-                                  break;
+                                    break;
+                                  case FILE_DOUBLE:
+                                    hdf5_datatype = my_H5Tcopy(H5T_NATIVE_DOUBLE);
+                                    break;
+                                  case FILE_FLOAT:
+                                    hdf5_datatype = my_H5Tcopy(H5T_NATIVE_FLOAT);
+                                    break;
                                 }
 
                               dims[0] = header.npart[type];
@@ -1383,30 +1357,30 @@ void write_file(char *fname, int writeTask, int lastTask, int subbox_flag)
                               hdf5_dataspace_in_file = my_H5Screate_simple(rank, dims, NULL);
 #ifdef HDF5_FILTERS
                               hdf5_properties = my_H5Pcreate(H5P_DATASET_CREATE);
-                              my_H5Pset_chunk(hdf5_properties, rank, dims);     /* set chunk size */
-                              my_H5Pset_shuffle(hdf5_properties);       /* reshuffle bytes to get better compression ratio */
-                              my_H5Pset_deflate(hdf5_properties, 9);    /* gzip compression level 9 */
-                              my_H5Pset_fletcher32(hdf5_properties);    /* Fletcher32 checksum on dataset */
+                              my_H5Pset_chunk(hdf5_properties, rank, dims); /* set chunk size */
+                              my_H5Pset_shuffle(hdf5_properties);           /* reshuffle bytes to get better compression ratio */
+                              my_H5Pset_deflate(hdf5_properties, 9);        /* gzip compression level 9 */
+                              my_H5Pset_fletcher32(hdf5_properties);        /* Fletcher32 checksum on dataset */
 
                               if(my_H5Pall_filters_avail(hdf5_properties))
-                                hdf5_dataset = my_H5Dcreate(hdf5_grp[type], buf, hdf5_datatype, hdf5_dataspace_in_file, hdf5_properties);
+                                hdf5_dataset =
+                                    my_H5Dcreate(hdf5_grp[type], buf, hdf5_datatype, hdf5_dataspace_in_file, hdf5_properties);
                               else
                                 {
                                   printf("HDF5_FILTERS: Warning selected filters not available! Writing data without filters! \n");
                                   myflush(stdout);
                                   hdf5_dataset = my_H5Dcreate(hdf5_grp[type], buf, hdf5_datatype, hdf5_dataspace_in_file, H5P_DEFAULT);
                                 }
-#else /* #ifdef HDF5_FILTERS */
+#else  /* #ifdef HDF5_FILTERS */
                               hdf5_dataset = my_H5Dcreate(hdf5_grp[type], buf, hdf5_datatype, hdf5_dataspace_in_file, H5P_DEFAULT);
 #endif /* #ifdef HDF5_FILTERS #else */
                               write_dataset_attributes(hdf5_dataset, blocknr);
-
                             }
 #endif /* #ifdef HAVE_HDF5 */
 
-                          pcsum = 0;
+                          pcsum               = 0;
                           int remaining_space = blockmaxlen;
-                          int bufferstart = 0;
+                          int bufferstart     = 0;
 
                           for(task = writeTask, offset = 0; task <= lastTask; task++)
                             {
@@ -1431,7 +1405,7 @@ void write_file(char *fname, int writeTask, int lastTask, int subbox_flag)
                                   if(pc > remaining_space)
                                     pc = remaining_space;
 
-                                  void *buffer = (void *) ((char *) CommBuffer + bufferstart * bytes_per_blockelement);
+                                  void *buffer = (void *)((char *)CommBuffer + bufferstart * bytes_per_blockelement);
 
                                   if(ThisTask == task)
                                     fill_write_buffer(buffer, blocknr, &offset, pc, type, subbox_flag);
@@ -1461,11 +1435,12 @@ void write_file(char *fname, int writeTask, int lastTask, int subbox_flag)
 
                                               my_H5Sselect_hyperslab(hdf5_dataspace_in_file, H5S_SELECT_SET, start, NULL, count, NULL);
 
-                                              dims[0] = bufferstart;
-                                              dims[1] = get_values_per_blockelement(blocknr);
+                                              dims[0]               = bufferstart;
+                                              dims[1]               = get_values_per_blockelement(blocknr);
                                               hdf5_dataspace_memory = my_H5Screate_simple(rank, dims, NULL);
 
-                                              my_H5Dwrite(hdf5_dataset, hdf5_datatype, hdf5_dataspace_memory, hdf5_dataspace_in_file, H5P_DEFAULT, CommBuffer, buf);
+                                              my_H5Dwrite(hdf5_dataset, hdf5_datatype, hdf5_dataspace_memory, hdf5_dataspace_in_file,
+                                                          H5P_DEFAULT, CommBuffer, buf);
 
                                               my_H5Sclose(hdf5_dataspace_memory, H5S_SIMPLE);
 #endif /* #ifdef HAVE_HDF5 */
@@ -1478,7 +1453,7 @@ void write_file(char *fname, int writeTask, int lastTask, int subbox_flag)
 
                                       pcsum += bufferstart;
                                       remaining_space = blockmaxlen;
-                                      bufferstart = 0;
+                                      bufferstart     = 0;
                                     }
 
                                   n_for_this_task -= pc;
@@ -1501,11 +1476,12 @@ void write_file(char *fname, int writeTask, int lastTask, int subbox_flag)
 
                                       my_H5Sselect_hyperslab(hdf5_dataspace_in_file, H5S_SELECT_SET, start, NULL, count, NULL);
 
-                                      dims[0] = bufferstart;
-                                      dims[1] = get_values_per_blockelement(blocknr);
+                                      dims[0]               = bufferstart;
+                                      dims[1]               = get_values_per_blockelement(blocknr);
                                       hdf5_dataspace_memory = my_H5Screate_simple(rank, dims, NULL);
 
-                                      my_H5Dwrite(hdf5_dataset, hdf5_datatype, hdf5_dataspace_memory, hdf5_dataspace_in_file, H5P_DEFAULT, CommBuffer, buf);
+                                      my_H5Dwrite(hdf5_dataset, hdf5_datatype, hdf5_dataspace_memory, hdf5_dataspace_in_file,
+                                                  H5P_DEFAULT, CommBuffer, buf);
 
                                       my_H5Sclose(hdf5_dataspace_memory, H5S_SIMPLE);
 #endif /* #ifdef HAVE_HDF5 */
@@ -1518,7 +1494,7 @@ void write_file(char *fname, int writeTask, int lastTask, int subbox_flag)
 
                               pcsum += bufferstart;
                               remaining_space = blockmaxlen;
-                              bufferstart = 0;
+                              bufferstart     = 0;
                             }
 
 #ifdef HAVE_HDF5
@@ -1558,7 +1534,7 @@ void write_file(char *fname, int writeTask, int lastTask, int subbox_flag)
             }
 
 #ifdef TOLERATE_WRITE_ERROR
-          if(WriteErrorFlag)    /* don't write further blocks in this case */
+          if(WriteErrorFlag) /* don't write further blocks in this case */
             break;
 #endif /* #ifdef TOLERATE_WRITE_ERROR */
         }
@@ -1591,10 +1567,13 @@ void write_file(char *fname, int writeTask, int lastTask, int subbox_flag)
         {
           if(ThisTask == writeTask)
             {
-              printf("TOLERATE_WRITE_ERROR: Try to write to alternative file: masterTask=%d  lastTask=%d  try_io=%d alternative-filename='%s'\n", writeTask, lastTask, try_io, alternative_fname);
+              printf(
+                  "TOLERATE_WRITE_ERROR: Try to write to alternative file: masterTask=%d  lastTask=%d  try_io=%d "
+                  "alternative-filename='%s'\n",
+                  writeTask, lastTask, try_io, alternative_fname);
               myflush(stdout);
             }
-          fname = alternative_fname;    /* try on a different output directory */
+          fname = alternative_fname; /* try on a different output directory */
         }
       else
         {
@@ -1603,7 +1582,6 @@ void write_file(char *fname, int writeTask, int lastTask, int subbox_flag)
     }
 #endif /* #ifdef TOLERATE_WRITE_ERROR */
 }
-
 
 #ifdef HAVE_HDF5
 /*! \brief Write the fields contained in the header group of the HDF5 snapshot
@@ -1618,7 +1596,7 @@ void write_file(char *fname, int writeTask, int lastTask, int subbox_flag)
  */
 void write_header_attributes_in_hdf5(hid_t handle)
 {
-  hsize_t adim[1] = { NTYPES };
+  hsize_t adim[1] = {NTYPES};
   hid_t hdf5_dataspace, hdf5_attribute;
 
   hdf5_dataspace = my_H5Screate(H5S_SIMPLE);
@@ -1774,7 +1752,6 @@ void write_header_attributes_in_hdf5(hid_t handle)
   my_H5Sclose(hdf5_dataspace, H5S_SCALAR);
 }
 
-
 /*! \brief Write the parameters read from the parameter file in the HDF5
  *         snapshot file.
  *
@@ -1794,35 +1771,34 @@ void write_parameters_attributes_in_hdf5(hid_t handle)
 
   for(i = 0; i < All.NParameters; i++)
     {
-      switch (ParametersType[i])
+      switch(ParametersType[i])
         {
-        case 1:                // REAL
-          hdf5_dataspace = my_H5Screate(H5S_SCALAR);
-          hdf5_attribute = my_H5Acreate(handle, Parameters[i], H5T_NATIVE_DOUBLE, hdf5_dataspace, H5P_DEFAULT);
-          my_H5Awrite(hdf5_attribute, H5T_NATIVE_DOUBLE, ParametersValue[i], Parameters[i]);
-          my_H5Aclose(hdf5_attribute, Parameters[i]);
-          my_H5Sclose(hdf5_dataspace, H5S_SCALAR);
-          break;
-        case 2:                // STRING
-          hdf5_dataspace = my_H5Screate(H5S_SCALAR);
-          hdf5_attribute = my_H5Acreate(handle, Parameters[i], atype, hdf5_dataspace, H5P_DEFAULT);
-          my_H5Awrite(hdf5_attribute, atype, ParametersValue[i], Parameters[i]);
-          my_H5Aclose(hdf5_attribute, Parameters[i]);
-          my_H5Sclose(hdf5_dataspace, H5S_SCALAR);
-          break;
-        case 3:                // INT
-          hdf5_dataspace = my_H5Screate(H5S_SCALAR);
-          hdf5_attribute = my_H5Acreate(handle, Parameters[i], H5T_NATIVE_INT, hdf5_dataspace, H5P_DEFAULT);
-          my_H5Awrite(hdf5_attribute, H5T_NATIVE_INT, ParametersValue[i], Parameters[i]);
-          my_H5Aclose(hdf5_attribute, Parameters[i]);
-          my_H5Sclose(hdf5_dataspace, H5S_SCALAR);
-          break;
+          case 1:  // REAL
+            hdf5_dataspace = my_H5Screate(H5S_SCALAR);
+            hdf5_attribute = my_H5Acreate(handle, Parameters[i], H5T_NATIVE_DOUBLE, hdf5_dataspace, H5P_DEFAULT);
+            my_H5Awrite(hdf5_attribute, H5T_NATIVE_DOUBLE, ParametersValue[i], Parameters[i]);
+            my_H5Aclose(hdf5_attribute, Parameters[i]);
+            my_H5Sclose(hdf5_dataspace, H5S_SCALAR);
+            break;
+          case 2:  // STRING
+            hdf5_dataspace = my_H5Screate(H5S_SCALAR);
+            hdf5_attribute = my_H5Acreate(handle, Parameters[i], atype, hdf5_dataspace, H5P_DEFAULT);
+            my_H5Awrite(hdf5_attribute, atype, ParametersValue[i], Parameters[i]);
+            my_H5Aclose(hdf5_attribute, Parameters[i]);
+            my_H5Sclose(hdf5_dataspace, H5S_SCALAR);
+            break;
+          case 3:  // INT
+            hdf5_dataspace = my_H5Screate(H5S_SCALAR);
+            hdf5_attribute = my_H5Acreate(handle, Parameters[i], H5T_NATIVE_INT, hdf5_dataspace, H5P_DEFAULT);
+            my_H5Awrite(hdf5_attribute, H5T_NATIVE_INT, ParametersValue[i], Parameters[i]);
+            my_H5Aclose(hdf5_attribute, Parameters[i]);
+            my_H5Sclose(hdf5_dataspace, H5S_SCALAR);
+            break;
         }
     }
 
   my_H5Tclose(atype);
 }
-
 
 /*! \brief A simple error handler for HDF5.
  *
@@ -1846,7 +1822,6 @@ herr_t my_hdf5_error_handler(void *unused)
   return 0;
 #endif
 }
-
 
 /*! \brief Write attributes to dataset, scaling with a and h (cosmological)
  *         and units.
@@ -1895,7 +1870,7 @@ void write_dataset_attributes(hid_t hdf5_dataset, enum iofields blocknr)
     }
   else
     {
-      double zero = 0;
+      double zero          = 0;
       hid_t hdf5_dataspace = my_H5Screate(H5S_SCALAR);
       hid_t hdf5_attribute = my_H5Acreate(hdf5_dataset, "a_scaling", H5T_NATIVE_DOUBLE, hdf5_dataspace, H5P_DEFAULT);
       my_H5Awrite(hdf5_attribute, H5T_NATIVE_DOUBLE, &zero, "a_scaling");
@@ -1935,7 +1910,6 @@ void write_dataset_attributes(hid_t hdf5_dataset, enum iofields blocknr)
 }
 #endif /* #ifdef HAVE_HDF5 */
 
-
 #ifdef OUTPUT_XDMF
 /*! \brief Outputs a xdmf file corresponding to this snapshot.
  *
@@ -1958,10 +1932,9 @@ void write_xdmf(char *fname)
 
 #ifdef OUTPUT_IN_DOUBLEPRECISION
   int prec = 8;
-#else /* #ifdef OUTPUT_IN_DOUBLEPRECISION */
+#else  /* #ifdef OUTPUT_IN_DOUBLEPRECISION */
   int prec = 4;
 #endif /* #ifdef OUTPUT_IN_DOUBLEPRECISION */
-
 
   sprintf(buf, "%s.xmf", fname);
   f = fopen(buf, "w");
@@ -1980,14 +1953,14 @@ void write_xdmf(char *fname)
 
       for(bnr = 0; bnr < 1000; bnr++)
         {
-          enum iofields i = (enum iofields) bnr;
+          enum iofields i = (enum iofields)bnr;
 
           if(i == IO_LASTENTRY)
             break;
 
           if(blockpresent(i, 1))
             {
-              //get_particles_in_block(i, ntypes);
+              // get_particles_in_block(i, ntypes);
 
               if(header.npart[type] > 0)
                 {
@@ -1996,7 +1969,8 @@ void write_xdmf(char *fname)
                       fprintf(f, "  <Grid Name=\"PartType%d\" GridType=\"Uniform\">\n", type);
                       fprintf(f, "   <Topology TopologyType=\"Polyvertex\" NumberOfElements=\"%d\"/>\n", header.npart[type]);
                       fprintf(f, "   <Geometry GeometryType=\"XYZ\">\n");
-                      fprintf(f, "    <DataItem Dimensions=\"%d 3\" NumberType=\"Float\" Precision=\"%d\" Format=\"HDF\">\n", header.npart[type], prec);
+                      fprintf(f, "    <DataItem Dimensions=\"%d 3\" NumberType=\"Float\" Precision=\"%d\" Format=\"HDF\">\n",
+                              header.npart[type], prec);
                       fprintf(f, "     %s:/PartType0/Coordinates\n", buf);
                       fprintf(f, "    </DataItem>\n");
                       fprintf(f, "   </Geometry>\n");
@@ -2005,7 +1979,7 @@ void write_xdmf(char *fname)
                     }
                   else
                     {
-                      int dim = get_values_per_blockelement(i);
+                      int dim   = get_values_per_blockelement(i);
                       int dtype = get_datatype_in_block(i, 0);
                       get_dataset_name(i, buf2);
 
@@ -2016,43 +1990,38 @@ void write_xdmf(char *fname)
                               if(dim == 1)
                                 {
                                   fprintf(f, "   <Attribute Name=\"%s\" AttributeType=\"Scalar\" Center=\"Node\">\n", buf2);
-                                  fprintf(f, "    <DataItem Dimensions=\"%d\" NumberType=\"Float\" Precision=\"%d\" Format=\"HDF\">\n", header.npart[type], prec);
+                                  fprintf(f, "    <DataItem Dimensions=\"%d\" NumberType=\"Float\" Precision=\"%d\" Format=\"HDF\">\n",
+                                          header.npart[type], prec);
                                 }
                               else
                                 {
                                   fprintf(f, "   <Attribute Name=\"%s\" AttributeType=\"Vector\" Center=\"Node\">\n", buf2);
-                                  fprintf(f, "    <DataItem Dimensions=\"%d\ 3\" NumberType=\"Float\" Precision=\"%d\" Format=\"HDF\">\n", header.npart[type], prec);
+                                  fprintf(f,
+                                          "    <DataItem Dimensions=\"%d\ 3\" NumberType=\"Float\" Precision=\"%d\" Format=\"HDF\">\n",
+                                          header.npart[type], prec);
                                 }
-
 
                               fprintf(f, "     %s:/PartType%d/%s\n", buf, type, buf2);
                               fprintf(f, "    </DataItem>\n");
                               fprintf(f, "   </Attribute>\n");
                             }
-
                         }
                     }
                 }
             }
-
-
         }
       if(npresent[type] == 1)
         {
           fprintf(f, "  </Grid>\n");
         }
-
-
     }
 
   fprintf(f, " </Domain>\n");
   fprintf(f, "</Xdmf>");
 
   fclose(f);
-
 }
 #endif /* #ifdef OUTPUT_XDMF */
-
 
 /*! \brief  A wrapper for the fwrite() function.
  *
@@ -2066,7 +2035,7 @@ void write_xdmf(char *fname)
  *
  *  \return Number of elements written to stream.
  */
-size_t my_fwrite(void *ptr, size_t size, size_t nmemb, FILE * stream)
+size_t my_fwrite(void *ptr, size_t size, size_t nmemb, FILE *stream)
 {
   size_t nwritten;
 
@@ -2084,7 +2053,7 @@ size_t my_fwrite(void *ptr, size_t size, size_t nmemb, FILE * stream)
         {
 #ifdef TOLERATE_WRITE_ERROR
           write_error(0, nwritten, nmemb);
-#else /* #ifdef TOLERATE_WRITE_ERROR */
+#else  /* #ifdef TOLERATE_WRITE_ERROR */
           printf("I/O error (fwrite) on task=%d has occured: %s\n", ThisTask, strerror(errno));
           myflush(stdout);
           terminate("write error");
@@ -2102,7 +2071,6 @@ size_t my_fwrite(void *ptr, size_t size, size_t nmemb, FILE * stream)
   return nwritten;
 }
 
-
 /*! \brief  A wrapper for the fread() function.
  *
  *  This catches I/O errors occuring for fread(). In this case we
@@ -2116,7 +2084,7 @@ size_t my_fwrite(void *ptr, size_t size, size_t nmemb, FILE * stream)
  *
  *  \return Number of elements read from stream.
  */
-size_t my_fread(void *ptr, size_t size, size_t nmemb, FILE * stream)
+size_t my_fread(void *ptr, size_t size, size_t nmemb, FILE *stream)
 {
   size_t nread;
 
@@ -2141,7 +2109,6 @@ size_t my_fread(void *ptr, size_t size, size_t nmemb, FILE * stream)
   return nread;
 }
 
-
 /*! \brief A wrapper for the printf() function.
  *
  *  This function has the same functionalities of the standard printf()
@@ -2164,7 +2131,6 @@ void mpi_printf(const char *fmt, ...)
     }
 }
 
-
 /*! \brief A wrapper for the fprintf() function.
  *
  *  This function has the same functionalities of the standard fprintf()
@@ -2175,7 +2141,7 @@ void mpi_printf(const char *fmt, ...)
  *
  *  \return void
  */
-void mpi_fprintf(FILE * stream, const char *fmt, ...)
+void mpi_fprintf(FILE *stream, const char *fmt, ...)
 {
   if(ThisTask == 0)
     {
@@ -2186,7 +2152,6 @@ void mpi_fprintf(FILE * stream, const char *fmt, ...)
       va_end(l);
     }
 }
-
 
 /*! \brief A function for printing debug information in parallel.
  *
@@ -2210,10 +2175,10 @@ void mpi_printf_each(const char *fmt, ...)
 
   if(ThisTask == 0)
     {
-      //print own message
+      // print own message
       printf("%s", buffer);
 
-      //print message from other tasks
+      // print message from other tasks
       unsigned int i;
 
       for(i = 1; i < NTask; i++)
@@ -2228,7 +2193,6 @@ void mpi_printf_each(const char *fmt, ...)
       MPI_Send(buffer, strlen(buffer) + 1, MPI_CHAR, 0, 0, MPI_COMM_WORLD);
     }
 }
-
 
 /*! \brief Opens the requested file name and returns the file descriptor.
  *

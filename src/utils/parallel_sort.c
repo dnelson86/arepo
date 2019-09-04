@@ -43,53 +43,44 @@
  *                  char *t)
  *                void parallel_sort_test_order(char *base, size_t nmemb,
  *                  size_t size, int (*compar) (const void *, const void *))
- * 
+ *
  * \par Major modifications and contributions:
- * 
+ *
  * - DD.MM.YYYY Description
  * - 21.05.2018 Prepared file for public release -- Rainer Weinberger
  */
 
-
-#include <mpi.h>
-#include <stdlib.h>
-#include <stdio.h>
-#include <string.h>
-#include <math.h>
-#include <sys/time.h>
-#include <sys/resource.h>
-#include <unistd.h>
-#include <signal.h>
 #include <gsl/gsl_rng.h>
-
+#include <math.h>
+#include <mpi.h>
+#include <signal.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <sys/resource.h>
+#include <sys/time.h>
+#include <unistd.h>
 
 #include "../main/allvars.h"
 #include "../main/proto.h"
 
-
-#define TRANSFER_SIZE_LIMIT  1000000000
-#define MAX_ITER_PARALLEL_SORT      500
-
+#define TRANSFER_SIZE_LIMIT 1000000000
+#define MAX_ITER_PARALLEL_SORT 500
 
 /* Note: For gcc-4.1.2, I found that the compiler produces incorrect code for this routune if optimization level O1 or higher is used.
  *       In  gcc-4.3.4, this problem is absent.
  */
 
+#define TAG_TRANSFER 100
 
-#define TAG_TRANSFER  100
+static void serial_sort(char *base, size_t nmemb, size_t size, int (*compar)(const void *, const void *));
+static void msort_serial_with_tmp(char *base, size_t n, size_t s, int (*compar)(const void *, const void *), char *t);
+static void get_local_rank(char *element, size_t tie_braking_rank, char *base, size_t nmemb, size_t size, size_t noffs_thistask,
+                           long long left, long long right, size_t *loc, int (*compar)(const void *, const void *));
 
-
-static void serial_sort(char *base, size_t nmemb, size_t size, int (*compar) (const void *, const void *));
-static void msort_serial_with_tmp(char *base, size_t n, size_t s, int (*compar) (const void *, const void *), char *t);
-static void get_local_rank(char *element,
-                           size_t tie_braking_rank,
-                           char *base, size_t nmemb, size_t size, size_t noffs_thistask, long long left, long long right, size_t * loc, int (*compar) (const void *, const void *));
-
-
-static int (*comparfunc) (const void *, const void *);
+static int (*comparfunc)(const void *, const void *);
 static char *median_element_list;
 static size_t element_size;
-
 
 /*! \brief Wrapper for comparison of  two elements.
  *
@@ -100,9 +91,8 @@ static size_t element_size;
  */
 int parallel_sort_indirect_compare(const void *a, const void *b)
 {
-  return (*comparfunc) (median_element_list + *((int *) a) * element_size, median_element_list + *((int *) b) * element_size);
+  return (*comparfunc)(median_element_list + *((int *)a) * element_size, median_element_list + *((int *)b) * element_size);
 }
-
 
 /*! \brief Main function to perform a parallel sort.
  *
@@ -115,11 +105,10 @@ int parallel_sort_indirect_compare(const void *a, const void *b)
  *
  *  \return Time it took to sort array.
  */
-double parallel_sort(void *base, size_t nmemb, size_t size, int (*compar) (const void *, const void *))
+double parallel_sort(void *base, size_t nmemb, size_t size, int (*compar)(const void *, const void *))
 {
   return parallel_sort_comm(base, nmemb, size, compar, MPI_COMM_WORLD);
 }
-
 
 /*! \brief Function to perform a parallel sort with specified MPI communicator.
  *
@@ -131,7 +120,7 @@ double parallel_sort(void *base, size_t nmemb, size_t size, int (*compar) (const
  *
  *  \return Time it took to sort array.
  */
-double parallel_sort_comm(void *base, size_t nmemb, size_t size, int (*compar) (const void *, const void *), MPI_Comm comm)
+double parallel_sort_comm(void *base, size_t nmemb, size_t size, int (*compar)(const void *, const void *), MPI_Comm comm)
 {
   int i, j, ranks_not_found, Local_ThisTask, Local_NTask, Local_PTask, Color, new_max_loc;
   size_t tie_braking_rank, new_tie_braking_rank, rank;
@@ -140,9 +129,9 @@ double parallel_sort_comm(void *base, size_t nmemb, size_t size, int (*compar) (
   double ta = second();
 
   /* do a serial sort of the local data up front */
-  serial_sort((char *) base, nmemb, size, compar);
+  serial_sort((char *)base, nmemb, size, compar);
 
-  /* we create a communicator that contains just those tasks with nmemb > 0. This makes 
+  /* we create a communicator that contains just those tasks with nmemb > 0. This makes
    *  it easier to deal with CPUs that do not hold any data.
    */
   if(nmemb)
@@ -156,43 +145,44 @@ double parallel_sort_comm(void *base, size_t nmemb, size_t size, int (*compar) (
 
   if(Local_NTask > 1 && Color == 1)
     {
-      for(Local_PTask = 0; Local_NTask > (1 << Local_PTask); Local_PTask++);
+      for(Local_PTask = 0; Local_NTask > (1 << Local_PTask); Local_PTask++)
+        ;
 
-      size_t *nlist = (size_t *) mymalloc("nlist", Local_NTask * sizeof(size_t));
-      size_t *noffs = (size_t *) mymalloc("noffs", Local_NTask * sizeof(size_t));
+      size_t *nlist = (size_t *)mymalloc("nlist", Local_NTask * sizeof(size_t));
+      size_t *noffs = (size_t *)mymalloc("noffs", Local_NTask * sizeof(size_t));
 
       MPI_Allgather(&nmemb, sizeof(size_t), MPI_BYTE, nlist, sizeof(size_t), MPI_BYTE, MPI_CommLocal);
 
       for(i = 1, noffs[0] = 0; i < Local_NTask; i++)
         noffs[i] = noffs[i - 1] + nlist[i - 1];
 
-      char *element_guess = mymalloc("element_guess", Local_NTask * size);
+      char *element_guess              = mymalloc("element_guess", Local_NTask * size);
       size_t *element_tie_braking_rank = mymalloc("element_tie_braking_rank", Local_NTask * sizeof(size_t));
-      size_t *desired_glob_rank = mymalloc("desired_glob_rank", Local_NTask * sizeof(size_t));
-      size_t *current_glob_rank = mymalloc("current_glob_rank", Local_NTask * sizeof(size_t));
-      size_t *current_loc_rank = mymalloc("current_loc_rank", Local_NTask * sizeof(size_t));
-      long long *range_left = mymalloc("range_left", Local_NTask * sizeof(long long));
-      long long *range_right = mymalloc("range_right", Local_NTask * sizeof(long long));
-      int *max_loc = mymalloc("max_loc", Local_NTask * sizeof(int));
+      size_t *desired_glob_rank        = mymalloc("desired_glob_rank", Local_NTask * sizeof(size_t));
+      size_t *current_glob_rank        = mymalloc("current_glob_rank", Local_NTask * sizeof(size_t));
+      size_t *current_loc_rank         = mymalloc("current_loc_rank", Local_NTask * sizeof(size_t));
+      long long *range_left            = mymalloc("range_left", Local_NTask * sizeof(long long));
+      long long *range_right           = mymalloc("range_right", Local_NTask * sizeof(long long));
+      int *max_loc                     = mymalloc("max_loc", Local_NTask * sizeof(int));
 
-      size_t *list = mymalloc("list", Local_NTask * sizeof(size_t));
-      size_t *range_len_list = mymalloc("range_len_list", Local_NTask * sizeof(long long));
-      char *median_element = mymalloc("median_element", size);
-      median_element_list = mymalloc("median_element_list", Local_NTask * size);
-      size_t *tie_braking_rank_list = mymalloc("tie_braking_rank_list", Local_NTask * sizeof(size_t));
-      int *index_list = mymalloc("index_list", Local_NTask * sizeof(int));
-      int *max_loc_list = mymalloc("max_loc_list", Local_NTask * sizeof(int));
-      size_t *source_range_len_list = mymalloc("source_range_len_list", Local_NTask * sizeof(long long));
+      size_t *list                         = mymalloc("list", Local_NTask * sizeof(size_t));
+      size_t *range_len_list               = mymalloc("range_len_list", Local_NTask * sizeof(long long));
+      char *median_element                 = mymalloc("median_element", size);
+      median_element_list                  = mymalloc("median_element_list", Local_NTask * size);
+      size_t *tie_braking_rank_list        = mymalloc("tie_braking_rank_list", Local_NTask * sizeof(size_t));
+      int *index_list                      = mymalloc("index_list", Local_NTask * sizeof(int));
+      int *max_loc_list                    = mymalloc("max_loc_list", Local_NTask * sizeof(int));
+      size_t *source_range_len_list        = mymalloc("source_range_len_list", Local_NTask * sizeof(long long));
       size_t *source_tie_braking_rank_list = mymalloc("source_tie_braking_rank_list", Local_NTask * sizeof(long long));
-      char *source_median_element_list = mymalloc("source_median_element_list", Local_NTask * size);
-      char *new_element_guess = mymalloc("new_element_guess", size);
+      char *source_median_element_list     = mymalloc("source_median_element_list", Local_NTask * size);
+      char *new_element_guess              = mymalloc("new_element_guess", size);
 
       for(i = 0; i < Local_NTask - 1; i++)
         {
           desired_glob_rank[i] = noffs[i + 1];
           current_glob_rank[i] = 0;
-          range_left[i] = 0;    /* first element that it can be */
-          range_right[i] = nmemb;       /* first element that it can not be */
+          range_left[i]        = 0;     /* first element that it can be */
+          range_right[i]       = nmemb; /* first element that it can not be */
         }
 
       /* now we determine the first split element guess, which is the same for all divisions in the first iteration */
@@ -205,7 +195,7 @@ double parallel_sort_comm(void *base, size_t nmemb, size_t size, int (*compar) (
       if(range_len >= 1)
         {
           long long mid = (range_left[0] + range_right[0]) / 2;
-          memcpy(median_element, (char *) base + mid * size, size);
+          memcpy(median_element, (char *)base + mid * size, size);
           tie_braking_rank = mid + noffs[Local_ThisTask];
         }
 
@@ -239,7 +229,7 @@ double parallel_sort_comm(void *base, size_t nmemb, size_t size, int (*compar) (
             }
 
           /* do a serial sort of the remaining elements (indirectly, so that we have the order of tie braking list as well) */
-          comparfunc = compar;
+          comparfunc   = compar;
           element_size = size;
           for(j = 0; j < nleft; j++)
             index_list[j] = j;
@@ -249,7 +239,7 @@ double parallel_sort_comm(void *base, size_t nmemb, size_t size, int (*compar) (
           int mid = nleft / 2;
           memcpy(&element_guess[0], median_element_list + index_list[mid] * size, size);
           element_tie_braking_rank[0] = tie_braking_rank_list[index_list[mid]];
-          max_loc[0] = max_loc_list[index_list[mid]];
+          max_loc[0]                  = max_loc_list[index_list[mid]];
         }
 
       MPI_Bcast(element_guess, size, MPI_BYTE, 0, MPI_CommLocal);
@@ -260,7 +250,7 @@ double parallel_sort_comm(void *base, size_t nmemb, size_t size, int (*compar) (
         {
           memcpy(element_guess + i * size, element_guess, size);
           element_tie_braking_rank[i] = element_tie_braking_rank[0];
-          max_loc[i] = max_loc[0];
+          max_loc[i]                  = max_loc[0];
         }
 
       int iter = 0;
@@ -271,12 +261,14 @@ double parallel_sort_comm(void *base, size_t nmemb, size_t size, int (*compar) (
             {
               if(current_glob_rank[i] != desired_glob_rank[i])
                 {
-                  get_local_rank(element_guess + i * size, element_tie_braking_rank[i], (char *) base, nmemb, size, noffs[Local_ThisTask], range_left[i], range_right[i], &current_loc_rank[i], compar);
+                  get_local_rank(element_guess + i * size, element_tie_braking_rank[i], (char *)base, nmemb, size,
+                                 noffs[Local_ThisTask], range_left[i], range_right[i], &current_loc_rank[i], compar);
                 }
             }
 
           /* now compute the global ranks by summing the local ranks */
-          /* Note: the last element in current_loc_rank is not defined. It will be summed by the last processor, and stored in the last element of current_glob_rank */
+          /* Note: the last element in current_loc_rank is not defined. It will be summed by the last processor, and stored in the last
+           * element of current_glob_rank */
           MPI_Alltoall(current_loc_rank, sizeof(size_t), MPI_BYTE, list, sizeof(size_t), MPI_BYTE, MPI_CommLocal);
           for(j = 0, rank = 0; j < Local_NTask; j++)
             rank += list[j];
@@ -284,7 +276,7 @@ double parallel_sort_comm(void *base, size_t nmemb, size_t size, int (*compar) (
 
           for(i = 0, ranks_not_found = 0; i < Local_NTask - 1; i++)
             {
-              if(current_glob_rank[i] != desired_glob_rank[i])  /* here we're not yet done */
+              if(current_glob_rank[i] != desired_glob_rank[i]) /* here we're not yet done */
                 {
                   ranks_not_found++;
 
@@ -301,11 +293,10 @@ double parallel_sort_comm(void *base, size_t nmemb, size_t size, int (*compar) (
                 }
             }
 
-
           /* now we need to determine new element guesses */
           for(i = 0; i < Local_NTask - 1; i++)
             {
-              if(current_glob_rank[i] != desired_glob_rank[i])  /* here we're not yet done */
+              if(current_glob_rank[i] != desired_glob_rank[i]) /* here we're not yet done */
                 {
                   /* find the median of each processor, and then take the median among those values.
                    * This should work reasonably well even for extremely skewed distributions
@@ -315,7 +306,7 @@ double parallel_sort_comm(void *base, size_t nmemb, size_t size, int (*compar) (
                   if(source_range_len_list[i] >= 1)
                     {
                       long long middle = (range_left[i] + range_right[i]) / 2;
-                      memcpy(source_median_element_list + i * size, (char *) base + middle * size, size);
+                      memcpy(source_median_element_list + i * size, (char *)base + middle * size, size);
                       source_tie_braking_rank_list[i] = middle + noffs[Local_ThisTask];
                     }
                 }
@@ -323,11 +314,13 @@ double parallel_sort_comm(void *base, size_t nmemb, size_t size, int (*compar) (
 
           MPI_Alltoall(source_range_len_list, sizeof(long long), MPI_BYTE, range_len_list, sizeof(long long), MPI_BYTE, MPI_CommLocal);
           MPI_Alltoall(source_median_element_list, size, MPI_BYTE, median_element_list, size, MPI_BYTE, MPI_CommLocal);
-          MPI_Alltoall(source_tie_braking_rank_list, sizeof(size_t), MPI_BYTE, tie_braking_rank_list, sizeof(size_t), MPI_BYTE, MPI_CommLocal);
+          MPI_Alltoall(source_tie_braking_rank_list, sizeof(size_t), MPI_BYTE, tie_braking_rank_list, sizeof(size_t), MPI_BYTE,
+                       MPI_CommLocal);
 
           if(Local_ThisTask < Local_NTask - 1)
             {
-              if(current_glob_rank[Local_ThisTask] != desired_glob_rank[Local_ThisTask])        /* in this case we're not yet done for this split point */
+              if(current_glob_rank[Local_ThisTask] !=
+                 desired_glob_rank[Local_ThisTask]) /* in this case we're not yet done for this split point */
                 {
                   for(j = 0; j < Local_NTask; j++)
                     max_loc_list[j] = j;
@@ -360,18 +353,19 @@ double parallel_sort_comm(void *base, size_t nmemb, size_t size, int (*compar) (
                         if(range_len_list[j] > max_range)
                           {
                             max_range = range_len_list[j];
-                            maxj = j;
+                            maxj      = j;
                           }
 
                       /* now select the median element from the task which has the largest range */
                       memcpy(new_element_guess, median_element_list + maxj * size, size);
                       new_tie_braking_rank = tie_braking_rank_list[maxj];
-                      new_max_loc = max_loc_list[maxj];
+                      new_max_loc          = max_loc_list[maxj];
                     }
                   else
                     {
-                      /* do a serial sort of the remaining elements (indirectly, so that we have the order of tie braking list as well) */
-                      comparfunc = compar;
+                      /* do a serial sort of the remaining elements (indirectly, so that we have the order of tie braking list as well)
+                       */
+                      comparfunc   = compar;
                       element_size = size;
                       for(j = 0; j < nleft; j++)
                         index_list[j] = j;
@@ -381,7 +375,7 @@ double parallel_sort_comm(void *base, size_t nmemb, size_t size, int (*compar) (
                       int mid = nleft / 2;
                       memcpy(new_element_guess, median_element_list + index_list[mid] * size, size);
                       new_tie_braking_rank = tie_braking_rank_list[index_list[mid]];
-                      new_max_loc = max_loc_list[index_list[mid]];
+                      new_max_loc          = max_loc_list[index_list[mid]];
                     }
                 }
               else
@@ -389,12 +383,13 @@ double parallel_sort_comm(void *base, size_t nmemb, size_t size, int (*compar) (
                   /* in order to preserve existing guesses */
                   memcpy(new_element_guess, element_guess + Local_ThisTask * size, size);
                   new_tie_braking_rank = element_tie_braking_rank[Local_ThisTask];
-                  new_max_loc = max_loc[Local_ThisTask];
+                  new_max_loc          = max_loc[Local_ThisTask];
                 }
             }
 
           MPI_Allgather(new_element_guess, size, MPI_BYTE, element_guess, size, MPI_BYTE, MPI_CommLocal);
-          MPI_Allgather(&new_tie_braking_rank, sizeof(size_t), MPI_BYTE, element_tie_braking_rank, sizeof(size_t), MPI_BYTE, MPI_CommLocal);
+          MPI_Allgather(&new_tie_braking_rank, sizeof(size_t), MPI_BYTE, element_tie_braking_rank, sizeof(size_t), MPI_BYTE,
+                        MPI_CommLocal);
           MPI_Allgather(&new_max_loc, 1, MPI_INT, max_loc, 1, MPI_INT, MPI_CommLocal);
 
           iter++;
@@ -428,8 +423,8 @@ double parallel_sort_comm(void *base, size_t nmemb, size_t size, int (*compar) (
        * and the MPI data exchange though MPI_Alltoall has to be modified such that buffers > 2 GB become possible
        */
 
-      int *send_count = mymalloc("send_count", Local_NTask * sizeof(int));
-      int *recv_count = mymalloc("recv_count", Local_NTask * sizeof(int));
+      int *send_count  = mymalloc("send_count", Local_NTask * sizeof(int));
+      int *recv_count  = mymalloc("recv_count", Local_NTask * sizeof(int));
       int *send_offset = mymalloc("send_offset", Local_NTask * sizeof(int));
       int *recv_offset = mymalloc("recv_offset", Local_NTask * sizeof(int));
 
@@ -442,7 +437,7 @@ double parallel_sort_comm(void *base, size_t nmemb, size_t size, int (*compar) (
         {
           while(target < Local_NTask - 1)
             {
-              int cmp = compar((char *) base + i * size, element_guess + target * size);
+              int cmp = compar((char *)base + i * size, element_guess + target * size);
               if(cmp == 0)
                 {
                   if(i + noffs[Local_ThisTask] < element_tie_braking_rank[target])
@@ -493,7 +488,7 @@ double parallel_sort_comm(void *base, size_t nmemb, size_t size, int (*compar) (
       memcpy(base, basetmp, nmemb * size);
       myfree(basetmp);
 
-      serial_sort((char *) base, nmemb, size, compar);
+      serial_sort((char *)base, nmemb, size, compar);
 
       myfree(recv_offset);
       myfree(send_offset);
@@ -520,7 +515,6 @@ double parallel_sort_comm(void *base, size_t nmemb, size_t size, int (*compar) (
   return timediff(ta, tb);
 }
 
-
 /*! \brief Get rank of an element.
  *
  *  \param[in] element Element of which we want the rank.
@@ -537,8 +531,8 @@ double parallel_sort_comm(void *base, size_t nmemb, size_t size, int (*compar) (
  *
  *  \return void
  */
-static void get_local_rank(char *element, size_t tie_braking_rank, char *base, size_t nmemb, size_t size, size_t noffs_thistask, long long left, long long right, size_t * loc,
-                           int (*compar) (const void *, const void *))
+static void get_local_rank(char *element, size_t tie_braking_rank, char *base, size_t nmemb, size_t size, size_t noffs_thistask,
+                           long long left, long long right, size_t *loc, int (*compar)(const void *, const void *))
 {
   if(right < left)
     terminate("right < left");
@@ -557,15 +551,15 @@ static void get_local_rank(char *element, size_t tie_braking_rank, char *base, s
         }
     }
 
-  if(right == left)             /* looks like we already converged to the proper rank */
+  if(right == left) /* looks like we already converged to the proper rank */
     {
       *loc = left;
     }
   else
     {
-      if(compar(base + (right - 1) * size, element) < 0)        /* the last element is smaller, hence all elements are on the left */
+      if(compar(base + (right - 1) * size, element) < 0) /* the last element is smaller, hence all elements are on the left */
         *loc = (right - 1) + 1;
-      else if(compar(base + left * size, element) > 0)  /* the first element is already larger, hence no element is on the left */
+      else if(compar(base + left * size, element) > 0) /* the first element is already larger, hence no element is on the left */
         *loc = left;
       else
         {
@@ -582,13 +576,13 @@ static void get_local_rank(char *element, size_t tie_braking_rank, char *base, s
                     cmp = +1;
                 }
 
-              if(cmp == 0)      /* element has exactly been found */
+              if(cmp == 0) /* element has exactly been found */
                 {
                   *loc = mid;
                   break;
                 }
 
-              if((right - 1) == left)   /* elements is not on this CPU */
+              if((right - 1) == left) /* elements is not on this CPU */
                 {
                   if(cmp < 0)
                     *loc = mid + 1;
@@ -619,7 +613,6 @@ static void get_local_rank(char *element, size_t tie_braking_rank, char *base, s
     }
 }
 
-
 /*! \brief Wrapper for serial sorting algorithm.
  *
  *  Calls a merge sort algorithm.
@@ -631,16 +624,15 @@ static void get_local_rank(char *element, size_t tie_braking_rank, char *base, s
  *
  *  \return void
  */
-static void serial_sort(char *base, size_t nmemb, size_t size, int (*compar) (const void *, const void *))
+static void serial_sort(char *base, size_t nmemb, size_t size, int (*compar)(const void *, const void *))
 {
   size_t storage = nmemb * size;
-  char *tmp = (char *) mymalloc("tmp", storage);
+  char *tmp      = (char *)mymalloc("tmp", storage);
 
   msort_serial_with_tmp(base, nmemb, size, compar, tmp);
 
   myfree(tmp);
 }
-
 
 /*! \brief Merge sort algorithm (serial).
  *
@@ -652,7 +644,7 @@ static void serial_sort(char *base, size_t nmemb, size_t size, int (*compar) (co
  *
  *  \return void
  */
-static void msort_serial_with_tmp(char *base, size_t n, size_t s, int (*compar) (const void *, const void *), char *t)
+static void msort_serial_with_tmp(char *base, size_t n, size_t s, int (*compar)(const void *, const void *), char *t)
 {
   char *tmp;
   char *b1, *b2;
@@ -695,7 +687,6 @@ static void msort_serial_with_tmp(char *base, size_t n, size_t s, int (*compar) 
   memcpy(base, t, (n - n2) * s);
 }
 
-
 /*! \brief Test function for parallel sort.
  *
  *  \param[in] base Array to be checked.
@@ -705,12 +696,12 @@ static void msort_serial_with_tmp(char *base, size_t n, size_t s, int (*compar) 
  *
  *  \return void
  */
-void parallel_sort_test_order(char *base, size_t nmemb, size_t size, int (*compar) (const void *, const void *))
+void parallel_sort_test_order(char *base, size_t nmemb, size_t size, int (*compar)(const void *, const void *))
 {
   int i, recv, send;
   size_t *nlist;
 
-  nlist = (size_t *) mymalloc("nlist", NTask * sizeof(size_t));
+  nlist = (size_t *)mymalloc("nlist", NTask * sizeof(size_t));
 
   MPI_Allgather(&nmemb, sizeof(size_t), MPI_BYTE, nlist, sizeof(size_t), MPI_BYTE, MPI_COMM_WORLD);
 

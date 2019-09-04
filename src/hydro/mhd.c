@@ -34,16 +34,12 @@
  * - 04.05.2018 Prepared file for public release -- Rainer Weinberger
  */
 
-
 #include "../main/allvars.h"
 #include "../main/proto.h"
 
-
 #ifdef MHD
 
-
 static void do_mhd_source_terms(void);
-
 
 /*! \brief First half of the MHD source terms.
  *
@@ -57,7 +53,6 @@ void do_mhd_source_terms_first_half(void)
   update_primitive_variables();
 }
 
-
 /*! \brief Second half of the MHD source terms.
  *
  *  After hydrodynamics timestep.
@@ -70,7 +65,6 @@ void do_mhd_source_terms_second_half(void)
   update_primitive_variables();
 }
 
-
 /*! \brief Adds source terms of MHD equations in expanding spacetime (i.e.
  *         in cosmological simulations) to energy.
  *
@@ -82,7 +76,7 @@ void do_mhd_source_terms(void)
 
   if(All.ComovingIntegrationOn)
     {
-      double atime = All.Time;
+      double atime    = All.Time;
       double hubble_a = hubble_function(atime);
 
       int idx, i;
@@ -92,13 +86,14 @@ void do_mhd_source_terms(void)
           if(i < 0)
             continue;
 
-          double dt_cell = 0.5 * (P[i].TimeBinHydro ? (((integertime) 1) << P[i].TimeBinHydro) : 0) * All.Timebase_interval / hubble_a; /* half the timestep of the cell */
-          SphP[i].Energy += dt_cell * 0.5 * (SphP[i].B[0] * SphP[i].B[0] + SphP[i].B[1] * SphP[i].B[1] + SphP[i].B[2] * SphP[i].B[2]) * SphP[i].Volume * atime * hubble_a;
+          double dt_cell = 0.5 * (P[i].TimeBinHydro ? (((integertime)1) << P[i].TimeBinHydro) : 0) * All.Timebase_interval /
+                           hubble_a; /* half the timestep of the cell */
+          SphP[i].Energy += dt_cell * 0.5 * (SphP[i].B[0] * SphP[i].B[0] + SphP[i].B[1] * SphP[i].B[1] + SphP[i].B[2] * SphP[i].B[2]) *
+                            SphP[i].Volume * atime * hubble_a;
         }
     }
 
   TIMER_STOP(CPU_MHD);
 }
-
 
 #endif /* #ifdef MHD */

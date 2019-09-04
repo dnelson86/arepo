@@ -30,51 +30,43 @@
  *                void fof_assign_groups_to_fuzz()
  *                void fof_get_group_fuzz_offsets(void)
  *
- * 
+ *
  * \par Major modifications and contributions:
- * 
+ *
  * - DD.MM.YYYY Description
  * - 24.05.2018 Prepared file for public release -- Rainer Weinberger
  */
 
-
+#include <gsl/gsl_math.h>
+#include <inttypes.h>
+#include <math.h>
 #include <mpi.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <math.h>
 #include <sys/stat.h>
 #include <sys/types.h>
-#include <gsl/gsl_math.h>
-#include <inttypes.h>
 
-
+#include "../domain/domain.h"
 #include "../main/allvars.h"
 #include "../main/proto.h"
-#include "../domain/domain.h"
-#include "fof.h"
 #include "../subfind/subfind.h"
-
+#include "fof.h"
 
 #if defined(FOF) & defined(FOF_FUZZ_SORT_BY_NEAREST_GROUP)
 
-
 /* maximum search radius in units of Glob_r200_max */
 #define FUZZ_MAX_GROUP_DISTANCE 10.0
-
 
 static double Glob_r200_max;
 static char *Todo;
 static MyFloat *Hsml;
 static double *NearestDist;
 
-
 static void fof_get_group_fuzz_offsets(void);
 static int fof_fuzz_nearest_group_evaluate(int target, int mode, int threadid);
 
-
 static unsigned char *flag_node_contains_grp_particle;
-
 
 /*! \brief Local data structure for collecting particle/cell data that is sent
  *         to other processors if needed. Type called data_in and static
@@ -90,7 +82,6 @@ typedef struct
 
 static data_in *DataIn, *DataGet;
 
-
 /*! \brief Routine that fills the relevant particle/cell data into the input
  *         structure defined above. Needed by generic_comm_helpers2.
  *
@@ -100,7 +91,7 @@ static data_in *DataIn, *DataGet;
  *
  *  \return void
  */
-static void particle2in(data_in * in, int i, int firstnode)
+static void particle2in(data_in *in, int i, int firstnode)
 {
 #ifdef CELL_CENTER_GRAVITY
   if(P[i].Type == 0)
@@ -121,7 +112,6 @@ static void particle2in(data_in * in, int i, int firstnode)
   in->Firstnode = firstnode;
 }
 
-
 /*! \brief Local data structure that holds results acquired on remote
  *         processors. Type called data_out and static pointers DataResult and
  *         DataOut needed by generic_comm_helpers2.
@@ -134,7 +124,6 @@ typedef struct
 
 static data_out *DataResult, *DataOut;
 
-
 /*! \brief Routine to store or combine result data. Needed by
  *         generic_comm_helpers2.
  *
@@ -146,27 +135,24 @@ static data_out *DataResult, *DataOut;
  *
  *  \return void
  */
-static void out2particle(data_out * out, int i, int mode)
+static void out2particle(data_out *out, int i, int mode)
 {
-  if(mode == MODE_LOCAL_PARTICLES)      /* initial store */
+  if(mode == MODE_LOCAL_PARTICLES) /* initial store */
     {
       NearestDist[i] = out->NearestDist;
-      PS[i].GroupNr = out->GroupNr;
+      PS[i].GroupNr  = out->GroupNr;
     }
-  else                          /* merge */
+  else /* merge */
     {
-
       if(out->NearestDist < NearestDist[i])
         {
           NearestDist[i] = out->NearestDist;
-          PS[i].GroupNr = out->GroupNr;
+          PS[i].GroupNr  = out->GroupNr;
         }
     }
 }
 
-
 #include "../utils/generic_comm_helpers2.h"
-
 
 /*! \brief Routine that defines what to do with local particles.
  *
@@ -200,7 +186,6 @@ static void kernel_local(void)
   }
 }
 
-
 /*! \brief Routine that defines what to do with imported particles.
  *
  *  Calls the *_evaluate function in MODE_IMPORTED_PARTICLES.
@@ -226,7 +211,6 @@ static void kernel_imported(void)
   }
 }
 
-
 /*! \brief Finds fuzzy particles to nearest group.
  *
  *  \return void
@@ -240,16 +224,16 @@ void fof_fuzz_nearest_group(void)
 
   mpi_printf("FOF/FUZZ: Attaching fuzz...\n");
 
-  Todo = (char *) mymalloc("Todo", NumPart * sizeof(char));
-  NearestDist = (double *) mymalloc("NearestDist", NumPart * sizeof(double));
-  Hsml = (MyFloat *) mymalloc("Hsml", NumPart * sizeof(MyFloat));
+  Todo        = (char *)mymalloc("Todo", NumPart * sizeof(char));
+  NearestDist = (double *)mymalloc("NearestDist", NumPart * sizeof(double));
+  Hsml        = (MyFloat *)mymalloc("Hsml", NumPart * sizeof(MyFloat));
 
   for(i = 0; i < NumPart; i++)
     if(PS[i].GroupNr == 0)
       {
         NearestDist[i] = MAX_REAL_NUMBER;
-        Hsml[i] = All.ForceSoftening[P[i].SofteningType];
-        Todo[i] = 1;
+        Hsml[i]        = All.ForceSoftening[P[i].SofteningType];
+        Todo[i]        = 1;
       }
     else
       Todo[i] = 0;
@@ -267,7 +251,7 @@ void fof_fuzz_nearest_group(void)
           if(Todo[i])
             {
               if(PS[i].GroupNr < 0 || Hsml[i] > FUZZ_MAX_GROUP_DISTANCE * Glob_r200_max)
-                Todo[i] = 0;    /* done */
+                Todo[i] = 0; /* done */
               if(PS[i].GroupNr == 0)
                 {
                   Hsml[i] *= 2; /* increase search radius */
@@ -283,7 +267,8 @@ void fof_fuzz_nearest_group(void)
           iter++;
 
           if(iter > 0)
-            mpi_printf("FOF/FUZZ: fuzz nearest group iteration %3d: need to repeat for %llu particles.\n", iter, (unsigned long long) ntot);
+            mpi_printf("FOF/FUZZ: fuzz nearest group iteration %3d: need to repeat for %llu particles.\n", iter,
+                       (unsigned long long)ntot);
 
           if(iter > MAXITER)
             {
@@ -301,7 +286,6 @@ void fof_fuzz_nearest_group(void)
   CPU_Step[CPU_FOF] += measure_time();
 }
 
-
 /*! \brief Evaluate function to find fuzzy particles to nearest group.
  *
  *  \param[in] target Index of particle/cell.
@@ -318,7 +302,7 @@ static int fof_fuzz_nearest_group_evaluate(int target, int mode, int threadid)
   MyFloat h;
   double xtmp, ytmp, ztmp;
   double nearestDist = MAX_REAL_NUMBER;
-  int groupNr = 0;
+  int groupNr        = 0;
   data_in local, *target_data;
   data_out out;
 
@@ -327,7 +311,7 @@ static int fof_fuzz_nearest_group_evaluate(int target, int mode, int threadid)
       particle2in(&local, target, 0);
       target_data = &local;
 
-      numnodes = 1;
+      numnodes  = 1;
       firstnode = NULL;
     }
   else
@@ -338,18 +322,18 @@ static int fof_fuzz_nearest_group_evaluate(int target, int mode, int threadid)
     }
 
   pos = target_data->Pos;
-  h = target_data->Hsml;
+  h   = target_data->Hsml;
 
   for(k = 0; k < numnodes; k++)
     {
       if(mode == MODE_LOCAL_PARTICLES)
         {
-          no = Tree_MaxPart;    /* root node */
+          no = Tree_MaxPart; /* root node */
         }
       else
         {
           no = firstnode[k];
-          no = Nodes[no].u.d.nextnode;  /* open it */
+          no = Nodes[no].u.d.nextnode; /* open it */
         }
 
       while(no >= 0)
@@ -361,33 +345,34 @@ static int fof_fuzz_nearest_group_evaluate(int target, int mode, int threadid)
               dz = GRAVITY_NEAREST_Z(Tree_Pos_list[3 * no + 2] - pos[2]);
 
               r2 = dx * dx + dy * dy + dz * dz;
-              r = sqrt(r2);
+              r  = sqrt(r2);
               if(r < nearestDist && r > 0)
                 if(PS[no].GroupNr > 0)
                   {
                     nearestDist = r;
-                    groupNr = PS[no].GroupNr;
+                    groupNr     = PS[no].GroupNr;
                   }
               no = Nextnode[no];
             }
-          else if(no < Tree_MaxPart + Tree_MaxNodes)    /* internal node */
+          else if(no < Tree_MaxPart + Tree_MaxNodes) /* internal node */
             {
               if(mode == MODE_IMPORTED_PARTICLES)
                 {
-                  if(no < Tree_FirstNonTopLevelNode)    /* we reached a top-level node again, which means that we are done with the branch */
+                  if(no <
+                     Tree_FirstNonTopLevelNode) /* we reached a top-level node again, which means that we are done with the branch */
                     break;
                 }
 
               struct NODE *current = &Nodes[no];
-              int nocur = no;
-              no = current->u.d.sibling;        /* in case the node can be discarded */
+              int nocur            = no;
+              no                   = current->u.d.sibling; /* in case the node can be discarded */
 
               if(nocur >= Tree_FirstNonTopLevelNode)
                 if(flag_node_contains_grp_particle[nocur] == 0)
                   continue;
 
               double dist = h + 0.5 * current->len;
-              dx = FOF_NEAREST_LONG_X(current->center[0] - pos[0]);
+              dx          = FOF_NEAREST_LONG_X(current->center[0] - pos[0]);
               if(dx > dist)
                 continue;
               dy = FOF_NEAREST_LONG_Y(current->center[1] - pos[1]);
@@ -402,9 +387,9 @@ static int fof_fuzz_nearest_group_evaluate(int target, int mode, int threadid)
               if(dx * dx + dy * dy + dz * dz > dist * dist)
                 continue;
 
-              no = current->u.d.nextnode;       /* ok, we need to open the node */
+              no = current->u.d.nextnode; /* ok, we need to open the node */
             }
-          else if(no >= Tree_ImportedNodeOffset)        /* point from imported nodelist */
+          else if(no >= Tree_ImportedNodeOffset) /* point from imported nodelist */
             {
               int n = no - Tree_ImportedNodeOffset;
 
@@ -413,17 +398,17 @@ static int fof_fuzz_nearest_group_evaluate(int target, int mode, int threadid)
               dz = GRAVITY_NEAREST_Z(Tree_Points[n].Pos[2] - pos[2]);
 
               r2 = dx * dx + dy * dy + dz * dz;
-              r = sqrt(r2);
+              r  = sqrt(r2);
               if(r < nearestDist && r > 0)
                 if(PS[no].GroupNr > 0)
                   {
                     nearestDist = r;
-                    groupNr = PS[no].GroupNr;
+                    groupNr     = PS[no].GroupNr;
                   }
 
               no = Nextnode[no - Tree_MaxNodes];
             }
-          else                  /* pseudo particle */
+          else /* pseudo particle */
             {
               if(mode == MODE_IMPORTED_PARTICLES)
                 terminate("mode == MODE_IMPORTED_PARTICLES");
@@ -436,7 +421,7 @@ static int fof_fuzz_nearest_group_evaluate(int target, int mode, int threadid)
         }
     }
 
-  out.GroupNr = -groupNr;
+  out.GroupNr     = -groupNr;
   out.NearestDist = nearestDist;
 
   /* Now collect the result at the right place */
@@ -447,7 +432,6 @@ static int fof_fuzz_nearest_group_evaluate(int target, int mode, int threadid)
 
   return 0;
 }
-
 
 /*! \brief Main routine to attaching fuzzy particles to nearest group.
  *
@@ -477,13 +461,14 @@ void fof_assign_groups_to_fuzz()
 #endif /* #ifdef HIERARCHICAL_GRAVITY */
 
   /* create gravity tree */
-  construct_forcetree(0, 0, 0, All.HighestOccupiedTimeBin);     /* build tree for all particles */
+  construct_forcetree(0, 0, 0, All.HighestOccupiedTimeBin); /* build tree for all particles */
 
 #ifdef HIERARCHICAL_GRAVITY
   timebin_make_list_of_active_particles_up_to_timebin(&TimeBinsGravity, All.HighestActiveTimeBin);
 #endif /* #ifdef HIERARCHICAL_GRAVITY */
 
-  flag_node_contains_grp_particle = (unsigned char *) mymalloc("flag_node_contains_grp_particle", Tree_MaxNodes * sizeof(unsigned char));
+  flag_node_contains_grp_particle =
+      (unsigned char *)mymalloc("flag_node_contains_grp_particle", Tree_MaxNodes * sizeof(unsigned char));
 
   memset(flag_node_contains_grp_particle, 0, Tree_MaxNodes * sizeof(unsigned char));
   flag_node_contains_grp_particle -= Tree_MaxPart;
@@ -497,7 +482,7 @@ void fof_assign_groups_to_fuzz()
           while(no >= 0)
             {
               flag_node_contains_grp_particle[no] = 1;
-              no = Nodes[no].u.d.father;
+              no                                  = Nodes[no].u.d.father;
             }
         }
     }
@@ -539,7 +524,6 @@ void fof_assign_groups_to_fuzz()
   mpi_printf("FOF/FUZZ: fuzz assignment done.\n");
 }
 
-
 /*! \brief Get the offset of FoF group position into fuzz parts of snapshot.
  *
  *  \return void
@@ -553,10 +537,10 @@ void fof_get_group_fuzz_offsets(void)
   long long *keyBufexp, *keyBufimp, *list_min_keys, *list_max_keys;
   long long fuzz_min_key, fuzz_max_key, key;
 
-  struct data_aux_sort *aux_sort = (struct data_aux_sort *) mymalloc("aux_sort", sizeof(struct data_aux_sort) * NumPart);
+  struct data_aux_sort *aux_sort = (struct data_aux_sort *)mymalloc("aux_sort", sizeof(struct data_aux_sort) * NumPart);
 
   /* global P[].Type=type offset */
-  list_typeNumPart = mymalloc("list_typeNumPart", NTask * sizeof(int));
+  list_typeNumPart  = mymalloc("list_typeNumPart", NTask * sizeof(int));
   typeNumPartOffset = mymalloc("typeNumPartOffset", NTask * sizeof(long long));
 
   list_min_keys = mymalloc("list_min_keys", NTask * sizeof(long long));
@@ -567,17 +551,17 @@ void fof_get_group_fuzz_offsets(void)
 
   for(i = 0; i < NumPart; i++)
     {
-      aux_sort[i].OriginTask = ThisTask;
+      aux_sort[i].OriginTask  = ThisTask;
       aux_sort[i].OriginIndex = i;
-      aux_sort[i].GrNr = PS[i].GrNr;
+      aux_sort[i].GrNr        = PS[i].GrNr;
 #ifdef SUBFIND
-      aux_sort[i].SubNr = PS[i].SubNr;
+      aux_sort[i].SubNr            = PS[i].SubNr;
       aux_sort[i].DM_BindingEnergy = PS[i].BindingEnergy;
 #endif /* #ifdef SUBFIND */
       aux_sort[i].Type = P[i].Type;
 #ifdef FOF_FUZZ_SORT_BY_NEAREST_GROUP
       aux_sort[i].key = PS[i].GroupNr;
-#else /* #ifdef FOF_FUZZ_SORT_BY_NEAREST_GROUP */
+#else  /* #ifdef FOF_FUZZ_SORT_BY_NEAREST_GROUP */
       aux_sort[i].ID = P[i].ID;
 #endif /* #ifdef FOF_FUZZ_SORT_BY_NEAREST_GROUP #else */
       ntype[P[i].Type]++;
@@ -641,8 +625,8 @@ void fof_get_group_fuzz_offsets(void)
             }
         }
 
-      keyBufexp = (long long *) mymalloc("keyBufexp", nexport * sizeof(long long));
-      keyBufimp = (long long *) mymalloc("keyBufimp", nimport * sizeof(long long));
+      keyBufexp = (long long *)mymalloc("keyBufexp", nexport * sizeof(long long));
+      keyBufimp = (long long *)mymalloc("keyBufimp", nimport * sizeof(long long));
 
       for(n = 0; n < NTask; n++)
         Send_count[n] = 0;
@@ -664,7 +648,8 @@ void fof_get_group_fuzz_offsets(void)
           for(j = Send_offset[n]; j < Send_offset[n] + Send_count[n]; j++)
             {
               if(keyBufexp[j] < list_min_keys[n] || keyBufexp[j] > list_max_keys[n])
-                terminate("FOF_FUZZ_SORT_BY_NEAREST_GROUP: keyBufexp broken %llu %llu %llu", list_min_keys[n], keyBufexp[j], list_max_keys[n]);
+                terminate("FOF_FUZZ_SORT_BY_NEAREST_GROUP: keyBufexp broken %llu %llu %llu", list_min_keys[n], keyBufexp[j],
+                          list_max_keys[n]);
             }
         }
 
@@ -677,9 +662,9 @@ void fof_get_group_fuzz_offsets(void)
             {
               if(Send_count[target] > 0 || Recv_count[target] > 0)
                 {
-                  MPI_Sendrecv(&keyBufexp[Send_offset[target]],
-                               Send_count[target] * sizeof(long long), MPI_BYTE, target, TAG_KEY,
-                               &keyBufimp[Recv_offset[target]], Recv_count[target] * sizeof(long long), MPI_BYTE, target, TAG_KEY, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
+                  MPI_Sendrecv(&keyBufexp[Send_offset[target]], Send_count[target] * sizeof(long long), MPI_BYTE, target, TAG_KEY,
+                               &keyBufimp[Recv_offset[target]], Recv_count[target] * sizeof(long long), MPI_BYTE, target, TAG_KEY,
+                               MPI_COMM_WORLD, MPI_STATUS_IGNORE);
                 }
             }
         }
@@ -721,9 +706,9 @@ void fof_get_group_fuzz_offsets(void)
             {
               if(Send_count[target] > 0 || Recv_count[target] > 0)
                 {
-                  MPI_Sendrecv(&keyBufimp[Recv_offset[target]],
-                               Recv_count[target] * sizeof(long long), MPI_BYTE, target, TAG_KEY,
-                               &keyBufexp[Send_offset[target]], Send_count[target] * sizeof(long long), MPI_BYTE, target, TAG_KEY, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
+                  MPI_Sendrecv(&keyBufimp[Recv_offset[target]], Recv_count[target] * sizeof(long long), MPI_BYTE, target, TAG_KEY,
+                               &keyBufexp[Send_offset[target]], Send_count[target] * sizeof(long long), MPI_BYTE, target, TAG_KEY,
+                               MPI_COMM_WORLD, MPI_STATUS_IGNORE);
                 }
             }
         }
@@ -742,7 +727,7 @@ void fof_get_group_fuzz_offsets(void)
                 break;
               }
           if(target == NTask)
-            Group[i].FuzzOffsetType[type] = 0;  /* not found */
+            Group[i].FuzzOffsetType[type] = 0; /* not found */
         }
 
       myfree(keyBufimp);
@@ -754,6 +739,5 @@ void fof_get_group_fuzz_offsets(void)
   myfree(list_typeNumPart);
   myfree(aux_sort);
 }
-
 
 #endif /* #if defined(FOF) & defined(FOF_FUZZ_SORT_BY_NEAREST_GROUP) */

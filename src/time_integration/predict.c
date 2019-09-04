@@ -31,23 +31,20 @@
  *                void make_list_of_active_particles(void)
  *
  * \par Major modifications and contributions:
- * 
+ *
  * - DD.MM.YYYY Description
  * - 08.05.2018 Prepared file for public release -- Rainer Weinberger
  */
 
-
+#include <gsl/gsl_math.h>
+#include <math.h>
 #include <mpi.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <math.h>
-#include <gsl/gsl_math.h>
-
 
 #include "../main/allvars.h"
 #include "../main/proto.h"
-
 
 /*! \brief This function (re)builds the time bin lists.
  *
@@ -70,13 +67,13 @@ void reconstruct_timebins(void)
 
   for(bin = 0; bin < TIMEBINS; bin++)
     {
-      TimeBinsHydro.TimeBinCount[bin] = 0;
+      TimeBinsHydro.TimeBinCount[bin]   = 0;
       TimeBinsHydro.FirstInTimeBin[bin] = -1;
-      TimeBinsHydro.LastInTimeBin[bin] = -1;
+      TimeBinsHydro.LastInTimeBin[bin]  = -1;
 
-      TimeBinsGravity.TimeBinCount[bin] = 0;
+      TimeBinsGravity.TimeBinCount[bin]   = 0;
       TimeBinsGravity.FirstInTimeBin[bin] = -1;
-      TimeBinsGravity.LastInTimeBin[bin] = -1;
+      TimeBinsGravity.LastInTimeBin[bin]  = -1;
 
 #ifdef USE_SFR
       TimeBinSfr[bin] = 0;
@@ -95,10 +92,10 @@ void reconstruct_timebins(void)
 
       if(TimeBinsHydro.TimeBinCount[bin] > 0)
         {
-          TimeBinsHydro.PrevInTimeBin[i] = TimeBinsHydro.LastInTimeBin[bin];
-          TimeBinsHydro.NextInTimeBin[i] = -1;
+          TimeBinsHydro.PrevInTimeBin[i]                                = TimeBinsHydro.LastInTimeBin[bin];
+          TimeBinsHydro.NextInTimeBin[i]                                = -1;
           TimeBinsHydro.NextInTimeBin[TimeBinsHydro.LastInTimeBin[bin]] = i;
-          TimeBinsHydro.LastInTimeBin[bin] = i;
+          TimeBinsHydro.LastInTimeBin[bin]                              = i;
         }
       else
         {
@@ -121,10 +118,10 @@ void reconstruct_timebins(void)
 
       if(TimeBinsGravity.TimeBinCount[bin] > 0)
         {
-          TimeBinsGravity.PrevInTimeBin[i] = TimeBinsGravity.LastInTimeBin[bin];
-          TimeBinsGravity.NextInTimeBin[i] = -1;
+          TimeBinsGravity.PrevInTimeBin[i]                                  = TimeBinsGravity.LastInTimeBin[bin];
+          TimeBinsGravity.NextInTimeBin[i]                                  = -1;
           TimeBinsGravity.NextInTimeBin[TimeBinsGravity.LastInTimeBin[bin]] = i;
-          TimeBinsGravity.LastInTimeBin[bin] = i;
+          TimeBinsGravity.LastInTimeBin[bin]                                = i;
         }
       else
         {
@@ -138,7 +135,6 @@ void reconstruct_timebins(void)
 
   TIMER_STOP(CPU_TIMELINE);
 }
-
 
 /*! \brief This function finds the next synchronization point of the system.
  *         (i.e. the earliest point of time any of the particles needs a force
@@ -165,19 +161,20 @@ void find_next_sync_point(void)
     {
       int active = TimeBinsHydro.TimeBinCount[n];
 
-#if (defined(SELFGRAVITY) || defined(EXTERNALGRAVITY) || defined(EXACT_GRAVITY_FOR_PARTICLE_TYPE)) && !defined(MESHRELAX)
+#if(defined(SELFGRAVITY) || defined(EXTERNALGRAVITY) || defined(EXACT_GRAVITY_FOR_PARTICLE_TYPE)) && !defined(MESHRELAX)
       active += TimeBinsGravity.TimeBinCount[n];
-#endif /* #if (defined(SELFGRAVITY) || defined(EXTERNALGRAVITY) || defined(EXACT_GRAVITY_FOR_PARTICLE_TYPE)) && !defined(MESHRELAX) */
+#endif /* #if (defined(SELFGRAVITY) || defined(EXTERNALGRAVITY) || defined(EXACT_GRAVITY_FOR_PARTICLE_TYPE)) && !defined(MESHRELAX) \
+        */
       if(active)
         {
           if(n > 0)
             {
-              dt_bin = (((integertime) 1) << n);
-              ti_next_for_bin = (All.Ti_Current / dt_bin) * dt_bin + dt_bin;    /* next kick time for this timebin */
+              dt_bin          = (((integertime)1) << n);
+              ti_next_for_bin = (All.Ti_Current / dt_bin) * dt_bin + dt_bin; /* next kick time for this timebin */
             }
           else
             {
-              dt_bin = 0;
+              dt_bin          = 0;
               ti_next_for_bin = All.Ti_Current;
             }
 
@@ -188,12 +185,12 @@ void find_next_sync_point(void)
 
 #ifdef ENLARGE_DYNAMIC_RANGE_IN_TIME
   minimum_large_ints(1, &ti_next_kick, &ti_next_kick_global);
-#else /* #ifdef ENLARGE_DYNAMIC_RANGE_IN_TIME */
+#else  /* #ifdef ENLARGE_DYNAMIC_RANGE_IN_TIME */
   MPI_Allreduce(&ti_next_kick, &ti_next_kick_global, 1, MPI_INT, MPI_MIN, MPI_COMM_WORLD);
 #endif /* #ifdef ENLARGE_DYNAMIC_RANGE_IN_TIME #else */
 
   All.Previous_Ti_Current = All.Ti_Current;
-  All.Ti_Current = ti_next_kick_global;
+  All.Ti_Current          = ti_next_kick_global;
 
   if(All.ComovingIntegrationOn)
     All.Time = All.TimeBegin * exp(All.Ti_Current * All.Timebase_interval);
@@ -208,7 +205,6 @@ void find_next_sync_point(void)
 
   TIMER_STOP(CPU_DRIFTS);
 }
-
 
 /*! \brief Sets active timebins for current time-step in global variables.
  *
@@ -248,12 +244,12 @@ void mark_active_timebins(void)
             lowest_occupied_bin = n;
         }
 
-      dt_bin = (((integertime) 1) << n);
+      dt_bin = (((integertime)1) << n);
 
       if((All.Ti_Current % dt_bin) == 0)
         {
           TimeBinSynchronized[n] = 1;
-          All.Ti_begstep[n] = All.Ti_Current;
+          All.Ti_begstep[n]      = All.Ti_Current;
 
           nsynchronized_gravity += TimeBinsGravity.TimeBinCount[n];
           nsynchronized_hydro += TimeBinsHydro.TimeBinCount[n];
@@ -279,9 +275,9 @@ void mark_active_timebins(void)
   lowest_in[1] = lowest_occupied_gravity_bin;
   lowest_in[2] = lowest_active_bin;
   MPI_Allreduce(lowest_in, lowest_out, 3, MPI_INT, MPI_MIN, MPI_COMM_WORLD);
-  All.LowestOccupiedTimeBin = lowest_out[0];
+  All.LowestOccupiedTimeBin     = lowest_out[0];
   All.LowestOccupiedGravTimeBin = lowest_out[1];
-  All.LowestActiveTimeBin = lowest_out[2];
+  All.LowestActiveTimeBin       = lowest_out[2];
 
   int highest_in[4], highest_out[4];
   highest_in[0] = highest_occupied_bin;
@@ -289,9 +285,9 @@ void mark_active_timebins(void)
   highest_in[2] = highest_active_bin;
   highest_in[3] = highest_synchronized_bin;
   MPI_Allreduce(highest_in, highest_out, 4, MPI_INT, MPI_MAX, MPI_COMM_WORLD);
-  All.HighestOccupiedTimeBin = highest_out[0];
+  All.HighestOccupiedTimeBin     = highest_out[0];
   All.HighestOccupiedGravTimeBin = highest_out[1];
-  All.HighestActiveTimeBin = highest_out[2];
+  All.HighestActiveTimeBin       = highest_out[2];
   All.HighestSynchronizedTimeBin = highest_out[3];
 
   /* note: the lowest synchronized bin is always 1 */
@@ -306,10 +302,10 @@ void mark_active_timebins(void)
 
   sumup_large_ints(2 + 2 * TIMEBINS, input_ints, output_longs);
 
-  All.GlobalNSynchronizedHydro = output_longs[0];
+  All.GlobalNSynchronizedHydro   = output_longs[0];
   All.GlobalNSynchronizedGravity = output_longs[1];
-  long long *tot_count_grav = output_longs + 2;
-  long long *tot_count_sph = output_longs + 2 + TIMEBINS;
+  long long *tot_count_grav      = output_longs + 2;
+  long long *tot_count_sph       = output_longs + 2 + TIMEBINS;
 
   long long tot_grav = 0, tot_sph = 0;
 
@@ -329,11 +325,11 @@ void mark_active_timebins(void)
 
   for(n = All.HighestOccupiedTimeBin; n >= All.LowestOccupiedTimeBin; n--)
     {
-      if(tot_count_grav[n] > All.ActivePartFracForNewDomainDecomp * tot_grav || tot_count_sph[n] > All.ActivePartFracForNewDomainDecomp * tot_sph)
+      if(tot_count_grav[n] > All.ActivePartFracForNewDomainDecomp * tot_grav ||
+         tot_count_sph[n] > All.ActivePartFracForNewDomainDecomp * tot_sph)
         All.SmallestTimeBinWithDomainDecomposition = n;
     }
 }
-
 
 /*! \brief Applies drift operation to all particles to current time.
  *
@@ -350,7 +346,6 @@ void drift_all_particles(void)
 
   TIMER_STOP(CPU_DRIFTS);
 }
-
 
 /*! \brief This function drifts drifts a particle i to time1.
  *
@@ -372,7 +367,7 @@ void drift_particle(int i, integertime time1)
     return;
 
   if(time1 < time0)
-    terminate("no prediction into past allowed: time0=%lld time1=%lld\n", (long long) time0, (long long) time1);
+    terminate("no prediction into past allowed: time0=%lld time1=%lld\n", (long long)time0, (long long)time1);
 
   double dt_drift;
 
@@ -422,7 +417,6 @@ void drift_particle(int i, integertime time1)
   P[i].Ti_Current = time1;
 }
 
-
 /*! \brief Comparison function for two integer values.
  *
  *  \param[in] a First value.
@@ -432,15 +426,14 @@ void drift_particle(int i, integertime time1)
  */
 static int int_compare(const void *a, const void *b)
 {
-  if(*((int *) a) < *((int *) b))
+  if(*((int *)a) < *((int *)b))
     return -1;
 
-  if(*((int *) a) > *((int *) b))
+  if(*((int *)a) > *((int *)b))
     return +1;
 
   return 0;
 }
-
 
 /*! \brief This function builds the linear list of active particles.
  *
@@ -500,14 +493,14 @@ void make_list_of_active_particles(void)
   int in[6];
   long long out[6];
 
-  n = 2;
+  n     = 2;
   in[0] = TimeBinsGravity.NActiveParticles;
   in[1] = TimeBinsHydro.NActiveParticles;
 
   sumup_large_ints(n, in, out);
 
   TimeBinsGravity.GlobalNActiveParticles = out[0];
-  TimeBinsHydro.GlobalNActiveParticles = out[1];
+  TimeBinsHydro.GlobalNActiveParticles   = out[1];
 
   TIMER_STOP(CPU_DRIFTS);
 }

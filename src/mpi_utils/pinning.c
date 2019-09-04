@@ -25,39 +25,33 @@
  *                void detect_topology(void)
  *                void pin_to_core_set(void)
  *                void report_pinning(void)
- * 
+ *
  * \par Major modifications and contributions:
- * 
+ *
  * - DD.MM.YYYY Description
  * - 08.05.2018 Prepared file for public release -- Rainer Weinberger
  */
 
-
+#include <gsl/gsl_math.h>
+#include <math.h>
 #include <mpi.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <math.h>
-#include <gsl/gsl_math.h>
-#include <unistd.h>
-#include <sys/types.h>
 #include <sys/syscall.h>
-
+#include <sys/types.h>
+#include <unistd.h>
 
 #include "../main/allvars.h"
 #include "../main/proto.h"
-
 
 #ifdef IMPOSE_PINNING
 #include <hwloc.h>
 #include <hwloc/bitmap.h>
 
-
 #define MAX_CORES 4096
 
-
 static int flag_pinning_error = 0;
-
 
 static hwloc_cpuset_t cpuset, cpuset_after_MPI_init;
 static hwloc_topology_t topology;
@@ -66,7 +60,6 @@ static int sockets;
 static int cores;
 static int pus;
 static int hyperthreads_per_core;
-
 
 /*! \brief Gets the current physical binding of local process.
  *
@@ -77,7 +70,6 @@ void get_core_set(void)
   cpuset = hwloc_bitmap_alloc();
   hwloc_get_proc_cpubind(topology, getpid(), cpuset, 0);
 }
-
 
 /*! \brief Determines the network topology Arepo is running on.
  *
@@ -119,7 +111,6 @@ void detect_topology(void)
     pus = hwloc_get_nbobjs_by_depth(topology, depth);
 }
 
-
 /*! \brief Pins the MPI ranks to the available core set.
  *
  *  \return void
@@ -135,7 +126,8 @@ void pin_to_core_set(void)
     num_threads = 1;
 
   mpi_printf("\n\n");
-  mpi_printf("PINNING: We have %d sockets, %d physical cores and %d logical cores on the first MPI-task's node.\n", sockets, cores, pus);
+  mpi_printf("PINNING: We have %d sockets, %d physical cores and %d logical cores on the first MPI-task's node.\n", sockets, cores,
+             pus);
   if(cores <= 0 || sockets <= 0 || pus <= 0)
     {
       mpi_printf("PINNING: The topology cannot be recognized. We refrain from any pinning attempt.\n");
@@ -176,8 +168,9 @@ void pin_to_core_set(void)
             hwloc_bitmap_set(cpuset, id);
           available_pus = pus;
           mpi_printf("PINNING: We are overridung this and make all %d available to us.\n", available_pus);
-#else /* #ifdef IMPOSE_PINNING_OVERRIDE_MODE */
-          mpi_printf("PINNING: We refrain from any pinning attempt ourselves. (This can be changed by setting USE_PINNING_OVERRIDE_MODE.)\n");
+#else  /* #ifdef IMPOSE_PINNING_OVERRIDE_MODE */
+          mpi_printf(
+              "PINNING: We refrain from any pinning attempt ourselves. (This can be changed by setting USE_PINNING_OVERRIDE_MODE.)\n");
           flag_pinning_error = 1;
           return;
 #endif /* #ifdef IMPOSE_PINNING_OVERRIDE_MODE #else */
@@ -198,7 +191,8 @@ void pin_to_core_set(void)
   mpi_printf("PINNING: %d logical cores are available per MPI Task.\n", pus_per_task);
 
   if(pus_per_task <= 0)
-    terminate("Need at least one logical core per MPI task for pinning to make sense.  available_pus=%d TasksInThisNode=%d\n", available_pus, TasksInThisNode);
+    terminate("Need at least one logical core per MPI task for pinning to make sense.  available_pus=%d TasksInThisNode=%d\n",
+              available_pus, TasksInThisNode);
 
   int depth, cid, cores_before, id_this, id_found, count;
   hwloc_obj_t obj;
@@ -229,7 +223,7 @@ void pin_to_core_set(void)
   /* cid should now be the logical index of the first PU for this MPI task */
   for(thread = 0, id_this = id_found = cid, count = 0; thread < NUM_THREADS; thread++)
     {
-      obj = hwloc_get_obj_by_depth(topology, depth, id_found);
+      obj                   = hwloc_get_obj_by_depth(topology, depth, id_found);
       cpuset_thread[thread] = hwloc_bitmap_dup(obj->cpuset);
 
       for(skip = 0; skip < pus_per_thread; skip++)
@@ -241,11 +235,11 @@ void pin_to_core_set(void)
           if(count >= pus_per_task)
             {
               id_this = cid;
-              count = 0;
+              count   = 0;
             }
           do
             {
-              obj = hwloc_get_obj_by_depth(topology, depth, id_this);
+              obj         = hwloc_get_obj_by_depth(topology, depth, id_this);
               cpuset_core = hwloc_bitmap_dup(obj->cpuset);
               if(hwloc_bitmap_isincluded(cpuset_core, cpuset))
                 {
@@ -265,7 +259,6 @@ void pin_to_core_set(void)
 
   hwloc_set_proc_cpubind(topology, getpid(), cpuset_thread[0], HWLOC_CPUBIND_PROCESS);
 }
-
 
 /*! \brief Prints pinning information for each task.
  *

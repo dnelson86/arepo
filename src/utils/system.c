@@ -54,37 +54,31 @@
  *                void sumup_longs(int n, long long *src, long long *res)
  *                size_t sizemax(size_t a, size_t b)
  *                void report_VmRSS(void)
- *                long long report_comittable_memory(long long *MemTotal, long long *Committed_AS, long long *SwapTotal, long long *SwapFree)
- *                void check_maxmemsize_setting(void)
- *                void mpi_report_committable_memory(void)
- *                int my_ffsll(peanokey i)
- *                int my_fls(int x)
- * 
+ *                long long report_comittable_memory(long long *MemTotal, long long *Committed_AS, long long *SwapTotal, long long
+ * *SwapFree) void check_maxmemsize_setting(void) void mpi_report_committable_memory(void) int my_ffsll(peanokey i) int my_fls(int x)
+ *
  * \par Major modifications and contributions:
- * 
+ *
  * - DD.MM.YYYY Description
  * - 11.05.2018 Prepared file for public release -- Rainer Weinberger
  */
 
-
+#include <gsl/gsl_rng.h>
+#include <math.h>
 #include <mpi.h>
+#include <signal.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <strings.h>
-#include <math.h>
-#include <time.h>
-#include <sys/time.h>
 #include <sys/resource.h>
+#include <sys/time.h>
 #include <sys/types.h>
+#include <time.h>
 #include <unistd.h>
-#include <signal.h>
-#include <gsl/gsl_rng.h>
-
 
 #include "../main/allvars.h"
 #include "../main/proto.h"
-
 
 /*! \brief  Divides N elements evenly on pieces chunks, writes in first and
  *          count arrays.
@@ -99,8 +93,8 @@
  */
 void subdivide_evenly(int N, int pieces, int index, int *first, int *count)
 {
-  int avg = (N - 1) / pieces + 1;
-  int exc = pieces * avg - N;
+  int avg              = (N - 1) / pieces + 1;
+  int exc              = pieces * avg - N;
   int indexlastsection = pieces - exc;
 
   if(index < indexlastsection)
@@ -115,7 +109,6 @@ void subdivide_evenly(int N, int pieces, int index, int *first, int *count)
     }
 }
 
-
 /*! \brief Permutes chunks in a list.
  *
  *  \param[in] ncount Number of elements in list.
@@ -125,28 +118,28 @@ void subdivide_evenly(int N, int pieces, int index, int *first, int *count)
  */
 void permutate_chunks_in_list(int ncount, int *list)
 {
-#define WALK_N_PIECES  32       /*!< Number of sets, the chunks are divided into */
-#define WALK_N_SIZE    500      /*!< Number of particles per chunk */
+#define WALK_N_PIECES 32 /*!< Number of sets, the chunks are divided into */
+#define WALK_N_SIZE 500  /*!< Number of particles per chunk */
 
-  int nchunk;                   /*!< Number of chunk sets used */
-  int nchunksize;               /*!< Size of each chunk */
-  int currentchunk;             /*!< Chunk set currently processed */
+  int nchunk;       /*!< Number of chunk sets used */
+  int nchunksize;   /*!< Size of each chunk */
+  int currentchunk; /*!< Chunk set currently processed */
   int nextparticle;
 
   if(ncount > WALK_N_PIECES * WALK_N_SIZE)
     {
-      nchunk = WALK_N_PIECES;
+      nchunk     = WALK_N_PIECES;
       nchunksize = WALK_N_SIZE;
     }
   else
     {
-      nchunk = 1;
+      nchunk     = 1;
       nchunksize = ncount;
     }
 
   currentchunk = 0;
 
-  int *chunked_TargetList = (int *) mymalloc("chunked_TargetList", ncount * sizeof(int));
+  int *chunked_TargetList = (int *)mymalloc("chunked_TargetList", ncount * sizeof(int));
   int n, i;
   for(n = 0, nextparticle = 0; n < ncount; n++)
     {
@@ -175,18 +168,13 @@ void permutate_chunks_in_list(int ncount, int *list)
   myfree(chunked_TargetList);
 }
 
-
 /*! \brief Returns thread number.
  *
  *  Unused.
  *
  *  \return 0
  */
-int get_thread_num(void)
-{
-  return 0;
-}
-
+int get_thread_num(void) { return 0; }
 
 /*! \brief Structure for a data of compute node.
  */
@@ -195,9 +183,7 @@ static struct node_data
   int task, this_node, first_task_in_this_node;
   int first_index, rank_in_node, tasks_in_node;
   char name[MPI_MAX_PROCESSOR_NAME];
-}
-loc_node, *list_of_nodes;
-
+} loc_node, *list_of_nodes;
 
 /*! \brief Compares first nodename and then task of node_data objects.
  *
@@ -210,11 +196,11 @@ loc_node, *list_of_nodes;
  */
 int system_compare_hostname(const void *a, const void *b)
 {
-  int cmp = strcmp(((struct node_data *) a)->name, ((struct node_data *) b)->name);
+  int cmp = strcmp(((struct node_data *)a)->name, ((struct node_data *)b)->name);
 
   if(cmp == 0)
     {
-      if(((struct node_data *) a)->task < ((struct node_data *) b)->task)
+      if(((struct node_data *)a)->task < ((struct node_data *)b)->task)
         cmp = -1;
       else
         cmp = +1;
@@ -222,7 +208,6 @@ int system_compare_hostname(const void *a, const void *b)
 
   return cmp;
 }
-
 
 /*! \brief Compares node_data objects; first first_task_this_node and then
  *         task.
@@ -236,21 +221,20 @@ int system_compare_hostname(const void *a, const void *b)
  */
 int system_compare_first_task(const void *a, const void *b)
 {
-  if(((struct node_data *) a)->first_task_in_this_node < ((struct node_data *) b)->first_task_in_this_node)
+  if(((struct node_data *)a)->first_task_in_this_node < ((struct node_data *)b)->first_task_in_this_node)
     return -1;
 
-  if(((struct node_data *) a)->first_task_in_this_node > ((struct node_data *) b)->first_task_in_this_node)
+  if(((struct node_data *)a)->first_task_in_this_node > ((struct node_data *)b)->first_task_in_this_node)
     return +1;
 
-  if(((struct node_data *) a)->task < ((struct node_data *) b)->task)
+  if(((struct node_data *)a)->task < ((struct node_data *)b)->task)
     return -1;
 
-  if(((struct node_data *) a)->task > ((struct node_data *) b)->task)
+  if(((struct node_data *)a)->task > ((struct node_data *)b)->task)
     return +1;
 
   return 0;
 }
-
 
 /*! \brief Compares task of node_data objects
  *
@@ -263,15 +247,14 @@ int system_compare_first_task(const void *a, const void *b)
  */
 int system_compare_task(const void *a, const void *b)
 {
-  if(((struct node_data *) a)->task < ((struct node_data *) b)->task)
+  if(((struct node_data *)a)->task < ((struct node_data *)b)->task)
     return -1;
 
-  if(((struct node_data *) a)->task > ((struct node_data *) b)->task)
+  if(((struct node_data *)a)->task > ((struct node_data *)b)->task)
     return +1;
 
   return 0;
 }
-
 
 /*! \brief Determines the compute nodes the simulation is running on.
  *
@@ -286,7 +269,8 @@ void determine_compute_nodes(void)
   MPI_Get_processor_name(loc_node.name, &len);
   loc_node.task = ThisTask;
 
-  list_of_nodes = malloc(sizeof(struct node_data) * NTask);     /* Note: Internal memory allocation routines are not yet available when this function is called */
+  list_of_nodes = malloc(sizeof(struct node_data) *
+                         NTask); /* Note: Internal memory allocation routines are not yet available when this function is called */
 
   MPI_Allgather(&loc_node, sizeof(struct node_data), MPI_BYTE, list_of_nodes, sizeof(struct node_data), MPI_BYTE, MPI_COMM_WORLD);
 
@@ -325,12 +309,12 @@ void determine_compute_nodes(void)
       if(i ? list_of_nodes[i].first_task_in_this_node != list_of_nodes[i - 1].first_task_in_this_node : 0)
         {
           no++;
-          rank = 0;
+          rank        = 0;
           first_index = i;
         }
 
-      list_of_nodes[i].first_index = first_index;
-      list_of_nodes[i].this_node = no;
+      list_of_nodes[i].first_index  = first_index;
+      list_of_nodes[i].this_node    = no;
       list_of_nodes[i].rank_in_node = rank++;
       list_of_nodes[first_index].tasks_in_node++;
     }
@@ -351,17 +335,16 @@ void determine_compute_nodes(void)
   qsort(list_of_nodes, NTask, sizeof(struct node_data), system_compare_task);
 
   TasksInThisNode = list_of_nodes[ThisTask].tasks_in_node;
-  RankInThisNode = list_of_nodes[ThisTask].rank_in_node;
+  RankInThisNode  = list_of_nodes[ThisTask].rank_in_node;
 
   ThisNode = list_of_nodes[ThisTask].this_node;
 
-  NumNodes = nodes;
+  NumNodes        = nodes;
   MinTasksPerNode = min_count;
   MaxTasksPerNode = max_count;
 
   free(list_of_nodes);
 }
-
 
 /*! \brief Home-made Allreduce function for double variables with sum reduction
  *         operation, optimized for sparse vectors.
@@ -379,14 +362,14 @@ void allreduce_sparse_double_sum(double *loc, double *glob, int N)
 {
   int i, j, n, loc_first_n, nimport, nexport, task, ngrp;
 
-  int *send_count = mymalloc("send_count", sizeof(int) * NTask);
-  int *recv_count = mymalloc("recv_count", sizeof(int) * NTask);
+  int *send_count  = mymalloc("send_count", sizeof(int) * NTask);
+  int *recv_count  = mymalloc("recv_count", sizeof(int) * NTask);
   int *send_offset = mymalloc("send_offset", sizeof(int) * NTask);
   int *recv_offset = mymalloc("recv_offset", sizeof(int) * NTask);
-  int *blocksize = mymalloc("blocksize", sizeof(int) * NTask);
+  int *blocksize   = mymalloc("blocksize", sizeof(int) * NTask);
 
-  int blk = N / NTask;
-  int rmd = N - blk * NTask;    /* remainder */
+  int blk     = N / NTask;
+  int rmd     = N - blk * NTask; /* remainder */
   int pivot_n = rmd * (blk + 1);
 
   for(task = 0, loc_first_n = 0; task < NTask; task++)
@@ -414,7 +397,7 @@ void allreduce_sparse_double_sum(double *loc, double *glob, int N)
           if(n < pivot_n)
             task = n / (blk + 1);
           else
-            task = rmd + (n - pivot_n) / blk;   /* note: if blk=0, then this case can not occur */
+            task = rmd + (n - pivot_n) / blk; /* note: if blk=0, then this case can not occur */
 
           send_count[task]++;
         }
@@ -437,8 +420,7 @@ void allreduce_sparse_double_sum(double *loc, double *glob, int N)
   {
     int n;
     double val;
-  }
-   *export_data, *import_data;
+  } * export_data, *import_data;
 
   export_data = mymalloc("export_data", nexport * sizeof(struct ind_data));
   import_data = mymalloc("import_data", nimport * sizeof(struct ind_data));
@@ -453,21 +435,22 @@ void allreduce_sparse_double_sum(double *loc, double *glob, int N)
           if(n < pivot_n)
             task = n / (blk + 1);
           else
-            task = rmd + (n - pivot_n) / blk;   /* note: if blk=0, then this case can not occur */
+            task = rmd + (n - pivot_n) / blk; /* note: if blk=0, then this case can not occur */
 
-          int index = send_offset[task] + send_count[task]++;
-          export_data[index].n = n;
+          int index              = send_offset[task] + send_count[task]++;
+          export_data[index].n   = n;
           export_data[index].val = loc[n];
         }
     }
 
-  for(ngrp = 0; ngrp < (1 << PTask); ngrp++)    /* note: here we also have a transfer from each task to itself (for ngrp=0) */
+  for(ngrp = 0; ngrp < (1 << PTask); ngrp++) /* note: here we also have a transfer from each task to itself (for ngrp=0) */
     {
       int recvTask = ThisTask ^ ngrp;
       if(recvTask < NTask)
         if(send_count[recvTask] > 0 || recv_count[recvTask] > 0)
-          MPI_Sendrecv(&export_data[send_offset[recvTask]], send_count[recvTask] * sizeof(struct ind_data), MPI_BYTE,
-                       recvTask, TAG_DENS_B, &import_data[recv_offset[recvTask]], recv_count[recvTask] * sizeof(struct ind_data), MPI_BYTE, recvTask, TAG_DENS_B, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
+          MPI_Sendrecv(&export_data[send_offset[recvTask]], send_count[recvTask] * sizeof(struct ind_data), MPI_BYTE, recvTask,
+                       TAG_DENS_B, &import_data[recv_offset[recvTask]], recv_count[recvTask] * sizeof(struct ind_data), MPI_BYTE,
+                       recvTask, TAG_DENS_B, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
     }
 
   for(i = 0; i < nimport; i++)
@@ -484,8 +467,8 @@ void allreduce_sparse_double_sum(double *loc, double *glob, int N)
   myfree(export_data);
 
   /* now share the cost data across all processors */
-  int *bytecounts = (int *) mymalloc("bytecounts", sizeof(int) * NTask);
-  int *byteoffset = (int *) mymalloc("byteoffset", sizeof(int) * NTask);
+  int *bytecounts = (int *)mymalloc("bytecounts", sizeof(int) * NTask);
+  int *byteoffset = (int *)mymalloc("byteoffset", sizeof(int) * NTask);
 
   for(task = 0; task < NTask; task++)
     bytecounts[task] = blocksize[task] * sizeof(double);
@@ -506,7 +489,6 @@ void allreduce_sparse_double_sum(double *loc, double *glob, int N)
   myfree(send_count);
 }
 
-
 /*! \brief Home-made Allreduce function for int variables with minimum as a
  *         reduction operation.
  *
@@ -523,14 +505,14 @@ void allreduce_sparse_imin(int *loc, int *glob, int N)
 {
   int i, j, n, loc_first_n, nimport, nexport, task, ngrp;
 
-  int *send_count = mymalloc("send_count", sizeof(int) * NTask);
-  int *recv_count = mymalloc("recv_count", sizeof(int) * NTask);
+  int *send_count  = mymalloc("send_count", sizeof(int) * NTask);
+  int *recv_count  = mymalloc("recv_count", sizeof(int) * NTask);
   int *send_offset = mymalloc("send_offset", sizeof(int) * NTask);
   int *recv_offset = mymalloc("recv_offset", sizeof(int) * NTask);
-  int *blocksize = mymalloc("blocksize", sizeof(int) * NTask);
+  int *blocksize   = mymalloc("blocksize", sizeof(int) * NTask);
 
-  int blk = N / NTask;
-  int rmd = N - blk * NTask;    /* remainder */
+  int blk     = N / NTask;
+  int rmd     = N - blk * NTask; /* remainder */
   int pivot_n = rmd * (blk + 1);
 
   for(task = 0, loc_first_n = 0; task < NTask; task++)
@@ -561,7 +543,7 @@ void allreduce_sparse_imin(int *loc, int *glob, int N)
           if(n < pivot_n)
             task = n / (blk + 1);
           else
-            task = rmd + (n - pivot_n) / blk;   /* note: if blk=0, then this case can not occur */
+            task = rmd + (n - pivot_n) / blk; /* note: if blk=0, then this case can not occur */
 
           send_count[task]++;
         }
@@ -584,8 +566,7 @@ void allreduce_sparse_imin(int *loc, int *glob, int N)
   {
     int n;
     int val;
-  }
-   *export_data, *import_data;
+  } * export_data, *import_data;
 
   export_data = mymalloc("export_data", nexport * sizeof(struct ind_data));
   import_data = mymalloc("import_data", nimport * sizeof(struct ind_data));
@@ -600,21 +581,22 @@ void allreduce_sparse_imin(int *loc, int *glob, int N)
           if(n < pivot_n)
             task = n / (blk + 1);
           else
-            task = rmd + (n - pivot_n) / blk;   /* note: if blk=0, then this case can not occur */
+            task = rmd + (n - pivot_n) / blk; /* note: if blk=0, then this case can not occur */
 
-          int index = send_offset[task] + send_count[task]++;
-          export_data[index].n = n;
+          int index              = send_offset[task] + send_count[task]++;
+          export_data[index].n   = n;
           export_data[index].val = loc[n];
         }
     }
 
-  for(ngrp = 0; ngrp < (1 << PTask); ngrp++)    /* note: here we also have a transfer from each task to itself (for ngrp=0) */
+  for(ngrp = 0; ngrp < (1 << PTask); ngrp++) /* note: here we also have a transfer from each task to itself (for ngrp=0) */
     {
       int recvTask = ThisTask ^ ngrp;
       if(recvTask < NTask)
         if(send_count[recvTask] > 0 || recv_count[recvTask] > 0)
-          MPI_Sendrecv(&export_data[send_offset[recvTask]], send_count[recvTask] * sizeof(struct ind_data), MPI_BYTE,
-                       recvTask, TAG_DENS_B, &import_data[recv_offset[recvTask]], recv_count[recvTask] * sizeof(struct ind_data), MPI_BYTE, recvTask, TAG_DENS_B, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
+          MPI_Sendrecv(&export_data[send_offset[recvTask]], send_count[recvTask] * sizeof(struct ind_data), MPI_BYTE, recvTask,
+                       TAG_DENS_B, &import_data[recv_offset[recvTask]], recv_count[recvTask] * sizeof(struct ind_data), MPI_BYTE,
+                       recvTask, TAG_DENS_B, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
     }
 
   for(i = 0; i < nimport; i++)
@@ -631,8 +613,8 @@ void allreduce_sparse_imin(int *loc, int *glob, int N)
   myfree(export_data);
 
   /* now share the cost data across all processors */
-  int *bytecounts = (int *) mymalloc("bytecounts", sizeof(int) * NTask);
-  int *byteoffset = (int *) mymalloc("byteoffset", sizeof(int) * NTask);
+  int *bytecounts = (int *)mymalloc("bytecounts", sizeof(int) * NTask);
+  int *byteoffset = (int *)mymalloc("byteoffset", sizeof(int) * NTask);
 
   for(task = 0; task < NTask; task++)
     bytecounts[task] = blocksize[task] * sizeof(int);
@@ -653,7 +635,6 @@ void allreduce_sparse_imin(int *loc, int *glob, int N)
   myfree(send_count);
 }
 
-
 /*! \brief Wrapper function for quicksort.
  *
  *  \param[in, out] base Array to be sorted.
@@ -663,7 +644,7 @@ void allreduce_sparse_imin(int *loc, int *glob, int N)
  *
  *  \return The elapsed CPU time.
  */
-double mysort(void *base, size_t nel, size_t width, int (*compar) (const void *, const void *))
+double mysort(void *base, size_t nel, size_t width, int (*compar)(const void *, const void *))
 {
   double t0, t1;
 
@@ -675,7 +656,6 @@ double mysort(void *base, size_t nel, size_t width, int (*compar) (const void *,
 
   return timediff(t0, t1);
 }
-
 
 /*! \brief Absolute value of a double variable.
  *
@@ -690,7 +670,6 @@ double dabs(double a)
   else
     return a;
 }
-
 
 /*! \brief Maximum value of two double variables.
  *
@@ -707,7 +686,6 @@ double dmax(double a, double b)
     return b;
 }
 
-
 /*! \brief Maximum value of two size_t type variables.
  *
  *  \param[in] a First variable.
@@ -723,7 +701,6 @@ size_t smax(size_t a, size_t b)
     return b;
 }
 
-
 /*! \brief Minimum value of two double variables.
  *
  *  \param[in] a First variable.
@@ -738,7 +715,6 @@ double dmin(double a, double b)
   else
     return b;
 }
-
 
 /*! \brief Maximum value in an array of double variables.
  *
@@ -761,7 +737,6 @@ double max_array(double *a, int num_elements)
   return (max);
 }
 
-
 /*! \brief Maximum value of two integers.
  *
  *  \param[in] a First integer variable.
@@ -776,7 +751,6 @@ int imax(int a, int b)
   else
     return b;
 }
-
 
 /*! \brief Minimum value of two integers.
  *
@@ -793,23 +767,21 @@ int imin(int a, int b)
     return b;
 }
 
-
 /*! \brief Flush (i.e. empty buffer) of a file output stream.
  *
  *  \brief[in] fstream Pointer to file output.
  *
  *   \return Status.
  */
-int myflush(FILE * fstream)
+int myflush(FILE *fstream)
 {
 #ifdef REDUCE_FLUSH
   /* do nothing */
   return 0;
-#else /* #ifdef REDUCE_FLUSH */
+#else  /* #ifdef REDUCE_FLUSH */
   return fflush(fstream);
 #endif /* #ifdef REDUCE_FLUSH #else */
 }
-
 
 /*! \brief Flush for all global log-files.
  *
@@ -821,7 +793,7 @@ int flush_everything(void)
 {
 #ifndef REDUCE_FLUSH
   return 0;
-#else /* #ifndef REDUCE_FLUSH */
+#else  /* #ifndef REDUCE_FLUSH */
   if(ThisTask == 0)
     {
       if((CPUThisRun - All.FlushLast) < All.FlushCpuTimeDiff)
@@ -861,7 +833,6 @@ int flush_everything(void)
   return 1;
 }
 
-
 #ifdef DEBUG
 #include <fenv.h>
 /*! \brief Allows core dumps that are readable by debugger.
@@ -898,7 +869,6 @@ void enable_core_dumps_and_fpu_exceptions(void)
 }
 #endif /* #ifdef DEBUG */
 
-
 /*! \brief Wrapper for error handling; terminates code.
  *
  *  \param[in] reason Error message.
@@ -910,39 +880,27 @@ void enable_core_dumps_and_fpu_exceptions(void)
  */
 void my_gsl_error_handler(const char *reason, const char *file, int line, int gsl_errno)
 {
-  terminate("GSL has reported an error: reason='%s', error handler called from file '%s', line %d, with error code %d", reason, file, line, gsl_errno);
+  terminate("GSL has reported an error: reason='%s', error handler called from file '%s', line %d, with error code %d", reason, file,
+            line, gsl_errno);
 }
-
 
 /*! \brief Returns a random number from standard random number generator.
  *
  *  \return Random number [0,1).
  */
-double get_random_number(void)
-{
-  return gsl_rng_uniform(random_generator);
-}
-
+double get_random_number(void) { return gsl_rng_uniform(random_generator); }
 
 /*! \brief Returns a random number from auxiliary random number generator.
  *
  *  \return Random number [0,1).
  */
-double get_random_number_aux(void)
-{
-  return gsl_rng_uniform(random_generator_aux);
-}
-
+double get_random_number_aux(void) { return gsl_rng_uniform(random_generator_aux); }
 
 /*! \brief Wall-clock time in seconds.
  *
  *  \return The current value of time as a floating-point value.
  */
-double second(void)
-{
-  return MPI_Wtime();
-}
-
+double second(void) { return MPI_Wtime(); }
 
 /*! \brief Timing routine.
  *
@@ -955,13 +913,12 @@ double measure_time(void)
 {
   double t, dt;
 
-  t = second();
-  dt = t - WallclockTime;
+  t             = second();
+  dt            = t - WallclockTime;
   WallclockTime = t;
 
   return dt;
 }
-
 
 /*! \brief Time difference.
  *
@@ -980,18 +937,17 @@ double timediff(double t0, double t1)
 
   dt = t1 - t0;
 
-  if(dt < 0)                    /* overflow has occured (for systems with 32bit tick counter) */
+  if(dt < 0) /* overflow has occured (for systems with 32bit tick counter) */
     {
 #ifdef WALLCLOCK
       dt = 0;
-#else /* #ifdef WALLCLOCK */
+#else  /* #ifdef WALLCLOCK */
       dt = t1 + pow(2, 32) / CLOCKS_PER_SEC - t0;
 #endif /* #ifdef WALLCLOCK #else */
     }
 
   return dt;
 }
-
 
 /*! \brief Global minimum of long long variables.
  *
@@ -1014,7 +970,6 @@ void minimum_large_ints(int n, long long *src, long long *res)
     MPI_Allreduce(src, res, n, MPI_LONG_LONG_INT, MPI_MIN, MPI_COMM_WORLD);
 }
 
-
 /*! \brief Global sum of an array of int variables into a long long.
  *
  *  Can be used with arbitrary MPI communicator.
@@ -1036,7 +991,6 @@ void sumup_large_ints_comm(int n, int *src, long long *res, MPI_Comm comm)
   MPI_Allreduce(lsrc, res, n, MPI_LONG_LONG_INT, MPI_SUM, comm);
 }
 
-
 /*! \brief Global sum of an array of int variables into a long long.
  *
  *  To prevent overflow when summing up; wrapper funciton for
@@ -1048,11 +1002,7 @@ void sumup_large_ints_comm(int n, int *src, long long *res, MPI_Comm comm)
  *
  *  \return void
  */
-void sumup_large_ints(int n, int *src, long long *res)
-{
-  sumup_large_ints_comm(n, src, res, MPI_COMM_WORLD);
-}
-
+void sumup_large_ints(int n, int *src, long long *res) { sumup_large_ints_comm(n, src, res, MPI_COMM_WORLD); }
 
 /*! \brief Global sum of an array of long long variables.
  *
@@ -1077,7 +1027,6 @@ void sumup_longs(int n, long long *src, long long *res)
     MPI_Allreduce(src, res, n, MPI_LONG_LONG_INT, MPI_SUM, MPI_COMM_WORLD);
 }
 
-
 /*! \brief Compares two elements of type size_t.
  *
  *  \param[in] a First element.
@@ -1092,7 +1041,6 @@ size_t sizemax(size_t a, size_t b)
   else
     return a;
 }
-
 
 /*! \brief Reads from process info file of linux system.
  *
@@ -1127,7 +1075,6 @@ void report_VmRSS(void)
       fclose(fd);
     }
 }
-
 
 /*! \brief Reads from memory info file of Linux system.
  *
@@ -1168,7 +1115,6 @@ long long report_comittable_memory(long long *MemTotal, long long *Committed_AS,
   return (*MemTotal - *Committed_AS);
 }
 
-
 /*! \brief Checks if parameter max memsize is smaller than avialable memory.
  *
  *  \return void
@@ -1180,7 +1126,7 @@ void check_maxmemsize_setting(void)
   if(All.MaxMemSize > (MemoryOnNode / 1024.0 / TasksInThisNode) && RankInThisNode == 0)
     {
       printf("On node '%s', we have %d MPI ranks and at most %g MB available. This is not enough space for MaxMemSize = %g MB\n",
-             loc_node.name, TasksInThisNode, MemoryOnNode / 1024.0, (double) All.MaxMemSize);
+             loc_node.name, TasksInThisNode, MemoryOnNode / 1024.0, (double)All.MaxMemSize);
       errflag = 1;
       fflush(stdout);
     }
@@ -1191,7 +1137,6 @@ void check_maxmemsize_setting(void)
     mpi_terminate("Not enough memory error!");
 #endif /* #ifndef __OSX__ */
 }
-
 
 /*! \brief Gathers memory information from tasks and write them stdout.
  *
@@ -1214,10 +1159,11 @@ void mpi_report_committable_memory(void)
 
   for(imem = 0; imem < 6; imem++)
     {
-      sizelist = (long long *) malloc(NTask * sizeof(long long));
+      sizelist = (long long *)malloc(NTask * sizeof(long long));
       MPI_Allgather(&Mem[imem], sizeof(long long), MPI_BYTE, sizelist, sizeof(long long), MPI_BYTE, MPI_COMM_WORLD);
 
-      for(i = 1, mintask[imem] = 0, maxtask[imem] = 0, maxsize[imem] = minsize[imem] = sizelist[0], avgsize[imem] = sizelist[0]; i < NTask; i++)
+      for(i = 1, mintask[imem] = 0, maxtask[imem] = 0, maxsize[imem] = minsize[imem] = sizelist[0], avgsize[imem] = sizelist[0];
+          i < NTask; i++)
         {
           if(sizelist[i] > maxsize[imem])
             {
@@ -1237,35 +1183,38 @@ void mpi_report_committable_memory(void)
 
   if(ThisTask == 0)
     {
-      printf("\n-------------------------------------------------------------------------------------------------------------------------\n");
+      printf(
+          "\n-------------------------------------------------------------------------------------------------------------------------"
+          "\n");
       for(imem = 0; imem < 6; imem++)
         {
-          switch (imem)
+          switch(imem)
             {
-            case 0:
-              sprintf(label, "AvailMem");
-              break;
-            case 1:
-              sprintf(label, "Total Mem");
-              break;
-            case 2:
-              sprintf(label, "Committed_AS");
-              break;
-            case 3:
-              sprintf(label, "SwapTotal");
-              break;
-            case 4:
-              sprintf(label, "SwapFree");
-              break;
-            case 5:
-              sprintf(label, "AllocMem");
-              break;
+              case 0:
+                sprintf(label, "AvailMem");
+                break;
+              case 1:
+                sprintf(label, "Total Mem");
+                break;
+              case 2:
+                sprintf(label, "Committed_AS");
+                break;
+              case 3:
+                sprintf(label, "SwapTotal");
+                break;
+              case 4:
+                sprintf(label, "SwapFree");
+                break;
+              case 5:
+                sprintf(label, "AllocMem");
+                break;
             }
-          printf
-            ("%s:\t Largest = %10.2f Mb (on task=%4d), Smallest = %10.2f Mb (on task=%4d), Average = %10.2f Mb\n",
-             label, maxsize[imem] / (1024.0), maxtask[imem], minsize[imem] / (1024.0), mintask[imem], avgsize[imem] / (1024.0 * NTask));
+          printf("%s:\t Largest = %10.2f Mb (on task=%4d), Smallest = %10.2f Mb (on task=%4d), Average = %10.2f Mb\n", label,
+                 maxsize[imem] / (1024.0), maxtask[imem], minsize[imem] / (1024.0), mintask[imem], avgsize[imem] / (1024.0 * NTask));
         }
-      printf("-------------------------------------------------------------------------------------------------------------------------\n");
+      printf(
+          "-------------------------------------------------------------------------------------------------------------------------"
+          "\n");
     }
 
   char name[MPI_MAX_PROCESSOR_NAME];
@@ -1281,12 +1230,13 @@ void mpi_report_committable_memory(void)
   if(ThisTask == 0)
     {
       printf("Task=%d has the maximum commited memory and is host: %s\n", maxtask[2], name);
-      printf("~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~\n");
+      printf(
+          "~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~"
+          "\n");
     }
 
   fflush(stdout);
 }
-
 
 /*! \brief Find the first bit set in the argument.
  *
@@ -1306,7 +1256,6 @@ int my_ffsll(peanokey i)
 
   return res + ffs(i);
 }
-
 
 /*! \brief Finds last bit set in x.
  *

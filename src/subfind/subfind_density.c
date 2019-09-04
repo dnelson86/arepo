@@ -29,35 +29,30 @@
  *                static int subfind_density_evaluate(int target, int mode,
  *                  int threadid)
  *                void subfind_density_hsml_guess(void)
- * 
- * 
+ *
+ *
  * \par Major modifications and contributions:
- * 
+ *
  * - DD.MM.YYYY Description
  * - 15.05.2018 Prepared file for public release -- Rainer Weinberger
  */
 
-
+#include <gsl/gsl_math.h>
+#include <math.h>
 #include <mpi.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <math.h>
-#include <gsl/gsl_math.h>
 #include <sys/stat.h>
 #include <sys/types.h>
-
 
 #include "../main/allvars.h"
 #include "../main/proto.h"
 
-
 #ifdef SUBFIND
-
 
 #include "../fof/fof.h"
 #include "subfind.h"
-
 
 static char *Todo;
 static int *DM_NumNgb;
@@ -65,9 +60,7 @@ static int *DM_NumNgb;
 static MyFloat *Vx, *Vy, *Vz;
 #endif /* #ifdef SUBFIND_CALC_MORE */
 
-
 static int subfind_density_evaluate(int target, int mode, int threadid);
-
 
 /*! \brief Local data structure for collecting particle/cell data that is sent
  *         to other processors if needed. Type called data_in and static
@@ -83,7 +76,6 @@ typedef struct
 
 static data_in *DataIn, *DataGet;
 
-
 /*! \brief Routine that fills the relevant particle/cell data into the input
  *         structure defined above. Needed by generic_comm_helpers2.
  *
@@ -93,7 +85,7 @@ static data_in *DataIn, *DataGet;
  *
  *  \return void
  */
-static void particle2in(data_in * in, int i, int firstnode)
+static void particle2in(data_in *in, int i, int firstnode)
 {
 #ifdef CELL_CENTER_GRAVITY
   if(P[i].Type == 0)
@@ -114,7 +106,6 @@ static void particle2in(data_in * in, int i, int firstnode)
   in->Firstnode = firstnode;
 }
 
-
 /*! \brief Local data structure that holds results acquired on remote
  *         processors. Type called data_out and static pointers DataResult and
  *         DataOut needed by generic_comm_helpers2.
@@ -125,11 +116,10 @@ typedef struct
   MyFloat Rho;
 #ifdef SUBFIND_CALC_MORE
   MyFloat VelDisp, Vx, Vy, Vz, RhoDM;
-#endif                          /* #ifdef SUBFIND_CALC_MORE */
+#endif /* #ifdef SUBFIND_CALC_MORE */
 } data_out;
 
 static data_out *DataResult, *DataOut;
-
 
 /*! \brief Routine to store or combine result data. Needed by
  *         generic_comm_helpers2.
@@ -142,21 +132,21 @@ static data_out *DataResult, *DataOut;
  *
  *  \return void
  */
-static void out2particle(data_out * out, int i, int mode)
+static void out2particle(data_out *out, int i, int mode)
 {
-  if(mode == MODE_LOCAL_PARTICLES)      /* initial store */
+  if(mode == MODE_LOCAL_PARTICLES) /* initial store */
     {
-      DM_NumNgb[i] = out->Ngb;
+      DM_NumNgb[i]  = out->Ngb;
       PS[i].Density = out->Rho;
 #ifdef SUBFIND_CALC_MORE
-      Vx[i] = out->Vx;
-      Vy[i] = out->Vy;
-      Vz[i] = out->Vz;
-      PS[i].SubfindVelDisp = out->VelDisp;
+      Vx[i]                  = out->Vx;
+      Vy[i]                  = out->Vy;
+      Vz[i]                  = out->Vz;
+      PS[i].SubfindVelDisp   = out->VelDisp;
       PS[i].SubfindDMDensity = out->RhoDM;
 #endif /* #ifdef SUBFIND_CALC_MORE */
     }
-  else                          /* combine */
+  else /* combine */
     {
       DM_NumNgb[i] += out->Ngb;
       PS[i].Density += out->Rho;
@@ -170,9 +160,7 @@ static void out2particle(data_out * out, int i, int mode)
     }
 }
 
-
 #include "../utils/generic_comm_helpers2.h"
-
 
 /*! \brief Routine that defines what to do with local particles.
  *
@@ -206,7 +194,6 @@ static void kernel_local(void)
   }
 }
 
-
 /*! \brief Routine that defines what to do with imported particles.
  *
  *  Calls the *_evaluate function in MODE_IMPORTED_PARTICLES.
@@ -233,7 +220,6 @@ static void kernel_imported(void)
   }
 }
 
-
 /*! \brief Calculates smoothing length or density via neighbor search.
  *
  *  \param[in] mode Mode if the function: FIND_SMOOTHING_LENGTHS, or to
@@ -258,18 +244,18 @@ double subfind_density(int mode)
   int HsmlFlag = 0;
 
 #ifdef SUBFIND_CALC_MORE
-  HsmlFlag = 1;                 /* in this case, calculate densities for all particles, not only those in groups */
-#endif /* #ifdef SUBFIND_CALC_MORE */
+  HsmlFlag = 1; /* in this case, calculate densities for all particles, not only those in groups */
+#endif          /* #ifdef SUBFIND_CALC_MORE */
 
-  DM_NumNgb = (int *) mymalloc_movable(&DM_NumNgb, "DM_NumNgb", sizeof(int) * NumPart);
-  Left = (MyFloat *) mymalloc_movable(&Left, "Left", sizeof(MyFloat) * NumPart);
-  Right = (MyFloat *) mymalloc_movable(&Right, "Right", sizeof(MyFloat) * NumPart);
-  Todo = (char *) mymalloc_movable(&Todo, "Todo", sizeof(char) * NumPart);
+  DM_NumNgb = (int *)mymalloc_movable(&DM_NumNgb, "DM_NumNgb", sizeof(int) * NumPart);
+  Left      = (MyFloat *)mymalloc_movable(&Left, "Left", sizeof(MyFloat) * NumPart);
+  Right     = (MyFloat *)mymalloc_movable(&Right, "Right", sizeof(MyFloat) * NumPart);
+  Todo      = (char *)mymalloc_movable(&Todo, "Todo", sizeof(char) * NumPart);
 
 #ifdef SUBFIND_CALC_MORE
-  Vx = (MyFloat *) mymalloc("Vx", sizeof(MyFloat) * NumPart);
-  Vy = (MyFloat *) mymalloc("Vy", sizeof(MyFloat) * NumPart);
-  Vz = (MyFloat *) mymalloc("Vz", sizeof(MyFloat) * NumPart);
+  Vx = (MyFloat *)mymalloc("Vx", sizeof(MyFloat) * NumPart);
+  Vy = (MyFloat *)mymalloc("Vy", sizeof(MyFloat) * NumPart);
+  Vz = (MyFloat *)mymalloc("Vz", sizeof(MyFloat) * NumPart);
 #endif /* #ifdef SUBFIND_CALC_MORE */
 
   generic_set_MaxNexport();
@@ -277,13 +263,13 @@ double subfind_density(int mode)
   for(i = 0; i < NumPart; i++)
     {
       Left[i] = Right[i] = 0;
-      DM_NumNgb[i] = 0;
-      Todo[i] = 1;
-      if((PS[i].GrNr >= TotNgroups) && (HsmlFlag == 0)) // particle not in groups
+      DM_NumNgb[i]       = 0;
+      Todo[i]            = 1;
+      if((PS[i].GrNr >= TotNgroups) && (HsmlFlag == 0))  // particle not in groups
         Todo[i] = 0;
 
 #ifdef REFINEMENT_HIGH_RES_GAS
-      if((PS[i].GrNr >= TotNgroups) && (P[i].Type == 4 || P[i].Type == 5))      // particle of type 4 or 5 but not in group
+      if((PS[i].GrNr >= TotNgroups) && (P[i].Type == 4 || P[i].Type == 5))  // particle of type 4 or 5 but not in group
         Todo[i] = 0;
 
       if(P[i].Type != 0 && P[i].Type != 1 && P[i].Type != 4 && P[i].Type != 5)
@@ -295,10 +281,10 @@ double subfind_density(int mode)
 
       PS[i].Density = 0;
 #ifdef SUBFIND_CALC_MORE
-      PS[i].SubfindHsml = 0;
-      PS[i].SubfindDensity = 0;
+      PS[i].SubfindHsml      = 0;
+      PS[i].SubfindDensity   = 0;
       PS[i].SubfindDMDensity = 0;
-      PS[i].SubfindVelDisp = 0;
+      PS[i].SubfindVelDisp   = 0;
 #endif /* #ifdef SUBFIND_CALC_MORE */
     }
 
@@ -318,13 +304,14 @@ double subfind_density(int mode)
 
           if(Todo[i] && mode == FIND_SMOOTHING_LENGTHS)
             {
-              if(abs(DM_NumNgb[i] - All.DesNumNgb) > All.MaxNumNgbDeviation && ((Right[i] - Left[i]) > 1.0e-4 * Left[i] || Left[i] == 0 || Right[i] == 0))
+              if(abs(DM_NumNgb[i] - All.DesNumNgb) > All.MaxNumNgbDeviation &&
+                 ((Right[i] - Left[i]) > 1.0e-4 * Left[i] || Left[i] == 0 || Right[i] == 0))
                 {
                   /* need to redo this particle */
                   npleft++;
 
                   if(DM_NumNgb[i] < All.DesNumNgb)
-                    Left[i] = (MyFloat) dmax(PS[i].Hsml, Left[i]);
+                    Left[i] = (MyFloat)dmax(PS[i].Hsml, Left[i]);
                   else
                     {
                       if(Right[i] != 0)
@@ -338,13 +325,14 @@ double subfind_density(int mode)
 
                   if(iter >= MAXITER - 10)
                     {
-                      printf("SUBFIND: i=%d task=%d ID=%d Hsml=%g Left=%g Right=%g Ngbs=%g Right-Left=%g\n   pos=(%g|%g|%g)\n", i, ThisTask,
-                             (int) P[i].ID, PS[i].Hsml, Left[i], Right[i], (double) DM_NumNgb[i], Right[i] - Left[i], P[i].Pos[0], P[i].Pos[1], P[i].Pos[2]);
+                      printf("SUBFIND: i=%d task=%d ID=%d Hsml=%g Left=%g Right=%g Ngbs=%g Right-Left=%g\n   pos=(%g|%g|%g)\n", i,
+                             ThisTask, (int)P[i].ID, PS[i].Hsml, Left[i], Right[i], (double)DM_NumNgb[i], Right[i] - Left[i],
+                             P[i].Pos[0], P[i].Pos[1], P[i].Pos[2]);
                       myflush(stdout);
                     }
 
                   if(Right[i] > 0 && Left[i] > 0)
-                    PS[i].Hsml = (MyFloat) pow(0.5 * (pow(Left[i], 3) + pow(Right[i], 3)), 1.0 / 3);
+                    PS[i].Hsml = (MyFloat)pow(0.5 * (pow(Left[i], 3) + pow(Right[i], 3)), 1.0 / 3);
                   else
                     {
                       if(Right[i] == 0 && Left[i] == 0)
@@ -371,7 +359,8 @@ double subfind_density(int mode)
           iter++;
 
           if(iter > 0)
-            mpi_printf("SUBFIND: ngb iteration %2d: need to repeat for %15lld particles. (took %g sec)\n", iter, ntot, timediff(t0, t1));
+            mpi_printf("SUBFIND: ngb iteration %2d: need to repeat for %15lld particles. (took %g sec)\n", iter, ntot,
+                       timediff(t0, t1));
 
           if(iter > MAXITER)
             terminate("failed to converge in neighbour iteration in density()\n");
@@ -407,7 +396,7 @@ double subfind_density(int mode)
 #ifdef SUBFIND_CALC_MORE
   for(i = 0; i < NumPart; i++)
     {
-      PS[i].SubfindHsml = PS[i].Hsml;
+      PS[i].SubfindHsml    = PS[i].Hsml;
       PS[i].SubfindDensity = PS[i].Density;
     }
 #endif /* #ifdef SUBFIND_CALC_MORE */
@@ -415,7 +404,6 @@ double subfind_density(int mode)
   tend = second();
   return timediff(tstart, tend);
 }
-
 
 /*! \brief Evaluate function of subfind density calculation.
  *
@@ -448,7 +436,7 @@ static int subfind_density_evaluate(int target, int mode, int threadid)
       particle2in(&local, target, 0);
       target_data = &local;
 
-      numnodes = 1;
+      numnodes  = 1;
       firstnode = NULL;
     }
   else
@@ -458,30 +446,30 @@ static int subfind_density_evaluate(int target, int mode, int threadid)
       generic_get_numnodes(target, &numnodes, &firstnode);
     }
 
-  pos = target_data->Pos;
+  pos  = target_data->Pos;
   hsml = target_data->Hsml;
 
-  h2 = hsml * hsml;
-  hinv = 1.0 / hsml;
+  h2    = hsml * hsml;
+  hinv  = 1.0 / hsml;
   hinv3 = hinv * hinv * hinv;
 
   for(k = 0; k < numnodes; k++)
     {
       if(mode == MODE_LOCAL_PARTICLES)
         {
-          no = Tree_MaxPart;    /* root node */
+          no = Tree_MaxPart; /* root node */
         }
       else
         {
           no = firstnode[k];
-          no = Nodes[no].u.d.nextnode;  /* open it */
+          no = Nodes[no].u.d.nextnode; /* open it */
         }
 
       while(no >= 0)
         {
           if(no < Tree_MaxPart) /* single particle */
             {
-              p = no;
+              p  = no;
               no = Nextnode[no];
 
               dx = FOF_NEAREST_LONG_X(Tree_Pos_list[3 * p + 0] - pos[0]);
@@ -500,27 +488,28 @@ static int subfind_density_evaluate(int target, int mode, int threadid)
               mass = P[p].Mass;
               type = P[p].Type;
             }
-          else if(no < Tree_MaxPart + Tree_MaxNodes)    /* internal node */
+          else if(no < Tree_MaxPart + Tree_MaxNodes) /* internal node */
             {
               if(mode == MODE_IMPORTED_PARTICLES)
                 {
-                  if(no < Tree_FirstNonTopLevelNode)    /* we reached a top-level node again, which means that we are done with the branch */
+                  if(no <
+                     Tree_FirstNonTopLevelNode) /* we reached a top-level node again, which means that we are done with the branch */
                     break;
                 }
 
               current = &Nodes[no];
 
-              no = current->u.d.sibling;        /* in case the node can be discarded */
+              no = current->u.d.sibling; /* in case the node can be discarded */
 
               double dist = hsml + 0.5 * current->len;
 
-              dx = (MyFloat) FOF_NEAREST_LONG_X(current->center[0] - pos[0]);
+              dx = (MyFloat)FOF_NEAREST_LONG_X(current->center[0] - pos[0]);
               if(dx > dist)
                 continue;
-              dy = (MyFloat) FOF_NEAREST_LONG_Y(current->center[1] - pos[1]);
+              dy = (MyFloat)FOF_NEAREST_LONG_Y(current->center[1] - pos[1]);
               if(dy > dist)
                 continue;
-              dz = (MyFloat) FOF_NEAREST_LONG_Z(current->center[2] - pos[2]);
+              dz = (MyFloat)FOF_NEAREST_LONG_Z(current->center[2] - pos[2]);
               if(dz > dist)
                 continue;
               /* now test against the minimal sphere enclosing everything */
@@ -528,13 +517,13 @@ static int subfind_density_evaluate(int target, int mode, int threadid)
               if(dx * dx + dy * dy + dz * dz > dist * dist)
                 continue;
 
-              no = current->u.d.nextnode;       /* ok, we need to open the node */
+              no = current->u.d.nextnode; /* ok, we need to open the node */
               continue;
             }
-          else if(no >= Tree_ImportedNodeOffset)        /* point from imported nodelist */
+          else if(no >= Tree_ImportedNodeOffset) /* point from imported nodelist */
             {
               int n = no - Tree_ImportedNodeOffset;
-              no = Nextnode[no - Tree_MaxNodes];
+              no    = Nextnode[no - Tree_MaxNodes];
 
               dx = FOF_NEAREST_LONG_X(Tree_Points[n].Pos[0] - pos[0]);
               if(dx > hsml)
@@ -554,12 +543,12 @@ static int subfind_density_evaluate(int target, int mode, int threadid)
 
               p = -1;
             }
-          else                  /* pseudo particle */
+          else /* pseudo particle */
             {
               if(mode == MODE_IMPORTED_PARTICLES)
                 terminate("can't be");
 
-              if(target >= 0)   /* if no target is given, export will not occur */
+              if(target >= 0) /* if no target is given, export will not occur */
                 tree_treefind_export_node_threads(no, target, threadid);
 
               no = Nextnode[no - Tree_MaxNodes];
@@ -606,11 +595,11 @@ static int subfind_density_evaluate(int target, int mode, int threadid)
   out.Ngb = numngb;
   out.Rho = rhosum;
 #ifdef SUBFIND_CALC_MORE
-  out.Vx = vxsum;
-  out.Vy = vysum;
-  out.Vz = vzsum;
+  out.Vx      = vxsum;
+  out.Vy      = vysum;
+  out.Vz      = vzsum;
   out.VelDisp = v2sum;
-  out.RhoDM = rhodmsum;
+  out.RhoDM   = rhodmsum;
 #endif /* #ifdef SUBFIND_CALC_MORE */
 
   /* Now collect the result at the right place */
@@ -621,7 +610,6 @@ static int subfind_density_evaluate(int target, int mode, int threadid)
 
   return 0;
 }
-
 
 /*! \brief Sets Hsml to an initial guess to reduce number of iterations for
  *         to get final smoothing length (Hsml).
@@ -655,8 +643,9 @@ void subfind_density_hsml_guess(void)
 
           if(PS[i].Hsml == 0)
             {
-              printf("Hsml=0 task=%d i=%d no=%d Nodes[no].len=%g Nodes[no].u.d.mass=%g P[i].Mass=%g type=%d ID=%llu  pos=(%g|%g|%g)\n", ThisTask, i,
-                     no, Nodes[no].len, Nodes[no].u.d.mass, P[i].Mass, P[i].Type, (long long) P[i].ID, P[i].Pos[0], P[i].Pos[1], P[i].Pos[2]);
+              printf("Hsml=0 task=%d i=%d no=%d Nodes[no].len=%g Nodes[no].u.d.mass=%g P[i].Mass=%g type=%d ID=%llu  pos=(%g|%g|%g)\n",
+                     ThisTask, i, no, Nodes[no].len, Nodes[no].u.d.mass, P[i].Mass, P[i].Type, (long long)P[i].ID, P[i].Pos[0],
+                     P[i].Pos[1], P[i].Pos[2]);
               terminate("zero hsml guess\n");
             }
         }

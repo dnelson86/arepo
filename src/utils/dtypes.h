@@ -20,28 +20,25 @@
  * \file        src/utils/dtypes.h
  * \date        05/2018
  * \brief       Definition of intrinsic datatypes.
- * \details     
- * 
+ * \details
+ *
  * \par Major modifications and contributions:
- * 
+ *
  * - DD.MM.YYYY Description
  * - 28.05.2018 Prepared file for public release -- Rainer Weinberger
  */
 
-
 #ifndef DTYPES_H
 #define DTYPES_H
 
-
 #ifndef FFTW
-#define CONCAT(prefix, name) prefix ## name
+#define CONCAT(prefix, name) prefix##name
 #ifdef DOUBLEPRECISION_FFTW
 #define FFTW(x) CONCAT(fftw_, x)
 #else /* #ifdef DOUBLEPRECISION_FFTW */
 #define FFTW(x) CONCAT(fftwf_, x)
 #endif /* #ifdef DOUBLEPRECISION_FFTW #else */
 #endif /* #ifndef FFTW */
-
 
 #ifndef LONGIDS
 typedef unsigned int MyIDType;
@@ -51,23 +48,22 @@ typedef unsigned long long MyIDType;
 #define MPI_MYIDTYPE MPI_UNSIGNED_LONG_LONG
 #endif /* #ifndef LONGIDS #else */
 
-
-#ifndef DOUBLEPRECISION         /* default is single-precision */
+#ifndef DOUBLEPRECISION /* default is single-precision */
 typedef float MySingle;
 typedef float MyFloat;
 typedef float MyDouble;
 #define MPI_MYFLOAT MPI_FLOAT
 #define MPI_MYDOUBLE MPI_FLOAT
-#else /* #ifndef DOUBLEPRECISION */
-#if (DOUBLEPRECISION == 2)      /* mixed precision */
+#else                     /* #ifndef DOUBLEPRECISION */
+#if(DOUBLEPRECISION == 2) /* mixed precision */
 typedef float MySingle;
 typedef float MyFloat;
 typedef double MyDouble;
 #define MPI_MYFLOAT MPI_FLOAT
 #define MPI_MYDOUBLE MPI_DOUBLE
-#else /* #if (DOUBLEPRECISION == 2) */
-#if (DOUBLEPRECISION == 3)      /* mixed precision, fewer single precision variables */
-typedef float  MySingle;
+#else                     /* #if (DOUBLEPRECISION == 2) */
+#if(DOUBLEPRECISION == 3) /* mixed precision, fewer single precision variables */
+typedef float MySingle;
 typedef double MyFloat;
 typedef double MyDouble;
 #define MPI_MYFLOAT MPI_FLOAT
@@ -83,20 +79,17 @@ typedef double MyDouble;
 #endif /* #if (DOUBLEPRECISION == 2) #else */
 #endif /* #ifndef DOUBLEPRECISION #else */
 
-
 #ifdef OUTPUT_IN_DOUBLEPRECISION
 typedef double MyOutputFloat;
-#else /* #ifdef OUTPUT_IN_DOUBLEPRECISION */
+#else  /* #ifdef OUTPUT_IN_DOUBLEPRECISION */
 typedef float MyOutputFloat;
 #endif /* #ifdef OUTPUT_IN_DOUBLEPRECISION #else */
 
-
 #ifdef INPUT_IN_DOUBLEPRECISION
 typedef double MyInputFloat;
-#else /* #ifdef INPUT_IN_DOUBLEPRECISION */
+#else  /* #ifdef INPUT_IN_DOUBLEPRECISION */
 typedef float MyInputFloat;
 #endif /* #ifdef INPUT_IN_DOUBLEPRECISION #else */
-
 
 #ifndef NGB_TREE_DOUBLEPRECISION
 typedef float MyNgbTreeFloat;
@@ -106,20 +99,17 @@ typedef double MyNgbTreeFloat;
 #define MAX_NGBRANGE_NUMBER MAX_DOUBLE_NUMBER
 #endif /* #ifndef NGB_TREE_DOUBLEPRECISION #else */
 
-
 #if defined(PMGRID)
 #include <fftw3.h>
-
 
 #ifdef DOUBLEPRECISION_FFTW
 typedef double fft_real;
 typedef fftw_complex fft_complex;
-#else /* #ifdef DOUBLEPRECISION_FFTW */
+#else  /* #ifdef DOUBLEPRECISION_FFTW */
 typedef float fft_real;
 typedef fftwf_complex fft_complex;
 #endif /* #ifdef DOUBLEPRECISION_FFTW #else */
 typedef ptrdiff_t fft_ptrdiff_t;
-
 
 typedef struct
 {
@@ -136,21 +126,20 @@ typedef struct
 
 #ifndef FFT_COLUMN_BASED
 
-  int *slab_to_task;            /*!< Maps a slab index to the task responsible for the slab */
+  int *slab_to_task; /*!< Maps a slab index to the task responsible for the slab */
   int *slabs_x_per_task;
-  int *first_slab_x_of_task;      /*!< Array containing the index of the first slab of each task */
-  int *slabs_y_per_task;        /*!< Array containing the number of slabs each task is responsible for */
-  int *first_slab_y_of_task;    /*!< Array containing the index of the first slab of each task */
+  int *first_slab_x_of_task; /*!< Array containing the index of the first slab of each task */
+  int *slabs_y_per_task;     /*!< Array containing the number of slabs each task is responsible for */
+  int *first_slab_y_of_task; /*!< Array containing the index of the first slab of each task */
 
   int nslab_x, slabstart_x, nslab_y, slabstart_y;
-  int largest_x_slab;             /*!< size of the largest slab in x direction */
-  int largest_y_slab;             /*!< size of the largest slab in y direction */
+  int largest_x_slab; /*!< size of the largest slab in x direction */
+  int largest_y_slab; /*!< size of the largest slab in y direction */
 
 #else /* #ifndef FFT_COLUMN_BASED */
 
   size_t max_datasize;
   size_t fftsize;
-
 
   int base_firstcol, base_ncol, base_lastcol;
   int transposed_firstcol, transposed_ncol;
@@ -160,7 +149,7 @@ typedef struct
   int firstcol_XZ, ncol_XZ;
   int firstcol_YZ, ncol_YZ;
 
-  int pivotcol;                 /* to go from column number to task */
+  int pivotcol; /* to go from column number to task */
   int avg;
   int tasklastsection;
 
@@ -199,11 +188,8 @@ typedef struct
   size_t *count_recv_23back;
 
 #endif /* #ifndef FFT_COLUMN_BASED */
-}
-fft_plan;
-
+} fft_plan;
 
 #endif /* #if defined(PMGRID) */
-
 
 #endif /* #ifndef DTYPES_H */

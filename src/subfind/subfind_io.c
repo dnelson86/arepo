@@ -22,35 +22,31 @@
  * \brief       Main output routine for subfind.
  * \details     contains functions:
  *                void subfind_save_final(int num)
- * 
- * 
+ *
+ *
  * \par Major modifications and contributions:
- * 
+ *
  * - DD.MM.YYYY Description
  * - 14.05.2018 Prepared file for public release -- Rainer Weinberger
  */
 
-
+#include <gsl/gsl_rng.h>
+#include <math.h>
 #include <mpi.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <math.h>
 #include <sys/stat.h>
 #include <sys/types.h>
 #include <unistd.h>
-#include <gsl/gsl_rng.h>
 
-
+#include "../domain/domain.h"
+#include "../fof/fof.h"
 #include "../main/allvars.h"
 #include "../main/proto.h"
-#include "../fof/fof.h"
-#include "../domain/domain.h"
-
 
 #ifdef SUBFIND
 #include "subfind.h"
-
 
 /*! \brief Saves subfind group catalogue to disk.
  *
@@ -99,14 +95,16 @@ void subfind_save_final(int num)
 
   if(NTask < All.NumFilesPerSnapshot)
     {
-      warn("Number of processors must be larger or equal than All.NumFilesPerSnapshot! Reducing All.NumFilesPerSnapshot accordingly.\n");
+      warn(
+          "Number of processors must be larger or equal than All.NumFilesPerSnapshot! Reducing All.NumFilesPerSnapshot "
+          "accordingly.\n");
       All.NumFilesPerSnapshot = NTask;
     }
 
   if(All.SnapFormat < 1 || All.SnapFormat > 3)
     mpi_printf("Unsupported File-Format All.SnapFormat=%d \n", All.SnapFormat);
 
-#ifndef  HAVE_HDF5
+#ifndef HAVE_HDF5
   if(All.SnapFormat == 3)
     {
       mpi_terminate("Code wasn't compiled with HDF5 support enabled!\n");
@@ -137,7 +135,7 @@ void subfind_save_final(int num)
 
   for(gr = 0; gr < ngrps; gr++)
     {
-      if((filenr / All.NumFilesWrittenInParallel) == gr)        /* ok, it's this processor's turn */
+      if((filenr / All.NumFilesWrittenInParallel) == gr) /* ok, it's this processor's turn */
         fof_subfind_write_file(buf, masterTask, lastTask);
 
       MPI_Barrier(MPI_COMM_WORLD);
@@ -153,6 +151,5 @@ void subfind_save_final(int num)
 
   mpi_printf("SUBFIND: Subgroup catalogues saved. took = %g sec\n", timediff(t0, t1));
 }
-
 
 #endif /* #ifdef SUBFIND */

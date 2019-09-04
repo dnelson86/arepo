@@ -31,16 +31,14 @@
  * - 03.05.2018 Prepared file for public release -- Rainer Weinberger
  */
 
+#include <math.h>
 #include <mpi.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <math.h>
-
 
 #include "../main/allvars.h"
 #include "../main/proto.h"
-
 
 /*! \brief Allocates memory for global arrays.
  *
@@ -57,44 +55,45 @@ void allocate_memory(void)
 
   NTaskTimesThreads = MaxThreads * NTask;
 
-  Exportflag = (int *) mymalloc("Exportflag", NTaskTimesThreads * sizeof(int));
-  Exportindex = (int *) mymalloc("Exportindex", NTaskTimesThreads * sizeof(int));
-  Exportnodecount = (int *) mymalloc("Exportnodecount", NTaskTimesThreads * sizeof(int));
+  Exportflag      = (int *)mymalloc("Exportflag", NTaskTimesThreads * sizeof(int));
+  Exportindex     = (int *)mymalloc("Exportindex", NTaskTimesThreads * sizeof(int));
+  Exportnodecount = (int *)mymalloc("Exportnodecount", NTaskTimesThreads * sizeof(int));
 
-  Send = (struct send_recv_counts *) mymalloc("Send", sizeof(struct send_recv_counts) * NTask);
-  Recv = (struct send_recv_counts *) mymalloc("Recv", sizeof(struct send_recv_counts) * NTask);
+  Send = (struct send_recv_counts *)mymalloc("Send", sizeof(struct send_recv_counts) * NTask);
+  Recv = (struct send_recv_counts *)mymalloc("Recv", sizeof(struct send_recv_counts) * NTask);
 
-  TasksThatSend = (int *) mymalloc("TasksThatSend", sizeof(int) * NTask);
-  TasksThatRecv = (int *) mymalloc("TasksThatRecv", sizeof(int) * NTask);
+  TasksThatSend = (int *)mymalloc("TasksThatSend", sizeof(int) * NTask);
+  TasksThatRecv = (int *)mymalloc("TasksThatRecv", sizeof(int) * NTask);
 
-  Send_count = (int *) mymalloc("Send_count", sizeof(int) * NTaskTimesThreads);
-  Send_offset = (int *) mymalloc("Send_offset", sizeof(int) * NTaskTimesThreads);
-  Recv_count = (int *) mymalloc("Recv_count", sizeof(int) * NTask);
-  Recv_offset = (int *) mymalloc("Recv_offset", sizeof(int) * NTask);
+  Send_count  = (int *)mymalloc("Send_count", sizeof(int) * NTaskTimesThreads);
+  Send_offset = (int *)mymalloc("Send_offset", sizeof(int) * NTaskTimesThreads);
+  Recv_count  = (int *)mymalloc("Recv_count", sizeof(int) * NTask);
+  Recv_offset = (int *)mymalloc("Recv_offset", sizeof(int) * NTask);
 
-  Send_count_nodes = (int *) mymalloc("Send_count_nodes", sizeof(int) * NTask);
-  Send_offset_nodes = (int *) mymalloc("Send_offset_nodes", sizeof(int) * NTask);
-  Recv_count_nodes = (int *) mymalloc("Recv_count_nodes", sizeof(int) * NTask);
-  Recv_offset_nodes = (int *) mymalloc("Recv_offset_nodes", sizeof(int) * NTask);
+  Send_count_nodes  = (int *)mymalloc("Send_count_nodes", sizeof(int) * NTask);
+  Send_offset_nodes = (int *)mymalloc("Send_offset_nodes", sizeof(int) * NTask);
+  Recv_count_nodes  = (int *)mymalloc("Recv_count_nodes", sizeof(int) * NTask);
+  Recv_offset_nodes = (int *)mymalloc("Recv_offset_nodes", sizeof(int) * NTask);
 
-  Mesh_Send_count = (int *) mymalloc("Mesh_Send_count", sizeof(int) * NTask);
-  Mesh_Send_offset = (int *) mymalloc("Mesh_Send_offset", sizeof(int) * NTask);
-  Mesh_Recv_count = (int *) mymalloc("Mesh_Recv_count", sizeof(int) * NTask);
-  Mesh_Recv_offset = (int *) mymalloc("Mesh_Recv_offset", sizeof(int) * NTask);
+  Mesh_Send_count  = (int *)mymalloc("Mesh_Send_count", sizeof(int) * NTask);
+  Mesh_Send_offset = (int *)mymalloc("Mesh_Send_offset", sizeof(int) * NTask);
+  Mesh_Recv_count  = (int *)mymalloc("Mesh_Recv_count", sizeof(int) * NTask);
+  Mesh_Recv_offset = (int *)mymalloc("Mesh_Recv_offset", sizeof(int) * NTask);
 
-  Force_Send_count = (int *) mymalloc("Force_Send_count", sizeof(int) * NTask);
-  Force_Send_offset = (int *) mymalloc("Force_Send_offset", sizeof(int) * NTask);
-  Force_Recv_count = (int *) mymalloc("Force_Recv_count", sizeof(int) * NTask);
-  Force_Recv_offset = (int *) mymalloc("Force_Recv_offset", sizeof(int) * NTask);
+  Force_Send_count  = (int *)mymalloc("Force_Send_count", sizeof(int) * NTask);
+  Force_Send_offset = (int *)mymalloc("Force_Send_offset", sizeof(int) * NTask);
+  Force_Recv_count  = (int *)mymalloc("Force_Recv_count", sizeof(int) * NTask);
+  Force_Recv_offset = (int *)mymalloc("Force_Recv_offset", sizeof(int) * NTask);
 
   mpi_printf("ALLOCATE: initial allocation for MaxPart = %d\n", All.MaxPart);
-  P = (struct particle_data *) mymalloc_movable(&P, "P", All.MaxPart * sizeof(struct particle_data));
+  P = (struct particle_data *)mymalloc_movable(&P, "P", All.MaxPart * sizeof(struct particle_data));
 
   mpi_printf("ALLOCATE: initial allocation for MaxPartSph = %d\n", All.MaxPartSph);
-  SphP = (struct sph_particle_data *) mymalloc_movable(&SphP, "SphP", All.MaxPartSph * sizeof(struct sph_particle_data));
+  SphP = (struct sph_particle_data *)mymalloc_movable(&SphP, "SphP", All.MaxPartSph * sizeof(struct sph_particle_data));
 
 #ifdef EXACT_GRAVITY_FOR_PARTICLE_TYPE
-  PartSpecialListGlobal = (struct special_particle_data *) mymalloc_movable(&PartSpecialListGlobal, "PartSpecialListGlobal", All.MaxPartSpecial * sizeof(struct special_particle_data));
+  PartSpecialListGlobal = (struct special_particle_data *)mymalloc_movable(&PartSpecialListGlobal, "PartSpecialListGlobal",
+                                                                           All.MaxPartSpecial * sizeof(struct special_particle_data));
 #endif /* #ifdef EXACT_GRAVITY_FOR_PARTICLE_TYPE */
 
   timebins_allocate(&TimeBinsHydro);
@@ -104,7 +103,6 @@ void allocate_memory(void)
   memset(P, 0, All.MaxPart * sizeof(struct particle_data));
   memset(SphP, 0, All.MaxPartSph * sizeof(struct sph_particle_data));
 }
-
 
 /*! \brief Reallocates memory for particle data.
  *
@@ -116,10 +114,9 @@ void reallocate_memory_maxpart(void)
 {
   mpi_printf("ALLOCATE: Changing to MaxPart = %d\n", All.MaxPart);
 
-  P = (struct particle_data *) myrealloc_movable(P, All.MaxPart * sizeof(struct particle_data));
+  P = (struct particle_data *)myrealloc_movable(P, All.MaxPart * sizeof(struct particle_data));
   timebins_reallocate(&TimeBinsGravity);
 }
-
 
 /*! \brief Reallocate memory for cell data.
  *
@@ -131,6 +128,6 @@ void reallocate_memory_maxpartsph(void)
 {
   mpi_printf("ALLOCATE: Changing to MaxPartSph = %d\n", All.MaxPartSph);
 
-  SphP = (struct sph_particle_data *) myrealloc_movable(SphP, All.MaxPartSph * sizeof(struct sph_particle_data));
+  SphP = (struct sph_particle_data *)myrealloc_movable(SphP, All.MaxPartSph * sizeof(struct sph_particle_data));
   timebins_reallocate(&TimeBinsHydro);
 }

@@ -24,35 +24,31 @@
  *                double subfind_get_particle_balance(void)
  *                void subfind(int num)
  *                void subfind_reorder_according_to_submp(void)
- * 
- * 
+ *
+ *
  * \par Major modifications and contributions:
- * 
+ *
  * - DD.MM.YYYY Description
  * - 11.05.2018 Prepared file for public release -- Rainer Weinberger
  */
 
-
+#include <gsl/gsl_rng.h>
+#include <math.h>
 #include <mpi.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <math.h>
 #include <sys/stat.h>
 #include <sys/types.h>
 #include <unistd.h>
-#include <gsl/gsl_rng.h>
 
-
+#include "../domain/domain.h"
+#include "../fof/fof.h"
 #include "../main/allvars.h"
 #include "../main/proto.h"
-#include "../fof/fof.h"
-#include "../domain/domain.h"
-
 
 #ifdef SUBFIND
 #include "subfind.h"
-
 
 /*! \brief Gets a measure of the particle load balance.
  *
@@ -64,9 +60,8 @@ double subfind_get_particle_balance(void)
   long long sum;
   MPI_Allreduce(&NumPart, &maxpart, 1, MPI_INT, MPI_MAX, MPI_COMM_WORLD);
   sumup_large_ints(1, &NumPart, &sum);
-  return maxpart / (((double) sum) / NTask);
+  return maxpart / (((double)sum) / NTask);
 }
-
 
 /*! \brief Main subfind algorithm.
  *
@@ -88,7 +83,7 @@ void subfind(int num)
   /* let's determine the local dark matter densities */
 
   TIMER_STOP(CPU_SUBFIND);
-  construct_forcetree(0, 0, 1, All.HighestOccupiedTimeBin);     /* build forcetree with all particles */
+  construct_forcetree(0, 0, 1, All.HighestOccupiedTimeBin); /* build forcetree with all particles */
   TIMER_START(CPU_SUBFIND);
 
   cputime = subfind_density(FIND_SMOOTHING_LENGTHS);
@@ -101,7 +96,7 @@ void subfind(int num)
   force_treefree();
 
   TIMER_STOP(CPU_SUBFIND);
-  construct_forcetree(0, 0, 0, All.HighestOccupiedTimeBin);     /* build forcetree with all particles */
+  construct_forcetree(0, 0, 0, All.HighestOccupiedTimeBin); /* build forcetree with all particles */
   TIMER_START(CPU_SUBFIND);
 
   cputime = subfind_density(FIND_TOTAL_DENSITIES);
@@ -141,12 +136,12 @@ void subfind(int num)
 
   do
     {
-      ncount = 0;
-      nprocs = 0;
+      ncount    = 0;
+      nprocs    = 0;
       seriallen = 0;
 
       /* Let's set a fiducial size for the maximum group size before we select the collective subfind algorithm */
-      MaxSerialGroupLen = (int) (GroupSize * All.TotNumPart / NTask);
+      MaxSerialGroupLen = (int)(GroupSize * All.TotNumPart / NTask);
 
       for(i = 0; i < Ngroups; i++)
         if(Group[i].Len > MaxSerialGroupLen)
@@ -180,21 +175,21 @@ void subfind(int num)
   mpi_printf("SUBFIND: The other %d FOF halos are treated in parallel with serial code\n", TotNgroups - Ncollective);
 
   /* set up a global table that informs about the processor assignment of the groups that are treated collectively */
-  ProcAssign = mymalloc_movable(&ProcAssign, "ProcAssign", Ncollective * sizeof(struct proc_assign_data));
+  ProcAssign                             = mymalloc_movable(&ProcAssign, "ProcAssign", Ncollective * sizeof(struct proc_assign_data));
   struct proc_assign_data *locProcAssign = mymalloc("locProcAssign", ncount * sizeof(struct proc_assign_data));
 
   for(i = 0, ncount = 0; i < Ngroups; i++)
     if(Group[i].Len > MaxSerialGroupLen)
       {
         locProcAssign[ncount].GrNr = Group[i].GrNr;
-        locProcAssign[ncount].Len = Group[i].Len;
+        locProcAssign[ncount].Len  = Group[i].Len;
         ncount++;
       }
 
   /* gather the information on the collective groups accross all CPUs */
-  int *recvcounts = (int *) mymalloc("recvcounts", sizeof(int) * NTask);
-  int *bytecounts = (int *) mymalloc("bytecounts", sizeof(int) * NTask);
-  int *byteoffset = (int *) mymalloc("byteoffset", sizeof(int) * NTask);
+  int *recvcounts = (int *)mymalloc("recvcounts", sizeof(int) * NTask);
+  int *bytecounts = (int *)mymalloc("bytecounts", sizeof(int) * NTask);
+  int *byteoffset = (int *)mymalloc("byteoffset", sizeof(int) * NTask);
 
   MPI_Allgather(&ncount, 1, MPI_INT, recvcounts, 1, MPI_INT, MPI_COMM_WORLD);
 
@@ -215,11 +210,12 @@ void subfind(int num)
   /* make sure, the table is sorted in ascending group-number order */
   qsort(ProcAssign, Ncollective, sizeof(struct proc_assign_data), subfind_compare_procassign_GrNr);
 
-  /* assign the processor sets for the collective groups and set disjoint color-flag to later split the processors into different communicators */
+  /* assign the processor sets for the collective groups and set disjoint color-flag to later split the processors into different
+   * communicators */
   for(i = 0, nprocs = 0, CommSplitColor = Ncollective; i < Ncollective; i++)
     {
       ProcAssign[i].FirstTask = nprocs;
-      ProcAssign[i].NTask = ((ProcAssign[i].Len - 1) / MaxSerialGroupLen) + 1;
+      ProcAssign[i].NTask     = ((ProcAssign[i].Len - 1) / MaxSerialGroupLen) + 1;
       nprocs += ProcAssign[i].NTask;
 
       if(ThisTask >= ProcAssign[i].FirstTask && ThisTask < (ProcAssign[i].FirstTask + ProcAssign[i].NTask))
@@ -231,7 +227,7 @@ void subfind(int num)
    */
   for(i = 0; i < Ngroups; i++)
     {
-      if(Group[i].Len > MaxSerialGroupLen)      /* we have a collective group */
+      if(Group[i].Len > MaxSerialGroupLen) /* we have a collective group */
         {
           if(Group[i].GrNr >= Ncollective || Group[i].GrNr < 0)
             terminate("odd");
@@ -247,17 +243,17 @@ void subfind(int num)
 
   /* assign target CPUs for the particles in groups */
   /* the particles not in groups will be distributed such that a uniform particle load results */
-  t0 = second();
+  t0                  = second();
   int *count_loc_task = mymalloc_clear("count_loc_task", NTask * sizeof(int));
-  int *count_task = mymalloc("count_task", NTask * sizeof(int));
-  int *count_free = mymalloc("count_free", NTask * sizeof(int));
-  int count_loc_free = 0;
+  int *count_task     = mymalloc("count_task", NTask * sizeof(int));
+  int *count_free     = mymalloc("count_free", NTask * sizeof(int));
+  int count_loc_free  = 0;
 
   for(i = 0; i < NumPart; i++)
     {
-      if(PS[i].GrNr < TotNgroups)       /* particle is in a group */
+      if(PS[i].GrNr < TotNgroups) /* particle is in a group */
         {
-          if(PS[i].GrNr < Ncollective)  /* we are in a collective group */
+          if(PS[i].GrNr < Ncollective) /* we are in a collective group */
             PS[i].TargetTask = ProcAssign[PS[i].GrNr].FirstTask + (i % ProcAssign[PS[i].GrNr].NTask);
           else
             PS[i].TargetTask = ((PS[i].GrNr - Ncollective) % (NTask - NprocsCollective)) + NprocsCollective;
@@ -267,7 +263,7 @@ void subfind(int num)
       else
         count_loc_free++;
 
-      PS[i].TargetIndex = 0;    /* unimportant here */
+      PS[i].TargetIndex = 0; /* unimportant here */
     }
 
   MPI_Allgather(&count_loc_free, 1, MPI_INT, count_free, 1, MPI_INT, MPI_COMM_WORLD);
@@ -280,7 +276,7 @@ void subfind(int num)
   int maxload = (sum + NTask - 1) / NTask;
   for(i = 0; i < NTask; i++)
     {
-      count_task[i] = maxload - count_task[i];  /* this is the amount that can fit on this task */
+      count_task[i] = maxload - count_task[i]; /* this is the amount that can fit on this task */
       if(count_task[i] < 0)
         count_task[i] = 0;
     }
@@ -307,12 +303,13 @@ void subfind(int num)
 
   for(i = 0; i < NumPart; i++)
     {
-      if(PS[i].GrNr >= TotNgroups)      /* particle not in a group. Can in principle stay but we move it such that a good load balance is obtained. */
+      if(PS[i].GrNr >=
+         TotNgroups) /* particle not in a group. Can in principle stay but we move it such that a good load balance is obtained. */
         {
           while(count_task[current_task] == 0 && current_task < NTask - 1)
             current_task++;
 
-          PS[i].TargetTask = current_task;      /* particle not in any group, move it here so that uniform load is achieved */
+          PS[i].TargetTask = current_task; /* particle not in any group, move it here so that uniform load is achieved */
           count_task[current_task]--;
         }
     }
@@ -322,9 +319,9 @@ void subfind(int num)
   myfree(count_loc_task);
 
 #ifdef SUBFIND_EXTENDED_PROPERTIES
-  int ngroups_cat = 42;         // dummy. not used for any calculation but fct needs to receive a value and we want to keep fct universal.
-#endif /* #ifdef SUBFIND_EXTENDED_PROPERTIES */
-  int nsubgroups_cat = 42;      // dummy. not used for any calculation but fct needs to receive a value and we want to keep fct universal.
+  int ngroups_cat = 42;     // dummy. not used for any calculation but fct needs to receive a value and we want to keep fct universal.
+#endif                      /* #ifdef SUBFIND_EXTENDED_PROPERTIES */
+  int nsubgroups_cat = 42;  // dummy. not used for any calculation but fct needs to receive a value and we want to keep fct universal.
 
   double balance = subfind_get_particle_balance();
   mpi_printf("SUBFIND: particle balance=%g\n", balance);
@@ -347,11 +344,11 @@ void subfind(int num)
       for(i = 0, nlocid = 0; i < Ngroups; i++)
         nlocid += Group[i].Len;
 
-      MaxNsubgroups = nlocid / All.DesLinkNgb;  /* should be a quite conservative upper limit */
+      MaxNsubgroups = nlocid / All.DesLinkNgb; /* should be a quite conservative upper limit */
     }
 
   Nsubgroups = 0;
-  SubGroup = (struct subgroup_properties *) mymalloc_movable(&SubGroup, "SubGroup", MaxNsubgroups * sizeof(struct subgroup_properties));
+  SubGroup = (struct subgroup_properties *)mymalloc_movable(&SubGroup, "SubGroup", MaxNsubgroups * sizeof(struct subgroup_properties));
 
   /* we can now split the communicator to give each collectively treated group its own processor set */
   MPI_Comm_split(MPI_COMM_WORLD, CommSplitColor, ThisTask, &SubComm);
@@ -362,7 +359,7 @@ void subfind(int num)
   /* here the execution paths for collective groups and serial groups branch. The collective CPUs work in small sets that each
    * deal with one large group. The serial CPUs each deal with several halos by themselves
    */
-  if(CommSplitColor < Ncollective)      /* we are one of the CPUs that does a collective group */
+  if(CommSplitColor < Ncollective) /* we are one of the CPUs that does a collective group */
     {
       /* we now apply a collective version of subfind to the group split across the processors belonging to communicator SubComm
        * The relevant group is the one stored in Group[0] on SubThisTask==0.
@@ -371,14 +368,15 @@ void subfind(int num)
     }
   else
     {
-      /* now let us sort according to GrNr and Density. This step will temporarily break the association with SphP[] and other arrays! */
-      submp = (struct submp_data *) mymalloc("submp", sizeof(struct submp_data) * NumPart);
+      /* now let us sort according to GrNr and Density. This step will temporarily break the association with SphP[] and other arrays!
+       */
+      submp = (struct submp_data *)mymalloc("submp", sizeof(struct submp_data) * NumPart);
       for(i = 0; i < NumPart; i++)
         {
-          PS[i].SubNr = TotNgroups + 1; /* set a default that is larger than reasonable group number */
-          PS[i].OldIndex = i;
-          submp[i].index = i;
-          submp[i].GrNr = PS[i].GrNr;
+          PS[i].SubNr         = TotNgroups + 1; /* set a default that is larger than reasonable group number */
+          PS[i].OldIndex      = i;
+          submp[i].index      = i;
+          submp[i].GrNr       = PS[i].GrNr;
           submp[i].DM_Density = PS[i].Density;
         }
       qsort(submp, NumPart, sizeof(struct submp_data), subfind_compare_submp_GrNr_DM_Density);
@@ -387,8 +385,10 @@ void subfind(int num)
 
       /* now we have the particles in each group consecutively */
       if(SubThisTask == 0)
-        printf("SUBFIND-SERIAL: Start to do %d small groups (cumulative length %lld) with serial subfind algorithm on %d processors (root-node=%d)\n",
-               TotNgroups - Ncollective, sum_seriallen, SubNTask, ThisTask);
+        printf(
+            "SUBFIND-SERIAL: Start to do %d small groups (cumulative length %lld) with serial subfind algorithm on %d processors "
+            "(root-node=%d)\n",
+            TotNgroups - Ncollective, sum_seriallen, SubNTask, ThisTask);
 
       /* we now apply a serial version of subfind to the local groups */
       t0 = second();
@@ -406,10 +406,10 @@ void subfind(int num)
         printf("SUBFIND-SERIAL: processing of serial groups took %g sec\n", timediff(t0, t1));
 
       /* undo local rearrangement that made groups consecutive. After that, the association of SphP[] will be correct again */
-      submp = (struct submp_data *) mymalloc("submp", sizeof(struct submp_data) * NumPart);
+      submp = (struct submp_data *)mymalloc("submp", sizeof(struct submp_data) * NumPart);
       for(i = 0; i < NumPart; i++)
         {
-          submp[i].index = i;
+          submp[i].index    = i;
           submp[i].OldIndex = PS[i].OldIndex;
         }
       qsort(submp, NumPart, sizeof(struct submp_data), subfind_compare_submp_OldIndex);
@@ -433,7 +433,7 @@ void subfind(int num)
   /* do resize */
   All.MaxPart = max_load;
   reallocate_memory_maxpart();
-  PS = (struct subfind_data *) myrealloc_movable(PS, All.MaxPart * sizeof(struct subfind_data));
+  PS = (struct subfind_data *)myrealloc_movable(PS, All.MaxPart * sizeof(struct subfind_data));
 
   All.MaxPartSph = max_loadsph;
   reallocate_memory_maxpartsph();
@@ -442,7 +442,7 @@ void subfind(int num)
   t0 = second();
   for(i = 0; i < NumPart; i++)
     {
-      PS[i].TargetTask = PS[i].OriginTask;
+      PS[i].TargetTask  = PS[i].OriginTask;
       PS[i].TargetIndex = PS[i].OriginIndex;
     }
 
@@ -452,7 +452,7 @@ void subfind(int num)
     printf("SUBFIND: subfind_exchange() (for return to original CPU)  took %g sec\n", timediff(t0, t1));
 
   TIMER_STOP(CPU_SUBFIND);
-  construct_forcetree(0, 0, 0, All.HighestOccupiedTimeBin);     /* build forcetree with all particles */
+  construct_forcetree(0, 0, 0, All.HighestOccupiedTimeBin); /* build forcetree with all particles */
   TIMER_START(CPU_SUBFIND);
 
   /* compute spherical overdensities for FOF groups */
@@ -527,7 +527,6 @@ void subfind(int num)
   TIMER_STOP(CPU_SUBFIND);
 }
 
-
 /*! \brief Reorders particles in P and SphP array.
  *
  *  Reordering given by the submp array.
@@ -542,7 +541,7 @@ void subfind_reorder_according_to_submp(void)
   int idsource, idsave, dest;
   int *Id;
 
-  Id = (int *) mymalloc("Id", sizeof(int) * (NumPart));
+  Id = (int *)mymalloc("Id", sizeof(int) * (NumPart));
 
   for(i = 0; i < NumPart; i++)
     Id[submp[i].index] = i;
@@ -551,7 +550,7 @@ void subfind_reorder_according_to_submp(void)
     {
       if(Id[i] != i)
         {
-          Psource = P[i];
+          Psource  = P[i];
           PSsource = PS[i];
           idsource = Id[i];
 
@@ -559,18 +558,18 @@ void subfind_reorder_according_to_submp(void)
 
           do
             {
-              Psave = P[dest];
+              Psave  = P[dest];
               PSsave = PS[dest];
               idsave = Id[dest];
 
-              P[dest] = Psource;
+              P[dest]  = Psource;
               PS[dest] = PSsource;
               Id[dest] = idsource;
 
               if(dest == i)
                 break;
 
-              Psource = Psave;
+              Psource  = Psave;
               PSsource = PSsave;
               idsource = idsave;
 
@@ -582,6 +581,5 @@ void subfind_reorder_according_to_submp(void)
 
   myfree(Id);
 }
-
 
 #endif /* #ifdef SUBFIND */

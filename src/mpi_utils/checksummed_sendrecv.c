@@ -27,32 +27,27 @@
  *                  void *recvbufreal, int recvcount, MPI_Datatype recvtype,
  *                  int source, int recvtag, MPI_Comm comm,
  *                  MPI_Status * status)
- * 
- * 
+ *
+ *
  * \par Major modifications and contributions:
- * 
+ *
  * - DD.MM.YYYY Description
  * - 24.05.2018 Prepared file for public release -- Rainer Weinberger
  */
 
-
+#include <gsl/gsl_math.h>
+#include <math.h>
 #include <mpi.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <math.h>
-#include <gsl/gsl_math.h>
-
 
 #include "../main/allvars.h"
 #include "../main/proto.h"
 
-
 #ifdef MPISENDRECV_CHECKSUM
 
-
 #undef MPI_Sendrecv
-
 
 /*! \brief MPI_Sendrecv with built-in check if message arrived properly.
  *
@@ -71,11 +66,11 @@
  *
  *  \return 0
  */
-int MPI_Check_Sendrecv(void *sendbuf, int sendcount, MPI_Datatype sendtype,
-                       int dest, int sendtag, void *recvbufreal, int recvcount, MPI_Datatype recvtype, int source, int recvtag, MPI_Comm comm, MPI_Status * status)
+int MPI_Check_Sendrecv(void *sendbuf, int sendcount, MPI_Datatype sendtype, int dest, int sendtag, void *recvbufreal, int recvcount,
+                       MPI_Datatype recvtype, int source, int recvtag, MPI_Comm comm, MPI_Status *status)
 {
   int checksumtag = 1000, errtag = 2000;
-  int i, iter = 0, err_flag, err_flag_imported, size_sendtype, size_recvtype;
+  int i, iter                    = 0, err_flag, err_flag_imported, size_sendtype, size_recvtype;
   long long sendCheckSum, recvCheckSum, importedCheckSum;
   unsigned char *p, *buf, *recvbuf;
   char msg[500];
@@ -106,7 +101,8 @@ int MPI_Check_Sendrecv(void *sendbuf, int sendcount, MPI_Datatype sendtype,
     {
       if(*p != 255)
         {
-          sprintf(msg, "MPI-ERROR: Task=%d/%s: Recv occured before recv buffer. message-size=%d from %d, i=%d c=%d\n", ThisTask, getenv("HOST"), recvcount, dest, i, *p);
+          sprintf(msg, "MPI-ERROR: Task=%d/%s: Recv occured before recv buffer. message-size=%d from %d, i=%d c=%d\n", ThisTask,
+                  getenv("HOST"), recvcount, dest, i, *p);
           terminate(msg);
         }
     }
@@ -115,7 +111,8 @@ int MPI_Check_Sendrecv(void *sendbuf, int sendcount, MPI_Datatype sendtype,
     {
       if(*p != 255)
         {
-          sprintf(msg, "MPI-ERROR: Task=%d/%s: Recv occured after recv buffer. message-size=%d from %d, i=%d c=%d\n", ThisTask, getenv("HOST"), recvcount, dest, i, *p);
+          sprintf(msg, "MPI-ERROR: Task=%d/%s: Recv occured after recv buffer. message-size=%d from %d, i=%d c=%d\n", ThisTask,
+                  getenv("HOST"), recvcount, dest, i, *p);
           terminate(msg);
         }
     }
@@ -149,9 +146,11 @@ int MPI_Check_Sendrecv(void *sendbuf, int sendcount, MPI_Datatype sendtype,
 
   if(recvCheckSum != importedCheckSum)
     {
-      printf
-        ("MPI-ERROR: Receive error on task=%d/%s from task=%d, message size=%d, sendcount=%d checksums= %d %d  %d %d. Try to fix it...\n",
-         ThisTask, getenv("HOST"), source, recvcount, sendcount, (int) (recvCheckSum >> 32), (int) recvCheckSum, (int) (importedCheckSum >> 32), (int) importedCheckSum);
+      printf(
+          "MPI-ERROR: Receive error on task=%d/%s from task=%d, message size=%d, sendcount=%d checksums= %d %d  %d %d. Try to fix "
+          "it...\n",
+          ThisTask, getenv("HOST"), source, recvcount, sendcount, (int)(recvCheckSum >> 32), (int)recvCheckSum,
+          (int)(importedCheckSum >> 32), (int)importedCheckSum);
       myflush(stdout);
 
       err_flag = 1;
@@ -171,7 +170,8 @@ int MPI_Check_Sendrecv(void *sendbuf, int sendcount, MPI_Datatype sendtype,
 
   if(err_flag > 0 || err_flag_imported > 0)
     {
-      printf("Task=%d is on %s, wants to send %d and has checksum=%d %d of send data\n", ThisTask, getenv("HOST"), sendcount, (int) (sendCheckSum >> 32), (int) sendCheckSum);
+      printf("Task=%d is on %s, wants to send %d and has checksum=%d %d of send data\n", ThisTask, getenv("HOST"), sendcount,
+             (int)(sendCheckSum >> 32), (int)sendCheckSum);
       myflush(stdout);
 
       do
@@ -222,7 +222,8 @@ int MPI_Check_Sendrecv(void *sendbuf, int sendcount, MPI_Datatype sendtype,
                 }
               else
                 {
-                  MPI_Sendrecv(sendbuf, sendcount, sendtype, dest, sendtag, recvbuf, recvcount, recvtype, source, recvtag, comm, status);
+                  MPI_Sendrecv(sendbuf, sendcount, sendtype, dest, sendtag, recvbuf, recvcount, recvtype, source, recvtag, comm,
+                               status);
                 }
             }
 
@@ -231,7 +232,7 @@ int MPI_Check_Sendrecv(void *sendbuf, int sendcount, MPI_Datatype sendtype,
           for(i = 0, p = sendbuf, sendCheckSum = 0; i < sendcount * size_sendtype; i++, p++)
             sendCheckSum += *p;
 
-          printf("Task=%d gas send_checksum=%d %d\n", ThisTask, (int) (sendCheckSum >> 32), (int) sendCheckSum);
+          printf("Task=%d gas send_checksum=%d %d\n", ThisTask, (int)(sendCheckSum >> 32), (int)sendCheckSum);
           myflush(stdout);
 
           if(dest > ThisTask)
@@ -256,9 +257,11 @@ int MPI_Check_Sendrecv(void *sendbuf, int sendcount, MPI_Datatype sendtype,
 
           if(recvCheckSum != importedCheckSum)
             {
-              printf
-                ("MPI-ERROR: Again (iter=%d) a receive error on task=%d/%s from task=%d, message size=%d, checksums= %d %d  %d %d. Try to fix it...\n",
-                 iter, ThisTask, getenv("HOST"), source, recvcount, (int) (recvCheckSum >> 32), (int) recvCheckSum, (int) (importedCheckSum >> 32), (int) importedCheckSum);
+              printf(
+                  "MPI-ERROR: Again (iter=%d) a receive error on task=%d/%s from task=%d, message size=%d, checksums= %d %d  %d %d. "
+                  "Try to fix it...\n",
+                  iter, ThisTask, getenv("HOST"), source, recvcount, (int)(recvCheckSum >> 32), (int)recvCheckSum,
+                  (int)(importedCheckSum >> 32), (int)importedCheckSum);
               myflush(stdout);
               err_flag = 1;
             }
@@ -290,14 +293,14 @@ int MPI_Check_Sendrecv(void *sendbuf, int sendcount, MPI_Datatype sendtype,
           FILE *fd;
 
           sprintf(buf, "send_data_%d.dat", ThisTask);
-          fd = fopen(buf, "w");
+          fd     = fopen(buf, "w");
           length = sendcount * size_sendtype;
           fwrite(&length, 1, sizeof(int), fd);
           fwrite(sendbuf, sendcount, size_sendtype, fd);
           fclose(fd);
 
           sprintf(buf, "recv_data_%d.dat", ThisTask);
-          fd = fopen(buf, "w");
+          fd     = fopen(buf, "w");
           length = recvcount * size_recvtype;
           fwrite(&length, 1, sizeof(int), fd);
           fwrite(recvbuf, recvcount, size_recvtype, fd);
@@ -314,6 +317,5 @@ int MPI_Check_Sendrecv(void *sendbuf, int sendcount, MPI_Datatype sendtype,
 
   return 0;
 }
-
 
 #endif /* #ifdef MPISENDRECV_CHECKSUM */

@@ -40,27 +40,24 @@
  *                void ngb_treemodifylength(int delta_NgbMaxPart)
  *                void ngb_treeallocate(void)
  *                void ngb_treefree(void)
- * 
+ *
  * \par Major modifications and contributions:
- * 
+ *
  * - DD.MM.YYYY Description
  * - 21.05.2018 Prepared file for public release -- Rainer Weinberger
  */
 
-
+#include <math.h>
 #include <mpi.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <math.h>
 #include <time.h>
 
-
+#include "../domain/domain.h"
+#include "../gravity/forcetree.h"
 #include "../main/allvars.h"
 #include "../main/proto.h"
-#include "../gravity/forcetree.h"
-#include "../domain/domain.h"
-
 
 static void ngb_record_topnode_siblings(int no, int sib);
 static int ngb_treebuild_construct(int npart);
@@ -70,9 +67,7 @@ static int ngb_create_empty_nodes(int no, int topnode, int bits, int x, int y, i
 static void ngb_update_vbounds(int i, int *nchanged, int *nodelist);
 static void ngb_finish_vounds_update(int nchanged, int *nodelist);
 
-
 static int *Ngb_Node_Tmp_Sibling;
-
 
 /*! \brief This function is a driver routine for constructing the neighbor
  *         oct-tree, which is done by calling a small number of other
@@ -115,12 +110,12 @@ int ngb_treebuild(int npart)
   while(flag == -1);
 
   int ntopleaves = DomainNLocalTopleave[ThisTask];
-  int *list = DomainListOfLocalTopleaves + DomainFirstLocTopleave[ThisTask];
+  int *list      = DomainListOfLocalTopleaves + DomainFirstLocTopleave[ThisTask];
 
   for(int i = 0; i < ntopleaves; i++)
     {
       int last = -1;
-      int no = Ngb_DomainNodeIndex[list[i]];
+      int no   = Ngb_DomainNodeIndex[list[i]];
 
       if(no < Ngb_MaxPart || no >= Ngb_MaxPart + Ngb_MaxNodes)
         terminate("i=%d no=%d  task=%d \n", i, no, DomainTask[list[i]]);
@@ -142,7 +137,7 @@ int ngb_treebuild(int npart)
     {
       if(DomainTask[i] != ThisTask)
         {
-          int index = Ngb_DomainNodeIndex[i];
+          int index                     = Ngb_DomainNodeIndex[i];
           Ngb_Nodes[index].u.d.nextnode = Ngb_MaxPart + Ngb_MaxNodes + i;
         }
     }
@@ -153,7 +148,7 @@ int ngb_treebuild(int npart)
 
   if(last >= Ngb_MaxPart)
     {
-      if(last >= Ngb_MaxPart + Ngb_MaxNodes)    /* a pseudo-particle */
+      if(last >= Ngb_MaxPart + Ngb_MaxNodes) /* a pseudo-particle */
         Ngb_Nextnode[last - Ngb_MaxNodes] = -1;
       else
         Ngb_Nodes[last].u.d.nextnode = -1;
@@ -167,7 +162,8 @@ int ngb_treebuild(int npart)
   MPI_Reduce(&numnodes, &tot_numnodes, 1, MPI_DOUBLE, MPI_SUM, 0, MPI_COMM_WORLD);
 
   double t1 = second();
-  mpi_printf("NGBTREE: Ngb-tree construction done. took %g sec  <numnodes>=%g  NTopnodes=%d NTopleaves=%d\n", timediff(t0, t1), tot_numnodes / NTask, NTopnodes, NTopleaves);
+  mpi_printf("NGBTREE: Ngb-tree construction done. took %g sec  <numnodes>=%g  NTopnodes=%d NTopleaves=%d\n", timediff(t0, t1),
+             tot_numnodes / NTask, NTopnodes, NTopleaves);
 
   myfree(Ngb_Node_Tmp_Sibling + Ngb_MaxPart);
 
@@ -178,7 +174,6 @@ int ngb_treebuild(int npart)
 
   return Ngb_NumNodes;
 }
-
 
 /*! \brief Converts double precision coordinate to unsigned long long int.
  *
@@ -196,7 +191,6 @@ static inline unsigned long long ngb_double_to_int(double d)
   u.d = d;
   return (u.ull & 0xFFFFFFFFFFFFFllu);
 }
-
 
 /*! \brief Constructs the neighbor oct-tree.
  *
@@ -219,7 +213,7 @@ static inline unsigned long long ngb_double_to_int(double d)
 int ngb_treebuild_construct(int npart)
 {
   /* create an empty root node  */
-  Ngb_NextFreeNode = Ngb_MaxPart;       /* index of first free node */
+  Ngb_NextFreeNode = Ngb_MaxPart; /* index of first free node */
 
   for(int i = 0; i < 8; i++)
     Ngb_Nodes[Ngb_NextFreeNode].u.suns[i] = -1;
@@ -237,12 +231,13 @@ int ngb_treebuild_construct(int npart)
 
   Ngb_FirstNonTopLevelNode = Ngb_NextFreeNode;
 
-  Ngb_Node_Tmp_Sibling = (int *) mymalloc("Ngb_Node_Tmp_Sibling", (Ngb_MaxNodes + 1) * sizeof(int));
+  Ngb_Node_Tmp_Sibling = (int *)mymalloc("Ngb_Node_Tmp_Sibling", (Ngb_MaxNodes + 1) * sizeof(int));
   Ngb_Node_Tmp_Sibling -= Ngb_MaxPart;
 
   ngb_record_topnode_siblings(Ngb_MaxPart, -1);
 
-  unsigned long long *ngbTree_IntPos_list = (unsigned long long *) mymalloc("ngbTree_IntPos_list", 3 * npart * sizeof(unsigned long long));
+  unsigned long long *ngbTree_IntPos_list =
+      (unsigned long long *)mymalloc("ngbTree_IntPos_list", 3 * npart * sizeof(unsigned long long));
 
   /* now we insert all particles */
   {
@@ -257,31 +252,32 @@ int ngb_treebuild_construct(int npart)
     if(threadid == 0)
       Ngb_NextFreeNode += NUM_THREADS * TAKE_NSLOTS_IN_ONE_GO;
 
-    size = (npart - 1) / NUM_THREADS + 1;
+    size  = (npart - 1) / NUM_THREADS + 1;
     start = threadid * size;
-    end = (threadid + 1) * size - 1;
+    end   = (threadid + 1) * size - 1;
     if(end >= npart)
       end = npart - 1;
 
     for(int i = start; i <= end && out_of_space == 0; i++)
       {
-        unsigned long long xxb = ngb_double_to_int(((P[i].Pos[0] - DomainCorner[0]) * DomainInverseLen) + 1.0);
-        unsigned long long yyb = ngb_double_to_int(((P[i].Pos[1] - DomainCorner[1]) * DomainInverseLen) + 1.0);
-        unsigned long long zzb = ngb_double_to_int(((P[i].Pos[2] - DomainCorner[2]) * DomainInverseLen) + 1.0);
-        unsigned long long mask = ((unsigned long long) 1) << (52 - 1);
-        unsigned char shiftx = (52 - 1);
-        unsigned char shifty = (52 - 2);
-        unsigned char shiftz = (52 - 3);
-        unsigned char levels = 0;
+        unsigned long long xxb  = ngb_double_to_int(((P[i].Pos[0] - DomainCorner[0]) * DomainInverseLen) + 1.0);
+        unsigned long long yyb  = ngb_double_to_int(((P[i].Pos[1] - DomainCorner[1]) * DomainInverseLen) + 1.0);
+        unsigned long long zzb  = ngb_double_to_int(((P[i].Pos[2] - DomainCorner[2]) * DomainInverseLen) + 1.0);
+        unsigned long long mask = ((unsigned long long)1) << (52 - 1);
+        unsigned char shiftx    = (52 - 1);
+        unsigned char shifty    = (52 - 2);
+        unsigned char shiftz    = (52 - 3);
+        unsigned char levels    = 0;
 
         ngbTree_IntPos_list[3 * i + 0] = xxb;
         ngbTree_IntPos_list[3 * i + 1] = yyb;
         ngbTree_IntPos_list[3 * i + 2] = zzb;
 
         int no = 0;
-        while(TopNodes[no].Daughter >= 0)       /* walk down top tree to find correct leaf */
+        while(TopNodes[no].Daughter >= 0) /* walk down top tree to find correct leaf */
           {
-            unsigned char subnode = (((unsigned char) ((xxb & mask) >> (shiftx--))) | ((unsigned char) ((yyb & mask) >> (shifty--))) | ((unsigned char) ((zzb & mask) >> (shiftz--))));
+            unsigned char subnode = (((unsigned char)((xxb & mask) >> (shiftx--))) | ((unsigned char)((yyb & mask) >> (shifty--))) |
+                                     ((unsigned char)((zzb & mask) >> (shiftz--))));
 
             mask >>= 1;
             levels++;
@@ -292,20 +288,22 @@ int ngb_treebuild_construct(int npart)
         no = TopNodes[no].Leaf;
 
         if(DomainTask[no] != ThisTask)
-          terminate("STOP!  ID=%lld of type=%d is inserted into task=%d, but should be on task=%d no=%d\n", (long long) P[i].ID, P[i].Type, ThisTask, DomainTask[no], no);
+          terminate("STOP!  ID=%lld of type=%d is inserted into task=%d, but should be on task=%d no=%d\n", (long long)P[i].ID,
+                    P[i].Type, ThisTask, DomainTask[no], no);
 
         int th = Ngb_DomainNodeIndex[no];
 
         signed long long centermask = (0xFFF0000000000000llu) >> levels;
 
-        int parent = -1;        /* note: will not be used below before it is changed */
+        int parent            = -1; /* note: will not be used below before it is changed */
         unsigned char subnode = 0;
 
         while(1)
           {
-            if(th >= Ngb_MaxPart)       /* we are dealing with an internal node */
+            if(th >= Ngb_MaxPart) /* we are dealing with an internal node */
               {
-                subnode = (((unsigned char) ((xxb & mask) >> (shiftx--))) | ((unsigned char) ((yyb & mask) >> (shifty--))) | ((unsigned char) ((zzb & mask) >> (shiftz--))));
+                subnode = (((unsigned char)((xxb & mask) >> (shiftx--))) | ((unsigned char)((yyb & mask) >> (shifty--))) |
+                           ((unsigned char)((zzb & mask) >> (shiftz--))));
 
                 centermask >>= 1;
                 mask >>= 1;
@@ -331,10 +329,10 @@ int ngb_treebuild_construct(int npart)
 
                 int nn = Ngb_Nodes[th].u.suns[subnode];
 
-                if(nn >= 0)     /* ok, something is in the daughter slot already, need to continue */
+                if(nn >= 0) /* ok, something is in the daughter slot already, need to continue */
                   {
                     parent = th;
-                    th = nn;
+                    th     = nn;
                   }
                 else
                   {
@@ -342,7 +340,7 @@ int ngb_treebuild_construct(int npart)
                      * the new particle as a leaf.
                      */
                     Ngb_Nodes[th].u.suns[subnode] = i;
-                    break;      /* done for this particle */
+                    break; /* done for this particle */
                   }
               }
             else
@@ -377,14 +375,15 @@ int ngb_treebuild_construct(int npart)
                   }
 
                 Ngb_Nodes[parent].u.suns[subnode] = th;
-                struct NgbNODE *nfreep = &Ngb_Nodes[th];
+                struct NgbNODE *nfreep            = &Ngb_Nodes[th];
 
                 for(int j = 0; j < 8; j++)
                   nfreep->u.suns[j] = -1;
 
                 unsigned long long *intppos = &ngbTree_IntPos_list[3 * thold];
 
-                subnode = (((unsigned char) ((intppos[0] & mask) >> shiftx)) | ((unsigned char) ((intppos[1] & mask) >> shifty)) | ((unsigned char) ((intppos[2] & mask) >> shiftz)));
+                subnode = (((unsigned char)((intppos[0] & mask) >> shiftx)) | ((unsigned char)((intppos[1] & mask) >> shifty)) |
+                           ((unsigned char)((intppos[2] & mask) >> shiftz)));
 
                 nfreep->u.suns[subnode] = thold;
               }
@@ -407,7 +406,6 @@ int ngb_treebuild_construct(int npart)
 
   return 0;
 }
-
 
 /*! \brief Create empty ngb-tree node.
  *
@@ -440,7 +438,8 @@ int ngb_create_empty_nodes(int no, int topnode, int bits, int x, int y, int z)
                   if(All.NgbTreeAllocFactor > MAX_TREE_ALLOC_FACTOR)
                     {
                       dump_particles();
-                      terminate("task %d: looks like a serious problem (NTopnodes=%d), stopping with particle dump.\n", ThisTask, NTopnodes);
+                      terminate("task %d: looks like a serious problem (NTopnodes=%d), stopping with particle dump.\n", ThisTask,
+                                NTopnodes);
                     }
                   return -1;
                 }
@@ -460,14 +459,14 @@ int ngb_create_empty_nodes(int no, int topnode, int bits, int x, int y, int z)
               Ngb_NextFreeNode++;
               Ngb_NumNodes++;
 
-              if(ngb_create_empty_nodes(Ngb_NextFreeNode - 1, TopNodes[topnode].Daughter + sub, bits + 1, 2 * x + i, 2 * y + j, 2 * z + k) < 0)
+              if(ngb_create_empty_nodes(Ngb_NextFreeNode - 1, TopNodes[topnode].Daughter + sub, bits + 1, 2 * x + i, 2 * y + j,
+                                        2 * z + k) < 0)
                 return -1;
             }
     }
 
   return 0;
 }
-
 
 /*! \brief Determine node ranges.
  *
@@ -496,7 +495,7 @@ void ngb_update_node_recursive(int no, int sib, int father, int *last, int mode)
   MyNgbTreeFloat vmin[3], vmax[3], maxcsnd;
 #endif /* #ifdef TREE_BASED_TIMESTEPS */
 
-  if(no >= Ngb_MaxPart && no < Ngb_MaxPart + Ngb_MaxNodes)      /* internal node */
+  if(no >= Ngb_MaxPart && no < Ngb_MaxPart + Ngb_MaxNodes) /* internal node */
     {
       if(*last >= 0)
         {
@@ -505,7 +504,7 @@ void ngb_update_node_recursive(int no, int sib, int father, int *last, int mode)
               if(*last == no)
                 terminate("as");
 
-              if(*last >= Ngb_MaxPart + Ngb_MaxNodes)   /* a pseudo-particle */
+              if(*last >= Ngb_MaxPart + Ngb_MaxNodes) /* a pseudo-particle */
                 Ngb_Nextnode[*last - Ngb_MaxNodes] = no;
               else
                 Ngb_Nodes[*last].u.d.nextnode = no;
@@ -531,7 +530,8 @@ void ngb_update_node_recursive(int no, int sib, int father, int *last, int mode)
         {
           p = Ngb_Nodes[no].u.d.nextnode;
 
-          if(p >= Ngb_MaxPart + Ngb_MaxNodes && p < Ngb_MaxPart + Ngb_MaxNodes + NTopleaves)    /* a pseudo-particle, i.e. we are dealing with a non-local top-leave */
+          if(p >= Ngb_MaxPart + Ngb_MaxNodes &&
+             p < Ngb_MaxPart + Ngb_MaxNodes + NTopleaves) /* a pseudo-particle, i.e. we are dealing with a non-local top-leave */
             ngb_update_node_recursive(p, sib, no, last, mode);
           else
             {
@@ -544,14 +544,13 @@ void ngb_update_node_recursive(int no, int sib, int father, int *last, int mode)
 
           /* restore the sibling pointer for local toplevel nodes (we had temporarily stored the last element in this branch */
           Ngb_Nodes[no].u.d.sibling = sib;
-          Ngb_Nodes[no].father = father;
+          Ngb_Nodes[no].father      = father;
         }
       else
         {
-
           for(j = 0; j < 8; j++)
-            suns[j] = Ngb_Nodes[no].u.suns[j];  /* this "backup" is necessary because the nextnode entry will
-                                                   overwrite one element (union!) */
+            suns[j] = Ngb_Nodes[no].u.suns[j]; /* this "backup" is necessary because the nextnode entry will
+                                                  overwrite one element (union!) */
 
 #ifdef TREE_BASED_TIMESTEPS
           maxcsnd = 0;
@@ -579,16 +578,16 @@ void ngb_update_node_recursive(int no, int sib, int father, int *last, int mode)
                     if((pp = suns[jj]) >= 0)
                       break;
 
-                  if(jj < 8)    /* yes, we do */
+                  if(jj < 8) /* yes, we do */
                     nextsib = pp;
                   else
                     nextsib = sib;
 
                   ngb_update_node_recursive(p, nextsib, no, last, mode);
 
-                  if(p >= Ngb_MaxPart)  /* an internal node or pseudo particle */
+                  if(p >= Ngb_MaxPart) /* an internal node or pseudo particle */
                     {
-                      if(p >= Ngb_MaxPart + Ngb_MaxNodes)       /* a pseudo particle */
+                      if(p >= Ngb_MaxPart + Ngb_MaxNodes) /* a pseudo particle */
                         {
                           /* nothing to be done here because the mass of the
                            * pseudo-particle is still zero. This will be changed
@@ -625,7 +624,7 @@ void ngb_update_node_recursive(int no, int sib, int father, int *last, int mode)
                             }
                         }
                     }
-                  else          /* a particle */
+                  else /* a particle */
                     {
 #ifdef TREE_BASED_TIMESTEPS
                       if(maxcsnd < SphP[p].Csnd)
@@ -668,8 +667,8 @@ void ngb_update_node_recursive(int no, int sib, int father, int *last, int mode)
             {
               Ngb_Nodes[no].u.d.range_min[k] = range_min[k];
               Ngb_Nodes[no].u.d.range_max[k] = range_max[k];
-              Ngb_Nodes[no].vertex_vmin[k] = vertex_vmin[k];
-              Ngb_Nodes[no].vertex_vmax[k] = vertex_vmax[k];
+              Ngb_Nodes[no].vertex_vmin[k]   = vertex_vmin[k];
+              Ngb_Nodes[no].vertex_vmax[k]   = vertex_vmax[k];
 #ifdef TREE_BASED_TIMESTEPS
               ExtNgb_Nodes[no].vmin[k] = vmin[k];
               ExtNgb_Nodes[no].vmax[k] = vmax[k];
@@ -677,18 +676,18 @@ void ngb_update_node_recursive(int no, int sib, int father, int *last, int mode)
             }
 
           Ngb_Nodes[no].u.d.sibling = sib;
-          Ngb_Nodes[no].father = father;
+          Ngb_Nodes[no].father      = father;
 
           Ngb_Nodes[no].Ti_Current = All.Ti_Current;
         }
     }
-  else                          /* single particle or pseudo particle */
+  else /* single particle or pseudo particle */
     {
       if(*last >= 0)
         {
           if(*last >= Ngb_MaxPart)
             {
-              if(*last >= Ngb_MaxPart + Ngb_MaxNodes)   /* a pseudo-particle */
+              if(*last >= Ngb_MaxPart + Ngb_MaxNodes) /* a pseudo-particle */
                 Ngb_Nextnode[*last - Ngb_MaxNodes] = no;
               else
                 Ngb_Nodes[*last].u.d.nextnode = no;
@@ -698,7 +697,7 @@ void ngb_update_node_recursive(int no, int sib, int father, int *last, int mode)
               Ngb_Nextnode[*last] = no;
             }
         }
-      if(no < Ngb_MaxPart)      /* only set it for single particles... */
+      if(no < Ngb_MaxPart) /* only set it for single particles... */
         {
           if(father < Ngb_MaxPart)
             terminate("no=%d father=%d\n", no, father);
@@ -709,7 +708,6 @@ void ngb_update_node_recursive(int no, int sib, int father, int *last, int mode)
       *last = no;
     }
 }
-
 
 /*! \brief Sets sibling information in u.suns for node no.
  *
@@ -742,9 +740,8 @@ void ngb_record_topnode_siblings(int no, int sib)
           }
     }
   else
-    Ngb_Node_Tmp_Sibling[no] = sib;     /* a top-level leave node */
+    Ngb_Node_Tmp_Sibling[no] = sib; /* a top-level leave node */
 }
-
 
 /*! \brief Communicates top leaf data.
  *
@@ -760,16 +757,16 @@ void ngb_exchange_topleafdata(void)
     MyNgbTreeFloat vertex_vmax[3];
 #ifdef TREE_BASED_TIMESTEPS
     MyNgbTreeFloat MaxCsnd, vmin[3], vmax[3];
-#endif                          /* #ifdef TREE_BASED_TIMESTEPS */
+#endif /* #ifdef TREE_BASED_TIMESTEPS */
   };
 
-  struct DomainNODE *DomainMoment = (struct DomainNODE *) mymalloc("DomainMoment", NTopleaves * sizeof(struct DomainNODE));
+  struct DomainNODE *DomainMoment = (struct DomainNODE *)mymalloc("DomainMoment", NTopleaves * sizeof(struct DomainNODE));
 
   /* share the pseudo-particle data accross CPUs */
-  int *recvcounts = (int *) mymalloc("recvcounts", sizeof(int) * NTask);
-  int *recvoffset = (int *) mymalloc("recvoffset", sizeof(int) * NTask);
-  int *bytecounts = (int *) mymalloc("bytecounts", sizeof(int) * NTask);
-  int *byteoffset = (int *) mymalloc("byteoffset", sizeof(int) * NTask);
+  int *recvcounts = (int *)mymalloc("recvcounts", sizeof(int) * NTask);
+  int *recvoffset = (int *)mymalloc("recvoffset", sizeof(int) * NTask);
+  int *bytecounts = (int *)mymalloc("bytecounts", sizeof(int) * NTask);
+  int *byteoffset = (int *)mymalloc("byteoffset", sizeof(int) * NTask);
 
   for(int task = 0; task < NTask; task++)
     recvcounts[task] = 0;
@@ -787,7 +784,8 @@ void ngb_exchange_topleafdata(void)
       byteoffset[task] = byteoffset[task - 1] + bytecounts[task - 1];
     }
 
-  struct DomainNODE *loc_DomainMoment = (struct DomainNODE *) mymalloc("loc_DomainMoment", recvcounts[ThisTask] * sizeof(struct DomainNODE));
+  struct DomainNODE *loc_DomainMoment =
+      (struct DomainNODE *)mymalloc("loc_DomainMoment", recvcounts[ThisTask] * sizeof(struct DomainNODE));
 
   int idx = 0;
   for(int n = 0; n < NTopleaves; n++)
@@ -802,8 +800,8 @@ void ngb_exchange_topleafdata(void)
 #endif /* #ifdef TREE_BASED_TIMESTEPS */
           for(int k = 0; k < 3; k++)
             {
-              loc_DomainMoment[idx].range_min[k] = Ngb_Nodes[no].u.d.range_min[k];
-              loc_DomainMoment[idx].range_max[k] = Ngb_Nodes[no].u.d.range_max[k];
+              loc_DomainMoment[idx].range_min[k]   = Ngb_Nodes[no].u.d.range_min[k];
+              loc_DomainMoment[idx].range_max[k]   = Ngb_Nodes[no].u.d.range_max[k];
               loc_DomainMoment[idx].vertex_vmin[k] = Ngb_Nodes[no].vertex_vmin[k];
               loc_DomainMoment[idx].vertex_vmax[k] = Ngb_Nodes[no].vertex_vmax[k];
 #ifdef TREE_BASED_TIMESTEPS
@@ -825,7 +823,7 @@ void ngb_exchange_topleafdata(void)
       int task = DomainTask[n];
       if(task != ThisTask)
         {
-          int no = Ngb_DomainNodeIndex[n];
+          int no  = Ngb_DomainNodeIndex[n];
           int idx = recvoffset[task] + recvcounts[task]++;
 
 #ifdef TREE_BASED_TIMESTEPS
@@ -835,8 +833,8 @@ void ngb_exchange_topleafdata(void)
             {
               Ngb_Nodes[no].u.d.range_min[k] = DomainMoment[idx].range_min[k];
               Ngb_Nodes[no].u.d.range_max[k] = DomainMoment[idx].range_max[k];
-              Ngb_Nodes[no].vertex_vmin[k] = DomainMoment[idx].vertex_vmin[k];
-              Ngb_Nodes[no].vertex_vmax[k] = DomainMoment[idx].vertex_vmax[k];
+              Ngb_Nodes[no].vertex_vmin[k]   = DomainMoment[idx].vertex_vmin[k];
+              Ngb_Nodes[no].vertex_vmax[k]   = DomainMoment[idx].vertex_vmax[k];
 #ifdef TREE_BASED_TIMESTEPS
               ExtNgb_Nodes[no].vmin[k] = DomainMoment[idx].vmin[k];
               ExtNgb_Nodes[no].vmax[k] = DomainMoment[idx].vmax[k];
@@ -853,7 +851,6 @@ void ngb_exchange_topleafdata(void)
   myfree(recvcounts);
   myfree(DomainMoment);
 }
-
 
 /*! \brief Drifts a node to time time1.
  *
@@ -880,7 +877,6 @@ void drift_node(struct NgbNODE *current, integertime time1)
   current->Ti_Current = time1;
 }
 
-
 /*! \brief Updates velocity informataion in ngb node data.
  *
  *  \return void
@@ -891,8 +887,8 @@ void ngb_update_velocities(void)
 
   Ngb_MarkerValue++;
 
-  int nchanged = 0;
-  int *nodelist = (int *) mymalloc("nodelist", NTopleaves * sizeof(int));
+  int nchanged  = 0;
+  int *nodelist = (int *)mymalloc("nodelist", NTopleaves * sizeof(int));
 
   for(int idx = 0; idx < TimeBinsHydro.NActiveParticles; idx++)
     {
@@ -916,7 +912,6 @@ void ngb_update_velocities(void)
 
   TIMER_STOP(CPU_NGBTREEUPDATEVEL);
 }
-
 
 /*! \brief Updates vmin and vmax in ngb nodes.
  *
@@ -944,26 +939,26 @@ void ngb_update_vbounds(int i, int *nchanged, int *nodelist)
           if(Ngb_Nodes[no].vertex_vmin[j] > SphP[i].VelVertex[j])
             {
               Ngb_Nodes[no].vertex_vmin[j] = SphP[i].VelVertex[j];
-              flag_changed = 1;
+              flag_changed                 = 1;
             }
 
           if(Ngb_Nodes[no].vertex_vmax[j] < SphP[i].VelVertex[j])
             {
               Ngb_Nodes[no].vertex_vmax[j] = SphP[i].VelVertex[j];
-              flag_changed = 1;
+              flag_changed                 = 1;
             }
 
 #ifdef TREE_BASED_TIMESTEPS
           if(ExtNgb_Nodes[no].vmin[j] > P[i].Vel[j])
             {
               ExtNgb_Nodes[no].vmin[j] = P[i].Vel[j];
-              flag_changed = 1;
+              flag_changed             = 1;
             }
 
           if(ExtNgb_Nodes[no].vmax[j] < P[i].Vel[j])
             {
               ExtNgb_Nodes[no].vmax[j] = P[i].Vel[j];
-              flag_changed = 1;
+              flag_changed             = 1;
             }
 #endif /* #ifdef TREE_BASED_TIMESTEPS */
         }
@@ -975,9 +970,9 @@ void ngb_update_vbounds(int i, int *nchanged, int *nodelist)
         {
           if(Ngb_Marker[no] != Ngb_MarkerValue)
             {
-              Ngb_Marker[no] = Ngb_MarkerValue;
+              Ngb_Marker[no]      = Ngb_MarkerValue;
               nodelist[*nchanged] = no;
-              *nchanged = *nchanged + 1;
+              *nchanged           = *nchanged + 1;
             }
           break;
         }
@@ -985,7 +980,6 @@ void ngb_update_vbounds(int i, int *nchanged, int *nodelist)
       no = Ngb_Nodes[no].father;
     }
 }
-
 
 /*! \brief Finalizes velocity bounds update.
  *
@@ -1006,13 +1000,13 @@ void ngb_finish_vounds_update(int nchanged, int *nodelist)
 #ifdef TREE_BASED_TIMESTEPS
     MyNgbTreeFloat vmin[3];
     MyNgbTreeFloat vmax[3];
-#endif                          /* #ifdef TREE_BASED_TIMESTEPS */
+#endif /* #ifdef TREE_BASED_TIMESTEPS */
   };
 
   /* share the pseudo-particle data accross CPUs */
-  int *recvcounts = (int *) mymalloc("recvcounts", sizeof(int) * NTask);
-  int *bytecounts = (int *) mymalloc("bytecounts", sizeof(int) * NTask);
-  int *byteoffset = (int *) mymalloc("byteoffset", sizeof(int) * NTask);
+  int *recvcounts = (int *)mymalloc("recvcounts", sizeof(int) * NTask);
+  int *bytecounts = (int *)mymalloc("bytecounts", sizeof(int) * NTask);
+  int *byteoffset = (int *)mymalloc("byteoffset", sizeof(int) * NTask);
 
   MPI_Allgather(&nchanged, 1, MPI_INT, recvcounts, 1, MPI_INT, MPI_COMM_WORLD);
 
@@ -1023,11 +1017,12 @@ void ngb_finish_vounds_update(int nchanged, int *nodelist)
   for(int task = 1; task < NTask; task++)
     byteoffset[task] = byteoffset[task - 1] + bytecounts[task - 1];
 
-  struct DomainNODE *loc_DomainMoment = (struct DomainNODE *) mymalloc("loc_DomainMoment", recvcounts[ThisTask] * sizeof(struct DomainNODE));
+  struct DomainNODE *loc_DomainMoment =
+      (struct DomainNODE *)mymalloc("loc_DomainMoment", recvcounts[ThisTask] * sizeof(struct DomainNODE));
 
   for(int i = 0; i < nchanged; i++)
     {
-      int no = nodelist[i];
+      int no                   = nodelist[i];
       loc_DomainMoment[i].node = no;
 
       for(int j = 0; j < 3; j++)
@@ -1045,7 +1040,7 @@ void ngb_finish_vounds_update(int nchanged, int *nodelist)
   for(int task = 0; task < NTask; task++)
     tot_nchanged += recvcounts[task];
 
-  struct DomainNODE *tot_DomainMoment = (struct DomainNODE *) mymalloc("tot_DomainMoment", tot_nchanged * sizeof(struct DomainNODE));
+  struct DomainNODE *tot_DomainMoment = (struct DomainNODE *)mymalloc("tot_DomainMoment", tot_nchanged * sizeof(struct DomainNODE));
 
   MPI_Allgatherv(loc_DomainMoment, bytecounts[ThisTask], MPI_BYTE, tot_DomainMoment, bytecounts, byteoffset, MPI_BYTE, MPI_COMM_WORLD);
 
@@ -1080,25 +1075,25 @@ void ngb_finish_vounds_update(int nchanged, int *nodelist)
               if(Ngb_Nodes[no].vertex_vmin[j] > tot_DomainMoment[i].vertex_vmin[j])
                 {
                   Ngb_Nodes[no].vertex_vmin[j] = tot_DomainMoment[i].vertex_vmin[j];
-                  flag_changed = 1;
+                  flag_changed                 = 1;
                 }
 
               if(Ngb_Nodes[no].vertex_vmax[j] < tot_DomainMoment[i].vertex_vmax[j])
                 {
                   Ngb_Nodes[no].vertex_vmax[j] = tot_DomainMoment[i].vertex_vmax[j];
-                  flag_changed = 1;
+                  flag_changed                 = 1;
                 }
 #ifdef TREE_BASED_TIMESTEPS
               if(ExtNgb_Nodes[no].vmin[j] > tot_DomainMoment[i].vmin[j])
                 {
                   ExtNgb_Nodes[no].vmin[j] = tot_DomainMoment[i].vmin[j];
-                  flag_changed = 1;
+                  flag_changed             = 1;
                 }
 
               if(ExtNgb_Nodes[no].vmax[j] < tot_DomainMoment[i].vmax[j])
                 {
                   ExtNgb_Nodes[no].vmax[j] = tot_DomainMoment[i].vmax[j];
-                  flag_changed = 1;
+                  flag_changed             = 1;
                 }
 #endif /* #ifdef TREE_BASED_TIMESTEPS */
             }
@@ -1116,7 +1111,6 @@ void ngb_finish_vounds_update(int nchanged, int *nodelist)
   myfree(bytecounts);
   myfree(recvcounts);
 }
-
 
 /*! \brief Updates min and max position in ngb nodes.
  *
@@ -1144,13 +1138,13 @@ void ngb_update_rangebounds(int i, int *nchanged, int *nodelist)
           if(Ngb_Nodes[no].u.d.range_min[j] > P[i].Pos[j])
             {
               Ngb_Nodes[no].u.d.range_min[j] = P[i].Pos[j];
-              flag_changed = 1;
+              flag_changed                   = 1;
             }
 
           if(Ngb_Nodes[no].u.d.range_max[j] < P[i].Pos[j])
             {
               Ngb_Nodes[no].u.d.range_max[j] = P[i].Pos[j];
-              flag_changed = 1;
+              flag_changed                   = 1;
             }
         }
 
@@ -1161,9 +1155,9 @@ void ngb_update_rangebounds(int i, int *nchanged, int *nodelist)
         {
           if(Ngb_Marker[no] != Ngb_MarkerValue)
             {
-              Ngb_Marker[no] = Ngb_MarkerValue;
+              Ngb_Marker[no]      = Ngb_MarkerValue;
               nodelist[*nchanged] = no;
-              *nchanged = *nchanged + 1;
+              *nchanged           = *nchanged + 1;
             }
           break;
         }
@@ -1171,7 +1165,6 @@ void ngb_update_rangebounds(int i, int *nchanged, int *nodelist)
       no = Ngb_Nodes[no].father;
     }
 }
-
 
 /*! \brief Finalizes position bounds update.
  *
@@ -1192,9 +1185,9 @@ void ngb_finish_rangebounds_update(int nchanged, int *nodelist)
   };
 
   /* share the pseudo-particle data accross CPUs */
-  int *recvcounts = (int *) mymalloc("recvcounts", sizeof(int) * NTask);
-  int *bytecounts = (int *) mymalloc("bytecounts", sizeof(int) * NTask);
-  int *byteoffset = (int *) mymalloc("byteoffset", sizeof(int) * NTask);
+  int *recvcounts = (int *)mymalloc("recvcounts", sizeof(int) * NTask);
+  int *bytecounts = (int *)mymalloc("bytecounts", sizeof(int) * NTask);
+  int *byteoffset = (int *)mymalloc("byteoffset", sizeof(int) * NTask);
 
   MPI_Allgather(&nchanged, 1, MPI_INT, recvcounts, 1, MPI_INT, MPI_COMM_WORLD);
 
@@ -1205,11 +1198,12 @@ void ngb_finish_rangebounds_update(int nchanged, int *nodelist)
   for(int task = 1; task < NTask; task++)
     byteoffset[task] = byteoffset[task - 1] + bytecounts[task - 1];
 
-  struct DomainNODE *loc_DomainMoment = (struct DomainNODE *) mymalloc("loc_DomainMoment", recvcounts[ThisTask] * sizeof(struct DomainNODE));
+  struct DomainNODE *loc_DomainMoment =
+      (struct DomainNODE *)mymalloc("loc_DomainMoment", recvcounts[ThisTask] * sizeof(struct DomainNODE));
 
   for(int i = 0; i < nchanged; i++)
     {
-      int no = nodelist[i];
+      int no                   = nodelist[i];
       loc_DomainMoment[i].node = no;
 
       for(int j = 0; j < 3; j++)
@@ -1223,7 +1217,7 @@ void ngb_finish_rangebounds_update(int nchanged, int *nodelist)
   for(int task = 0; task < NTask; task++)
     tot_nchanged += recvcounts[task];
 
-  struct DomainNODE *tot_DomainMoment = (struct DomainNODE *) mymalloc("tot_DomainMoment", tot_nchanged * sizeof(struct DomainNODE));
+  struct DomainNODE *tot_DomainMoment = (struct DomainNODE *)mymalloc("tot_DomainMoment", tot_nchanged * sizeof(struct DomainNODE));
 
   MPI_Allgatherv(loc_DomainMoment, bytecounts[ThisTask], MPI_BYTE, tot_DomainMoment, bytecounts, byteoffset, MPI_BYTE, MPI_COMM_WORLD);
 
@@ -1254,13 +1248,13 @@ void ngb_finish_rangebounds_update(int nchanged, int *nodelist)
               if(Ngb_Nodes[no].u.d.range_min[j] > tot_DomainMoment[i].range_min[j])
                 {
                   Ngb_Nodes[no].u.d.range_min[j] = tot_DomainMoment[i].range_min[j];
-                  flag_changed = 1;
+                  flag_changed                   = 1;
                 }
 
               if(Ngb_Nodes[no].u.d.range_max[j] < tot_DomainMoment[i].range_max[j])
                 {
                   Ngb_Nodes[no].u.d.range_max[j] = tot_DomainMoment[i].range_max[j];
-                  flag_changed = 1;
+                  flag_changed                   = 1;
                 }
             }
 
@@ -1278,7 +1272,6 @@ void ngb_finish_rangebounds_update(int nchanged, int *nodelist)
   myfree(recvcounts);
 }
 
-
 /*! \brief Adjust ngb-tree structures due to a change in number of gas cells.
  *
  *  \param[in] delta_NgbMaxPart Difference in number of cells.
@@ -1289,17 +1282,17 @@ void ngb_treemodifylength(int delta_NgbMaxPart)
 {
   mpi_printf("ALLOCATE: Need to adjust NgbTree because Ngb_MaxPart needs to grow by %d\n", delta_NgbMaxPart);
 
-  for(int i = 0; i < Ngb_MaxPart + NTopleaves; i++)     /* check for particles and pseudo particles */
-    if(Ngb_Nextnode[i] >= Ngb_MaxPart)  /* internal node or pseudo particle */
+  for(int i = 0; i < Ngb_MaxPart + NTopleaves; i++) /* check for particles and pseudo particles */
+    if(Ngb_Nextnode[i] >= Ngb_MaxPart)              /* internal node or pseudo particle */
       Ngb_Nextnode[i] += delta_NgbMaxPart;
 
   for(int i = 0; i < Ngb_MaxPart; i++)
-    if(Ngb_Father[i] >= Ngb_MaxPart)    /* internal node or pseudo particle */
+    if(Ngb_Father[i] >= Ngb_MaxPart) /* internal node or pseudo particle */
       Ngb_Father[i] += delta_NgbMaxPart;
 
   for(int i = 0; i < Ngb_MaxNodes; i++)
     {
-      if(Ngb_Nodes[i + Ngb_MaxPart].u.d.nextnode >= Ngb_MaxPart)        /* internal node or pseudo particle */
+      if(Ngb_Nodes[i + Ngb_MaxPart].u.d.nextnode >= Ngb_MaxPart) /* internal node or pseudo particle */
         Ngb_Nodes[i + Ngb_MaxPart].u.d.nextnode += delta_NgbMaxPart;
 
       if(Ngb_Nodes[i + Ngb_MaxPart].u.d.sibling >= Ngb_MaxPart) /* internal node or pseudo particle */
@@ -1312,7 +1305,7 @@ void ngb_treemodifylength(int delta_NgbMaxPart)
   for(int i = 0; i < NTopleaves; i++)
     Ngb_DomainNodeIndex[i] += delta_NgbMaxPart;
 
-  Ngb_Nextnode = (int *) myrealloc_movable(Ngb_Nextnode, (Ngb_MaxPart + delta_NgbMaxPart + NTopleaves) * sizeof(int));
+  Ngb_Nextnode = (int *)myrealloc_movable(Ngb_Nextnode, (Ngb_MaxPart + delta_NgbMaxPart + NTopleaves) * sizeof(int));
 
   memmove(&Ngb_Nextnode[Ngb_MaxPart + delta_NgbMaxPart], &Ngb_Nextnode[Ngb_MaxPart], NTopleaves * sizeof(int));
 
@@ -1326,13 +1319,12 @@ void ngb_treemodifylength(int delta_NgbMaxPart)
   ExtNgb_Nodes -= delta_NgbMaxPart;
 #endif /* #ifdef TREE_BASED_TIMESTEPS */
 
-  Ngb_Father = (int *) myrealloc_movable(Ngb_Father, Ngb_MaxPart * sizeof(int));
+  Ngb_Father = (int *)myrealloc_movable(Ngb_Father, Ngb_MaxPart * sizeof(int));
 
-  Ngb_Marker = (int *) myrealloc_movable(Ngb_Marker, (Ngb_MaxNodes + Ngb_MaxPart) * sizeof(int));
+  Ngb_Marker = (int *)myrealloc_movable(Ngb_Marker, (Ngb_MaxNodes + Ngb_MaxPart) * sizeof(int));
   memmove(Ngb_Marker + Ngb_MaxPart, Ngb_Marker + Ngb_MaxPart - delta_NgbMaxPart, Ngb_MaxNodes * sizeof(int));
   memset(Ngb_Marker + Ngb_MaxPart - delta_NgbMaxPart, -1, delta_NgbMaxPart * sizeof(int));
 }
-
 
 /*! \brief Allocates arrays for neighbor tree.
  *
@@ -1342,8 +1334,8 @@ void ngb_treeallocate(void)
 {
   if(Ngb_MaxPart == 0)
     {
-      Ngb_MaxPart = All.MaxPartSph;
-      Ngb_MaxNodes = (int) (All.NgbTreeAllocFactor * (All.MaxPartSph + BASENUMBER)) + NTopnodes;
+      Ngb_MaxPart  = All.MaxPartSph;
+      Ngb_MaxNodes = (int)(All.NgbTreeAllocFactor * (All.MaxPartSph + BASENUMBER)) + NTopnodes;
     }
 
   if(All.TotNumGas == 0)
@@ -1352,21 +1344,20 @@ void ngb_treeallocate(void)
   if(Ngb_Nodes)
     terminate("already allocated");
 
-  Ngb_DomainNodeIndex = (int *) mymalloc_movable(&Ngb_DomainNodeIndex, "Ngb_DomainNodeIndex", NTopleaves * sizeof(int));
+  Ngb_DomainNodeIndex = (int *)mymalloc_movable(&Ngb_DomainNodeIndex, "Ngb_DomainNodeIndex", NTopleaves * sizeof(int));
 
-  Ngb_Nodes = (struct NgbNODE *) mymalloc_movable(&Ngb_Nodes, "Ngb_Nodes", (Ngb_MaxNodes + 1) * sizeof(struct NgbNODE));
+  Ngb_Nodes = (struct NgbNODE *)mymalloc_movable(&Ngb_Nodes, "Ngb_Nodes", (Ngb_MaxNodes + 1) * sizeof(struct NgbNODE));
   Ngb_Nodes -= Ngb_MaxPart;
 
 #ifdef TREE_BASED_TIMESTEPS
-  ExtNgb_Nodes = (struct ExtNgbNODE *) mymalloc_movable(&ExtNgb_Nodes, "ExtNgb_Nodes", (Ngb_MaxNodes + 1) * sizeof(struct ExtNgbNODE));
+  ExtNgb_Nodes = (struct ExtNgbNODE *)mymalloc_movable(&ExtNgb_Nodes, "ExtNgb_Nodes", (Ngb_MaxNodes + 1) * sizeof(struct ExtNgbNODE));
   ExtNgb_Nodes -= Ngb_MaxPart;
 #endif /* #ifdef TREE_BASED_TIMESTEPS */
-  Ngb_Nextnode = (int *) mymalloc_movable(&Ngb_Nextnode, "Ngb_Nextnode", (Ngb_MaxPart + NTopleaves) * sizeof(int));
-  Ngb_Father = (int *) mymalloc_movable(&Ngb_Father, "Ngb_Father", Ngb_MaxPart * sizeof(int));
+  Ngb_Nextnode = (int *)mymalloc_movable(&Ngb_Nextnode, "Ngb_Nextnode", (Ngb_MaxPart + NTopleaves) * sizeof(int));
+  Ngb_Father   = (int *)mymalloc_movable(&Ngb_Father, "Ngb_Father", Ngb_MaxPart * sizeof(int));
 
-  Ngb_Marker = (int *) mymalloc_movable(&Ngb_Marker, "Ngb_Marker", (Ngb_MaxNodes + Ngb_MaxPart) * sizeof(int));
+  Ngb_Marker = (int *)mymalloc_movable(&Ngb_Marker, "Ngb_Marker", (Ngb_MaxNodes + Ngb_MaxPart) * sizeof(int));
 }
-
 
 /*! \brief This function frees the memory allocated for the neighbor tree.
  *
@@ -1389,13 +1380,13 @@ void ngb_treefree(void)
       myfree_movable(Ngb_Nodes + Ngb_MaxPart);
       myfree_movable(Ngb_DomainNodeIndex);
 
-      Ngb_Marker = NULL;
-      Ngb_Father = NULL;
-      Ngb_Nodes = NULL;
+      Ngb_Marker          = NULL;
+      Ngb_Father          = NULL;
+      Ngb_Nodes           = NULL;
       Ngb_DomainNodeIndex = NULL;
-      Ngb_Nextnode = NULL;
-      Ngb_MaxPart = 0;
-      Ngb_MaxNodes = 0;
+      Ngb_Nextnode        = NULL;
+      Ngb_MaxPart         = 0;
+      Ngb_MaxNodes        = 0;
     }
   else
     terminate("trying to free the tree even though it's not allocated");

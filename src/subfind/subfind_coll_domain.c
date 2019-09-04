@@ -30,32 +30,28 @@
  *                void subfind_coll_domain_combine_topleaves_to_domains(int ncpu, int ndomain)
  *                void subfind_coll_domain_allocate(void)
  *                void subfind_coll_domain_free(void)
- * 
- * 
+ *
+ *
  * \par Major modifications and contributions:
- * 
+ *
  * - DD.MM.YYYY Description
  * - 15.05.2018 Prepared file for public release -- Rainer Weinberger
  */
 
-
+#include <math.h>
 #include <mpi.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <strings.h>
-#include <math.h>
-
 
 #include "../main/allvars.h"
 #include "../main/proto.h"
 
-
 #ifdef SUBFIND
+#include "../domain/bsd_tree.h"
 #include "../domain/domain.h"
 #include "subfind.h"
-#include "../domain/bsd_tree.h"
-
 
 /*! \brief Define structure of my tree nodes.
  */
@@ -64,9 +60,8 @@ struct mydata
   double workload;
   int topnode_index;
 
-    RB_ENTRY(mydata) linkage;   /* this creates the linkage pointers needed by the RB tree, using symbolic name 'linkage' */
+  RB_ENTRY(mydata) linkage; /* this creates the linkage pointers needed by the RB tree, using symbolic name 'linkage' */
 };
-
 
 /*! \brief Comparison function of mydata objects (i.e. tree elements).
  *
@@ -93,7 +88,6 @@ static int mydata_cmp(struct mydata *lhs, struct mydata *rhs)
   return 0;
 }
 
-
 /* the following macro declares 'struct mytree', which is the header element
  * needed as handle for a tree
  */
@@ -102,13 +96,11 @@ RB_HEAD(mytree, mydata);
 static struct mydata *nload;
 static struct mytree queue_load;
 
-
 /* the following macros declare appropriate function prototypes and functions
  * needed for this type of tree
  */
 RB_PROTOTYPE_STATIC(mytree, mydata, linkage, mydata_cmp);
 RB_GENERATE_STATIC(mytree, mydata, linkage, mydata_cmp);
-
 
 /*! \brief Performs domain decomposition for subfind collective.
  *
@@ -122,8 +114,9 @@ void subfind_coll_domain_decomposition(void)
   subfind_coll_domain_allocate();
   subfind_coll_findExtent();
 
-  Key = (peanokey *) mymalloc_movable(&Key, "Key", (sizeof(peanokey) * NumPart));
-  Sub_LocTopNodes = (struct local_topnode_data *) mymalloc_movable(&Sub_LocTopNodes, "Sub_LocTopNodes", (MaxTopNodes * sizeof(struct local_topnode_data)));
+  Key             = (peanokey *)mymalloc_movable(&Key, "Key", (sizeof(peanokey) * NumPart));
+  Sub_LocTopNodes = (struct local_topnode_data *)mymalloc_movable(&Sub_LocTopNodes, "Sub_LocTopNodes",
+                                                                  (MaxTopNodes * sizeof(struct local_topnode_data)));
 
   MPI_Allreduce(&NumPartGroup, &col_grouplen, 1, MPI_INT, MPI_SUM, SubComm);
   MPI_Allreduce(&NumPart, &col_partcount, 1, MPI_INT, MPI_SUM, SubComm);
@@ -154,25 +147,25 @@ void subfind_coll_domain_decomposition(void)
       else
         PS[i].TargetTask = SubThisTask;
 
-      PS[i].TargetIndex = 0;    /* unimportant here */
+      PS[i].TargetIndex = 0; /* unimportant here */
     }
 
   fof_subfind_exchange(SubComm);
 
-  /* note that the domain decomposition leads to an invalid values of NumPartGroup. This will however be redetermined in the main routine
-   * of the collective subfind, after the domain decomposition has been done.
+  /* note that the domain decomposition leads to an invalid values of NumPartGroup. This will however be redetermined in the main
+   * routine of the collective subfind, after the domain decomposition has been done.
    */
 
   /* copy what we need for the topnodes */
   for(i = 0; i < SubNTopnodes; i++)
     {
       SubTopNodes[i].StartKey = Sub_LocTopNodes[i].StartKey;
-      SubTopNodes[i].Size = Sub_LocTopNodes[i].Size;
+      SubTopNodes[i].Size     = Sub_LocTopNodes[i].Size;
       SubTopNodes[i].Daughter = Sub_LocTopNodes[i].Daughter;
-      SubTopNodes[i].Leaf = Sub_LocTopNodes[i].Leaf;
+      SubTopNodes[i].Leaf     = Sub_LocTopNodes[i].Leaf;
 
       int j;
-      int bits = my_ffsll(SubTopNodes[i].Size);
+      int bits   = my_ffsll(SubTopNodes[i].Size);
       int blocks = (bits - 1) / 3 - 1;
 
       for(j = 0; j < 8; j++)
@@ -193,10 +186,9 @@ void subfind_coll_domain_decomposition(void)
   myfree(Sub_LocTopNodes);
   myfree(Key);
 
-  SubTopNodes = (struct topnode_data *) myrealloc_movable(SubTopNodes, SubNTopnodes * sizeof(struct topnode_data));
-  SubDomainTask = (int *) myrealloc_movable(SubDomainTask, SubNTopleaves * sizeof(int));
+  SubTopNodes   = (struct topnode_data *)myrealloc_movable(SubTopNodes, SubNTopnodes * sizeof(struct topnode_data));
+  SubDomainTask = (int *)myrealloc_movable(SubDomainTask, SubNTopleaves * sizeof(int));
 }
-
 
 /*! \brief Determines extent of local data and writes it to global variables.
  *
@@ -252,10 +244,10 @@ void subfind_coll_findExtent(void)
 
   len *= 1.001;
 
-  SubDomainLen = len;
+  SubDomainLen        = len;
   SubDomainInverseLen = 1.0 / SubDomainLen;
-  SubDomainFac = 1.0 / len * (((peanokey) 1) << (BITS_PER_DIMENSION));
-  SubDomainBigFac = (SubDomainLen / (((long long) 1) << 52));
+  SubDomainFac        = 1.0 / len * (((peanokey)1) << (BITS_PER_DIMENSION));
+  SubDomainBigFac     = (SubDomainLen / (((long long)1) << 52));
 
   for(j = 0; j < 3; j++)
     {
@@ -263,7 +255,6 @@ void subfind_coll_findExtent(void)
       SubDomainCorner[j] = 0.5 * (xmin_glob[j] + xmax_glob[j]) - 0.5 * len;
     }
 }
-
 
 /*! \brief Determines extent of the subfind top-tree.
  *
@@ -273,7 +264,7 @@ int subfind_coll_domain_determineTopTree(void)
 {
   int i, count;
 
-  mp = (struct domain_peano_hilbert_data *) mymalloc("mp", sizeof(struct domain_peano_hilbert_data) * NumPartGroup);
+  mp = (struct domain_peano_hilbert_data *)mymalloc("mp", sizeof(struct domain_peano_hilbert_data) * NumPartGroup);
 
   for(i = 0, count = 0; i < NumPart; i++)
     {
@@ -297,7 +288,7 @@ int subfind_coll_domain_determineTopTree(void)
             }
 
           mp[count].key = Key[i] = peano_hilbert_key(xb, yb, zb, BITS_PER_DIMENSION);
-          mp[count].index = i;
+          mp[count].index        = i;
           count++;
         }
     }
@@ -307,15 +298,15 @@ int subfind_coll_domain_determineTopTree(void)
 
   mysort_domain(mp, count, sizeof(struct domain_peano_hilbert_data));
 
-  SubNTopnodes = 1;
-  SubNTopleaves = 1;
+  SubNTopnodes                = 1;
+  SubNTopleaves               = 1;
   Sub_LocTopNodes[0].Daughter = -1;
-  Sub_LocTopNodes[0].Parent = -1;
-  Sub_LocTopNodes[0].Size = PEANOCELLS;
+  Sub_LocTopNodes[0].Parent   = -1;
+  Sub_LocTopNodes[0].Size     = PEANOCELLS;
   Sub_LocTopNodes[0].StartKey = 0;
-  Sub_LocTopNodes[0].PIndex = 0;
-  Sub_LocTopNodes[0].Cost = NumPartGroup;
-  Sub_LocTopNodes[0].Count = NumPartGroup;
+  Sub_LocTopNodes[0].PIndex   = 0;
+  Sub_LocTopNodes[0].Cost     = NumPartGroup;
+  Sub_LocTopNodes[0].Count    = NumPartGroup;
 
   int limitNTopNodes = 2 * imax(1 + (NTask / 7 + 1) * 8, All.TopNodeFactor * SubNTask);
 
@@ -323,13 +314,13 @@ int subfind_coll_domain_determineTopTree(void)
     terminate("limitNTopNodes > MaxTopNodes");
 
   RB_INIT(&queue_load);
-  nload = mymalloc("nload", limitNTopNodes * sizeof(struct mydata));
+  nload     = mymalloc("nload", limitNTopNodes * sizeof(struct mydata));
   int *list = mymalloc("list", limitNTopNodes * sizeof(int));
 
   double limit = 1.0 / (All.TopNodeFactor * SubNTask);
 
   /* insert the root node */
-  nload[0].workload = 1.0;
+  nload[0].workload      = 1.0;
   nload[0].topnode_index = 0;
   RB_INSERT(mytree, &queue_load, &nload[0]);
 
@@ -341,7 +332,7 @@ int subfind_coll_domain_determineTopTree(void)
 
       double first_workload = 0;
 
-      for(struct mydata * nfirst = RB_MIN(mytree, &queue_load); nfirst != NULL; nfirst = RB_NEXT(mytree, &queue_load, nfirst))
+      for(struct mydata *nfirst = RB_MIN(mytree, &queue_load); nfirst != NULL; nfirst = RB_NEXT(mytree, &queue_load, nfirst))
         {
           if(Sub_LocTopNodes[nfirst->topnode_index].Size >= 8)
             {
@@ -350,7 +341,7 @@ int subfind_coll_domain_determineTopTree(void)
             }
         }
 
-      for(struct mydata * np = RB_MIN(mytree, &queue_load); np != NULL; np = RB_NEXT(mytree, &queue_load, np))
+      for(struct mydata *np = RB_MIN(mytree, &queue_load); np != NULL; np = RB_NEXT(mytree, &queue_load, np))
         {
           if(np->workload < 0.125 * first_workload)
             break;
@@ -392,7 +383,6 @@ int subfind_coll_domain_determineTopTree(void)
   return 0;
 }
 
-
 /*! \brief Refines top-tree locally.
  *
  *  \param[in] n Number of new nodes.
@@ -403,7 +393,7 @@ int subfind_coll_domain_determineTopTree(void)
 void subfind_domain_do_local_refine(int n, int *list)
 {
   double *worktotlist = mymalloc("worktotlist", 8 * n * sizeof(double));
-  double *worklist = mymalloc("worklist", 8 * n * sizeof(double));
+  double *worklist    = mymalloc("worklist", 8 * n * sizeof(double));
 
   /* create the new nodes */
   for(int k = 0; k < n; k++)
@@ -419,12 +409,12 @@ void subfind_domain_do_local_refine(int n, int *list)
           int sub = Sub_LocTopNodes[i].Daughter + j;
 
           Sub_LocTopNodes[sub].Daughter = -1;
-          Sub_LocTopNodes[sub].Parent = i;
-          Sub_LocTopNodes[sub].Size = (Sub_LocTopNodes[i].Size >> 3);
+          Sub_LocTopNodes[sub].Parent   = i;
+          Sub_LocTopNodes[sub].Size     = (Sub_LocTopNodes[i].Size >> 3);
           Sub_LocTopNodes[sub].StartKey = Sub_LocTopNodes[i].StartKey + j * Sub_LocTopNodes[sub].Size;
-          Sub_LocTopNodes[sub].PIndex = Sub_LocTopNodes[i].PIndex;
-          Sub_LocTopNodes[sub].Cost = 0;
-          Sub_LocTopNodes[sub].Count = 0;
+          Sub_LocTopNodes[sub].PIndex   = Sub_LocTopNodes[i].PIndex;
+          Sub_LocTopNodes[sub].Cost     = 0;
+          Sub_LocTopNodes[sub].Count    = 0;
         }
 
       int sub = Sub_LocTopNodes[i].Daughter;
@@ -450,7 +440,7 @@ void subfind_domain_do_local_refine(int n, int *list)
 
       for(int j = 0; j < 8; j++)
         {
-          sub = Sub_LocTopNodes[i].Daughter + j;
+          sub                 = Sub_LocTopNodes[i].Daughter + j;
           worklist[k * 8 + j] = fac_work * Sub_LocTopNodes[sub].Cost + fac_load * Sub_LocTopNodes[sub].Count;
         }
     }
@@ -472,7 +462,7 @@ void subfind_domain_do_local_refine(int n, int *list)
           int sub = Sub_LocTopNodes[i].Daughter + j;
 
           /* insert the  node */
-          nload[sub].workload = worktotlist[l];
+          nload[sub].workload      = worktotlist[l];
           nload[sub].topnode_index = sub;
           RB_INSERT(mytree, &queue_load, &nload[sub]);
         }
@@ -481,7 +471,6 @@ void subfind_domain_do_local_refine(int n, int *list)
   myfree(worklist);
   myfree(worktotlist);
 }
-
 
 /*! \brief Walk the top tree and set reference to leaf node.
  *
@@ -505,7 +494,6 @@ void subfind_coll_domain_walktoptree(int no)
     }
 }
 
-
 /*! \brief Uses the cumulative cost function (which weights work-load and
  *         memory-load equally) to subdivide the list of top-level leave
  *         nodes into pieces that are (approximately) equal in size.
@@ -524,15 +512,15 @@ void subfind_coll_domain_combine_topleaves_to_domains(int ncpu, int ndomain)
 
   /* sum the costs for each top leave */
 
-  domainWork = (float *) mymalloc("local_domainWork", SubNTopleaves * sizeof(float));
-  domainCount = (int *) mymalloc("local_domainCount", SubNTopleaves * sizeof(int));
+  domainWork  = (float *)mymalloc("local_domainWork", SubNTopleaves * sizeof(float));
+  domainCount = (int *)mymalloc("local_domainCount", SubNTopleaves * sizeof(int));
 
-  local_domainWork = (float *) mymalloc("local_domainWork", SubNTopleaves * sizeof(float));
-  local_domainCount = (int *) mymalloc("local_domainCount", SubNTopleaves * sizeof(int));
+  local_domainWork  = (float *)mymalloc("local_domainWork", SubNTopleaves * sizeof(float));
+  local_domainCount = (int *)mymalloc("local_domainCount", SubNTopleaves * sizeof(int));
 
   for(i = 0; i < SubNTopleaves; i++)
     {
-      local_domainWork[i] = 0;
+      local_domainWork[i]  = 0;
       local_domainCount[i] = 0;
     }
 
@@ -561,7 +549,7 @@ void subfind_coll_domain_combine_topleaves_to_domains(int ncpu, int ndomain)
   /* now combine the top leaves to form the individual domains */
 
   workhalfnode = 0.5 / ndomain;
-  workavg = 1.0 / ncpu;
+  workavg      = 1.0 / ncpu;
   work_before = workavg_before = 0;
 
   start = 0;
@@ -569,12 +557,13 @@ void subfind_coll_domain_combine_topleaves_to_domains(int ncpu, int ndomain)
   for(i = 0; i < ncpu; i++)
     {
       work = 0;
-      end = start;
+      end  = start;
 
       work += fac_work * domainWork[end] + fac_load * domainCount[end];
 
       while((work + work_before + (end + 1 < ndomain ? fac_work * domainWork[end + 1] + fac_load * domainCount[end + 1] : 0) <
-             workavg + workavg_before + workhalfnode) || (i == ncpu - 1 && end < ndomain - 1))
+             workavg + workavg_before + workhalfnode) ||
+            (i == ncpu - 1 && end < ndomain - 1))
         {
           if((ndomain - end) > (ncpu - i))
             end++;
@@ -596,7 +585,6 @@ void subfind_coll_domain_combine_topleaves_to_domains(int ncpu, int ndomain)
   myfree(domainWork);
 }
 
-
 /*! \brief Allocates all the stuff that will be required for the
  *         tree-construction/walk later on.
  *
@@ -604,15 +592,14 @@ void subfind_coll_domain_combine_topleaves_to_domains(int ncpu, int ndomain)
  */
 void subfind_coll_domain_allocate(void)
 {
-  MaxTopNodes = (int) (All.TopNodeAllocFactor * All.MaxPart + 1);
+  MaxTopNodes = (int)(All.TopNodeAllocFactor * All.MaxPart + 1);
 
   if(SubDomainTask)
     terminate("subfind collective domain storage already allocated");
 
-  SubTopNodes = (struct topnode_data *) mymalloc_movable(&SubTopNodes, "SubTopNodes", (MaxTopNodes * sizeof(struct topnode_data)));
-  SubDomainTask = (int *) mymalloc_movable(&SubDomainTask, "SubDomainTask", (MaxTopNodes * sizeof(int)));
+  SubTopNodes   = (struct topnode_data *)mymalloc_movable(&SubTopNodes, "SubTopNodes", (MaxTopNodes * sizeof(struct topnode_data)));
+  SubDomainTask = (int *)mymalloc_movable(&SubDomainTask, "SubDomainTask", (MaxTopNodes * sizeof(int)));
 }
-
 
 /*! \brief Free memory used for subfind collective domain decomposition.
  *
@@ -627,8 +614,7 @@ void subfind_coll_domain_free(void)
   myfree(SubTopNodes);
 
   SubDomainTask = NULL;
-  SubTopNodes = NULL;
+  SubTopNodes   = NULL;
 }
-
 
 #endif /* #ifdef SUBFIND */

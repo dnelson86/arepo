@@ -34,15 +34,11 @@
  * - 04.05.2018 Prepared file for public release -- Rainer Weinberger
  */
 
-
 #ifdef MYIBARRIER
-
 
 #include <strings.h>
 
-
 #include "myIBarrier.h"
-
 
 /*! \brief Non-blocking MPI barrier; Notifies other tasks once it is called.
  *
@@ -57,7 +53,7 @@ void myIBarrier(MPI_Comm comm, struct sMyIBarrier *barrier)
   MPI_Comm_rank(comm, &barrier->rank);
   MPI_Comm_size(comm, &barrier->nTasks);
 
-  barrier->nLevels = fls(barrier->rank - 1);
+  barrier->nLevels   = fls(barrier->rank - 1);
   barrier->LevelDone = mymalloc("myIBarrier", barrier->nLevels);
   memset(barrier->LevelDone, 0, barrier->nLevels);
 
@@ -74,7 +70,7 @@ void myIBarrier(MPI_Comm comm, struct sMyIBarrier *barrier)
         {
           /* we need to send our result */
           int target = barrier->rank - (1 << level);
-          int level = barrier->nLevels;
+          int level  = barrier->nLevels;
           MPI_Isend(&level, 1, MPI_INT, target, MPI_TAG_IBARRIER, barrier->comm);
           break;
         }
@@ -92,7 +88,6 @@ void myIBarrier(MPI_Comm comm, struct sMyIBarrier *barrier)
     }
 }
 
-
 /*! \brief Test function for myIBarrier.
  *
  *  \param[in] barrier Object containing information about the barrier.
@@ -101,7 +96,7 @@ void myIBarrier(MPI_Comm comm, struct sMyIBarrier *barrier)
  *
  *  \return void
  */
-void myIBarrierTest(struct sMyIBarrier *barrier, int *flag, MPI_Status * unused)
+void myIBarrierTest(struct sMyIBarrier *barrier, int *flag, MPI_Status *unused)
 {
   flag = 0;
 
@@ -149,7 +144,7 @@ void myIBarrierTest(struct sMyIBarrier *barrier, int *flag, MPI_Status * unused)
                 {
                   /* we need to send our result */
                   int target = barrier->rank - (1 << level);
-                  int level = barrier->nLevels;
+                  int level  = barrier->nLevels;
                   MPI_Isend(&level, 1, MPI_INT, target, MPI_TAG_IBARRIER, barrier->comm);
                 }
               else
@@ -176,6 +171,5 @@ void myIBarrierTest(struct sMyIBarrier *barrier, int *flag, MPI_Status * unused)
         }
     }
 }
-
 
 #endif /* #ifdef MYIBARRIER */

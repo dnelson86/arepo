@@ -21,31 +21,30 @@
  * \date        05/2018
  * \brief       Tag defines.
  * \details     Choice of numbers for historic reasons.
- * 
+ *
  * \par Major modifications and contributions:
- * 
+ *
  * - DD.MM.YYYY Description
  * - 28.05.2018 Prepared file for public release -- Rainer Weinberger
  */
 
-
-#define TAG_N             10    /*!< Various tags used for labelling MPI messages */
-#define TAG_HEADER        11
-#define TAG_PDATA         12
-#define TAG_SPHDATA       13
-#define TAG_KEY           14
-#define TAG_GRAV_B        19
-#define TAG_HYDRO_A       22
-#define TAG_HYDRO_B       23
-#define TAG_NFORTHISTASK  24
-#define TAG_NONPERIOD_A   29
-#define TAG_NONPERIOD_B   30
-#define TAG_NONPERIOD_C   31
-#define TAG_DENS_A        35
-#define TAG_DENS_B        36
-#define TAG_LOCALN        37
-#define TAG_FOF_A         45
-#define TAG_PDATA_SPH     70
-#define TAG_KEY_SPH       71
-#define TAG_BARRIER       85
-#define TAG_NODE_DATA    105
+#define TAG_N 10 /*!< Various tags used for labelling MPI messages */
+#define TAG_HEADER 11
+#define TAG_PDATA 12
+#define TAG_SPHDATA 13
+#define TAG_KEY 14
+#define TAG_GRAV_B 19
+#define TAG_HYDRO_A 22
+#define TAG_HYDRO_B 23
+#define TAG_NFORTHISTASK 24
+#define TAG_NONPERIOD_A 29
+#define TAG_NONPERIOD_B 30
+#define TAG_NONPERIOD_C 31
+#define TAG_DENS_A 35
+#define TAG_DENS_B 36
+#define TAG_LOCALN 37
+#define TAG_FOF_A 45
+#define TAG_PDATA_SPH 70
+#define TAG_KEY_SPH 71
+#define TAG_BARRIER 85
+#define TAG_NODE_DATA 105

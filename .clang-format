@@ -1,0 +1,13 @@
+---
+Language:          Cpp
+BasedOnStyle:      Google
+BreakBeforeBraces: GNU
+SpaceBeforeParens: Never
+AllowShortLoopsOnASingleLine: false
+AllowShortIfStatementsOnASingleLine: false
+AlignConsecutiveAssignments: true
+ColumnLimit:       135
+ReflowComments:    true
+SortUsingDeclarations: true
+...
+

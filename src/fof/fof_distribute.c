@@ -23,31 +23,27 @@
  * \details     contains functions:
  *                void fof_subfind_exchange(MPI_Comm Communicator)
  *                void fof_reorder_PS(int *Id, int Nstart, int N)
- * 
- * 
+ *
+ *
  * \par Major modifications and contributions:
- * 
+ *
  * - DD.MM.YYYY Description
  * - 24.05.2018 Prepared file for public release -- Rainer Weinberger
  */
 
-
+#include <math.h>
 #include <mpi.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <math.h>
 
-
+#include "../domain/domain.h"
 #include "../main/allvars.h"
 #include "../main/proto.h"
-#include "../domain/domain.h"
-#include "fof.h"
 #include "../subfind/subfind.h"
-
+#include "fof.h"
 
 #ifdef FOF
-
 
 /*! \brief Redistributes the particles according to what is stored in
  *         PS[].TargetTask, and PS[].TargetIndex.
@@ -70,15 +66,16 @@ void fof_subfind_exchange(MPI_Comm Communicator)
   MPI_Comm_size(Communicator, &CommNTask);
   MPI_Comm_rank(Communicator, &CommThisTask);
 
-  int old_AllMaxPart = All.MaxPart;
+  int old_AllMaxPart    = All.MaxPart;
   int old_AllMaxPartSph = All.MaxPartSph;
 
   for(type = 0; type < NTYPES; type++)
     {
-      size_t ExportSpace = 0.5 * (FreeBytes);   /* we will try to grab at most half of the still available memory  */
-      size_t PartSpace = sizeof(struct particle_data) + sizeof(struct subfind_data) + sizeof(struct sph_particle_data);
+      size_t ExportSpace = 0.5 * (FreeBytes); /* we will try to grab at most half of the still available memory  */
+      size_t PartSpace   = sizeof(struct particle_data) + sizeof(struct subfind_data) + sizeof(struct sph_particle_data);
       if(PartSpace > ExportSpace)
-        terminate("seems like we have insufficient storage, PartSpace=%lld ExportSpace=%lld", (long long) PartSpace, (long long) ExportSpace);
+        terminate("seems like we have insufficient storage, PartSpace=%lld ExportSpace=%lld", (long long)PartSpace,
+                  (long long)ExportSpace);
 
       int glob_flag = 0;
 
@@ -89,7 +86,7 @@ void fof_subfind_exchange(MPI_Comm Communicator)
               Send_count[n] = 0;
             }
 
-          ptrdiff_t AvailableSpace = ExportSpace;       /* this must be a type that can become negative */
+          ptrdiff_t AvailableSpace = ExportSpace; /* this must be a type that can become negative */
 
           for(n = 0; n < NumPart; n++)
             {
@@ -133,10 +130,10 @@ void fof_subfind_exchange(MPI_Comm Communicator)
               MPI_Allreduce(&load, &max_loadsph, 1, MPI_INT, MPI_MAX, Communicator);
             }
 
-          partBuf = (struct particle_data *) mymalloc_movable(&partBuf, "partBuf", nexport * sizeof(struct particle_data));
-          subBuf = (struct subfind_data *) mymalloc_movable(&subBuf, "subBuf", nexport * sizeof(struct subfind_data));
+          partBuf = (struct particle_data *)mymalloc_movable(&partBuf, "partBuf", nexport * sizeof(struct particle_data));
+          subBuf  = (struct subfind_data *)mymalloc_movable(&subBuf, "subBuf", nexport * sizeof(struct subfind_data));
           if(type == 0)
-            sphBuf = (struct sph_particle_data *) mymalloc_movable(&sphBuf, "sphBuf", nexport * sizeof(struct sph_particle_data));
+            sphBuf = (struct sph_particle_data *)mymalloc_movable(&sphBuf, "sphBuf", nexport * sizeof(struct sph_particle_data));
 
           for(i = 0; i < CommNTask; i++)
             {
@@ -145,9 +142,9 @@ void fof_subfind_exchange(MPI_Comm Communicator)
 
           AvailableSpace = ExportSpace; /* this must be allowed to become negative */
 
-          int nstay = 0;
+          int nstay         = 0;
           int delta_numpart = 0;
-          int delta_numgas = 0;
+          int delta_numgas  = 0;
 
           for(n = 0; n < NumPart; n++)
             {
@@ -161,7 +158,7 @@ void fof_subfind_exchange(MPI_Comm Communicator)
                   AvailableSpace -= PartSpace;
 
                   partBuf[Send_offset[target] + Send_count[target]] = P[n];
-                  subBuf[Send_offset[target] + Send_count[target]] = PS[n];
+                  subBuf[Send_offset[target] + Send_count[target]]  = PS[n];
 
                   if(P[n].Type == 0)
                     {
@@ -178,7 +175,7 @@ void fof_subfind_exchange(MPI_Comm Communicator)
                     {
                       /* now move P[n] to P[nstay] */
 
-                      P[nstay] = P[n];
+                      P[nstay]  = P[n];
                       PS[nstay] = PS[n];
 
                       if(P[nstay].Type == 0)
@@ -199,7 +196,8 @@ void fof_subfind_exchange(MPI_Comm Communicator)
 
           if(delta_numgas > 0)
             if(NumGas - (nstay + delta_numgas) > 0)
-              memmove(SphP + nstay, SphP + nstay + delta_numpart, (NumGas - (nstay + delta_numgas)) * sizeof(struct sph_particle_data));
+              memmove(SphP + nstay, SphP + nstay + delta_numpart,
+                      (NumGas - (nstay + delta_numgas)) * sizeof(struct sph_particle_data));
 
           NumPart -= delta_numpart;
           NumGas -= delta_numgas;
@@ -209,7 +207,7 @@ void fof_subfind_exchange(MPI_Comm Communicator)
             {
               All.MaxPart = max_load / (1.0 - 2 * ALLOC_TOLERANCE);
               reallocate_memory_maxpart();
-              PS = (struct subfind_data *) myrealloc_movable(PS, All.MaxPart * sizeof(struct subfind_data));
+              PS = (struct subfind_data *)myrealloc_movable(PS, All.MaxPart * sizeof(struct subfind_data));
             }
 
           if(type == 0)
@@ -236,15 +234,19 @@ void fof_subfind_exchange(MPI_Comm Communicator)
                 {
                   if(Send_count[target] > 0 || Recv_count[target] > 0)
                     {
-                      MPI_Sendrecv(partBuf + Send_offset[target], Send_count[target] * sizeof(struct particle_data), MPI_BYTE, target, TAG_PDATA,
-                                   P + Recv_offset[target], Recv_count[target] * sizeof(struct particle_data), MPI_BYTE, target, TAG_PDATA, Communicator, MPI_STATUS_IGNORE);
+                      MPI_Sendrecv(partBuf + Send_offset[target], Send_count[target] * sizeof(struct particle_data), MPI_BYTE, target,
+                                   TAG_PDATA, P + Recv_offset[target], Recv_count[target] * sizeof(struct particle_data), MPI_BYTE,
+                                   target, TAG_PDATA, Communicator, MPI_STATUS_IGNORE);
 
-                      MPI_Sendrecv(subBuf + Send_offset[target], Send_count[target] * sizeof(struct subfind_data),
-                                   MPI_BYTE, target, TAG_KEY, PS + Recv_offset[target], Recv_count[target] * sizeof(struct subfind_data), MPI_BYTE, target, TAG_KEY, Communicator, MPI_STATUS_IGNORE);
+                      MPI_Sendrecv(subBuf + Send_offset[target], Send_count[target] * sizeof(struct subfind_data), MPI_BYTE, target,
+                                   TAG_KEY, PS + Recv_offset[target], Recv_count[target] * sizeof(struct subfind_data), MPI_BYTE,
+                                   target, TAG_KEY, Communicator, MPI_STATUS_IGNORE);
 
                       if(type == 0)
-                        MPI_Sendrecv(sphBuf + Send_offset[target], Send_count[target] * sizeof(struct sph_particle_data), MPI_BYTE, target,
-                                     TAG_SPHDATA, SphP + Recv_offset[target], Recv_count[target] * sizeof(struct sph_particle_data), MPI_BYTE, target, TAG_SPHDATA, Communicator, MPI_STATUS_IGNORE);
+                        MPI_Sendrecv(sphBuf + Send_offset[target], Send_count[target] * sizeof(struct sph_particle_data), MPI_BYTE,
+                                     target, TAG_SPHDATA, SphP + Recv_offset[target],
+                                     Recv_count[target] * sizeof(struct sph_particle_data), MPI_BYTE, target, TAG_SPHDATA,
+                                     Communicator, MPI_STATUS_IGNORE);
                     }
                 }
             }
@@ -267,15 +269,18 @@ void fof_subfind_exchange(MPI_Comm Communicator)
           MPI_Allreduce(&loc_flag, &glob_flag, 1, MPI_INT, MPI_SUM, Communicator);
           if(glob_flag > 0 && CommThisTask == 0)
             {
-              printf("FOF-DISTRIBUTE: Need to cycle in particle exchange due to memory shortage. type=%d glob_flag=%d ThisTask=%d CommThisTask=%d   PartSpace=%lld  ExportSpace=%lld\n",
-                     type, glob_flag, ThisTask, CommThisTask, (long long) PartSpace, (long long) ExportSpace);
+              printf(
+                  "FOF-DISTRIBUTE: Need to cycle in particle exchange due to memory shortage. type=%d glob_flag=%d ThisTask=%d "
+                  "CommThisTask=%d   PartSpace=%lld  ExportSpace=%lld\n",
+                  type, glob_flag, ThisTask, CommThisTask, (long long)PartSpace, (long long)ExportSpace);
               fflush(stdout);
             }
         }
       while(glob_flag);
     }
 
-  /* if there was a temporary memory shortage during the exchange, we may had to increase the maximum allocations. Go back to smaller values again if possible */
+  /* if there was a temporary memory shortage during the exchange, we may had to increase the maximum allocations. Go back to smaller
+   * values again if possible */
 
   load = NumPart;
   MPI_Allreduce(&load, &max_load, 1, MPI_INT, MPI_MAX, Communicator);
@@ -286,7 +291,7 @@ void fof_subfind_exchange(MPI_Comm Communicator)
     {
       All.MaxPart = max_load;
       reallocate_memory_maxpart();
-      PS = (struct subfind_data *) myrealloc_movable(PS, All.MaxPart * sizeof(struct subfind_data));
+      PS = (struct subfind_data *)myrealloc_movable(PS, All.MaxPart * sizeof(struct subfind_data));
     }
 
   load = NumGas;
@@ -307,12 +312,12 @@ void fof_subfind_exchange(MPI_Comm Communicator)
 
   if(NumGas)
     {
-      mp = (struct fof_local_sort_data *) mymalloc("mp", sizeof(struct fof_local_sort_data) * NumGas);
-      Id = (int *) mymalloc("Id", sizeof(int) * NumGas);
+      mp = (struct fof_local_sort_data *)mymalloc("mp", sizeof(struct fof_local_sort_data) * NumGas);
+      Id = (int *)mymalloc("Id", sizeof(int) * NumGas);
 
       for(i = 0; i < NumGas; i++)
         {
-          mp[i].index = i;
+          mp[i].index       = i;
           mp[i].targetindex = PS[i].TargetIndex;
         }
 
@@ -334,15 +339,15 @@ void fof_subfind_exchange(MPI_Comm Communicator)
 
   if(NumPart - NumGas > 0)
     {
-      mp = (struct fof_local_sort_data *) mymalloc("mp", sizeof(struct fof_local_sort_data) * (NumPart - NumGas));
+      mp = (struct fof_local_sort_data *)mymalloc("mp", sizeof(struct fof_local_sort_data) * (NumPart - NumGas));
       mp -= NumGas;
 
-      Id = (int *) mymalloc("Id", sizeof(int) * (NumPart - NumGas));
+      Id = (int *)mymalloc("Id", sizeof(int) * (NumPart - NumGas));
       Id -= NumGas;
 
       for(i = NumGas; i < NumPart; i++)
         {
-          mp[i].index = i;
+          mp[i].index       = i;
           mp[i].targetindex = PS[i].TargetIndex;
         }
 
@@ -364,7 +369,6 @@ void fof_subfind_exchange(MPI_Comm Communicator)
       myfree(mp);
     }
 }
-
 
 /*! \brief Reorders the elements in the PS array according to the indices given
  *         in the ID array.
@@ -389,7 +393,7 @@ void fof_reorder_PS(int *Id, int Nstart, int N)
           PSsource = PS[i];
 
           idsource = Id[i];
-          dest = Id[i];
+          dest     = Id[i];
 
           do
             {
@@ -411,6 +415,5 @@ void fof_reorder_PS(int *Id, int Nstart, int N)
         }
     }
 }
-
 
 #endif /* #ifdef FOF */

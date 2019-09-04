@@ -27,27 +27,24 @@
  *                void force_get_global_cost_for_leavenodes(int nexport)
  *                static int mydata_cmp(struct mydata *lhs, struct mydata *rhs)
  *                void force_optimize_domain_mapping(void)
- * 
+ *
  * \par Major modifications and contributions:
- * 
+ *
  * - DD.MM.YYYY Description
  * - 20.05.2018 Prepared file for public release -- Rainer Weinberger
  */
 
-
+#include <math.h>
 #include <mpi.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <math.h>
 #include <time.h>
 
-
+#include "../domain/bsd_tree.h"
+#include "../domain/domain.h"
 #include "../main/allvars.h"
 #include "../main/proto.h"
-#include "../domain/domain.h"
-#include "../domain/bsd_tree.h"
-
 
 /* \brief Structure of my tree nodes.
  */
@@ -55,22 +52,18 @@ struct mydata
 {
   double pri;
   int target;
-    RB_ENTRY(mydata) linkage;   /* this creates the linkage pointers needed by the RB tree, using symbolic name 'linkage' */
+  RB_ENTRY(mydata) linkage; /* this creates the linkage pointers needed by the RB tree, using symbolic name 'linkage' */
 };
-
 
 /* prototype of comparison function of tree elements */
 static int mydata_cmp(struct mydata *lhs, struct mydata *rhs);
 
-
 /* the following macro declares 'struct mytree', which is the header element needed as handle for a tree */
 RB_HEAD(mytree, mydata);
-
 
 /* the following macros declare appropriate function prototypes and functions needed for this type of tree */
 RB_PROTOTYPE_STATIC(mytree, mydata, linkage, mydata_cmp);
 RB_GENERATE_STATIC(mytree, mydata, linkage, mydata_cmp);
-
 
 /*! \brief Data structure that describes force-segment.
  */
@@ -78,33 +71,29 @@ static struct force_segments_data
 {
   int start, end, task;
   double work, cost, count, normalized_load;
-}
- *force_domainAssign;
+} * force_domainAssign;
 
-
- /*! \brief Comparison function for force_segments_data.
-  *
-  *  Sorting kernel.
-  *
-  *  \param[in] a First object.
-  *  \param[in] b Second object.
-  *
-  *  \return (-1,0,1), -1 if a->normalized_load > b->normalized_load.
-  */
+/*! \brief Comparison function for force_segments_data.
+ *
+ *  Sorting kernel.
+ *
+ *  \param[in] a First object.
+ *  \param[in] b Second object.
+ *
+ *  \return (-1,0,1), -1 if a->normalized_load > b->normalized_load.
+ */
 int force_sort_load(const void *a, const void *b)
 {
-  if(((struct force_segments_data *) a)->normalized_load > (((struct force_segments_data *) b)->normalized_load))
+  if(((struct force_segments_data *)a)->normalized_load > (((struct force_segments_data *)b)->normalized_load))
     return -1;
 
-  if(((struct force_segments_data *) a)->normalized_load < (((struct force_segments_data *) b)->normalized_load))
+  if(((struct force_segments_data *)a)->normalized_load < (((struct force_segments_data *)b)->normalized_load))
     return +1;
 
   return 0;
 }
 
-
 static double oldmax, oldsum;
-
 
 /*! \brief Calculates current balance.
  *
@@ -116,8 +105,9 @@ double force_get_current_balance(double *impact)
 {
 #ifndef NO_MPI_IN_PLACE
   MPI_Allreduce(MPI_IN_PLACE, TaskCost, NTask, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
-#else /* #ifndef NO_MPI_IN_PLACE */
-  double *inTaskCost = mymalloc("inTaskCost", NTask * sizeof(double));;
+#else  /* #ifndef NO_MPI_IN_PLACE */
+  double *inTaskCost = mymalloc("inTaskCost", NTask * sizeof(double));
+  ;
   memcpy(inTaskCost, TaskCost, NTask * sizeof(double));
   MPI_Allreduce(inTaskCost, TaskCost, NTask, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
   myfree(inTaskCost);
@@ -136,7 +126,6 @@ double force_get_current_balance(double *impact)
   return oldmax / (oldsum / NTask);
 }
 
-
 /*! \brief Gather cost data of all leaf-nodes and communicate result.
  *
  *  \param[in] nexport Number of exported nodes.
@@ -152,8 +141,7 @@ void force_get_global_cost_for_leavenodes(int nexport)
     double domainCost;
     int domainCount;
     int no;
-  }
-   *export_node_data, *import_node_data;
+  } * export_node_data, *import_node_data;
 
   MPI_Alltoall(Send_count, 1, MPI_INT, Recv_count, 1, MPI_INT, MPI_COMM_WORLD);
 
@@ -176,11 +164,11 @@ void force_get_global_cost_for_leavenodes(int nexport)
   for(i = 0; i < nexport; i++)
     {
       int task = ListNoData[i].task;
-      int ind = Send_offset[task] + Send_count[task]++;
+      int ind  = Send_offset[task] + Send_count[task]++;
 
-      export_node_data[ind].domainCost = ListNoData[i].domainCost;
+      export_node_data[ind].domainCost  = ListNoData[i].domainCost;
       export_node_data[ind].domainCount = ListNoData[i].domainCount;
-      export_node_data[ind].no = ListNoData[i].no;
+      export_node_data[ind].no          = ListNoData[i].no;
     }
 
   for(ngrp = 1; ngrp < (1 << PTask); ngrp++)
@@ -188,9 +176,9 @@ void force_get_global_cost_for_leavenodes(int nexport)
       int recvTask = ThisTask ^ ngrp;
       if(recvTask < NTask)
         if(Send_count[recvTask] > 0 || Recv_count[recvTask] > 0)
-          MPI_Sendrecv(&export_node_data[Send_offset[recvTask]], Send_count[recvTask] * sizeof(struct node_data), MPI_BYTE,
-                       recvTask, TAG_DENS_B, &import_node_data[Recv_offset[recvTask]], Recv_count[recvTask] * sizeof(struct node_data),
-                       MPI_BYTE, recvTask, TAG_DENS_B, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
+          MPI_Sendrecv(&export_node_data[Send_offset[recvTask]], Send_count[recvTask] * sizeof(struct node_data), MPI_BYTE, recvTask,
+                       TAG_DENS_B, &import_node_data[Recv_offset[recvTask]], Recv_count[recvTask] * sizeof(struct node_data), MPI_BYTE,
+                       recvTask, TAG_DENS_B, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
     }
 
   for(i = 0; i < nimport; i++)
@@ -208,16 +196,15 @@ void force_get_global_cost_for_leavenodes(int nexport)
   {
     double domainCost;
     int domainCount;
-  }
-   *DomainMoment, *loc_DomainMoment;
+  } * DomainMoment, *loc_DomainMoment;
 
-  DomainMoment = (struct DomainNODE *) mymalloc("DomainMoment", NTopleaves * sizeof(struct DomainNODE));
+  DomainMoment = (struct DomainNODE *)mymalloc("DomainMoment", NTopleaves * sizeof(struct DomainNODE));
 
   /* share the cost data accross CPUs */
-  int *recvcounts = (int *) mymalloc("recvcounts", sizeof(int) * NTask);
-  int *recvoffset = (int *) mymalloc("recvoffset", sizeof(int) * NTask);
-  int *bytecounts = (int *) mymalloc("bytecounts", sizeof(int) * NTask);
-  int *byteoffset = (int *) mymalloc("byteoffset", sizeof(int) * NTask);
+  int *recvcounts = (int *)mymalloc("recvcounts", sizeof(int) * NTask);
+  int *recvoffset = (int *)mymalloc("recvoffset", sizeof(int) * NTask);
+  int *bytecounts = (int *)mymalloc("bytecounts", sizeof(int) * NTask);
+  int *byteoffset = (int *)mymalloc("byteoffset", sizeof(int) * NTask);
 
   for(task = 0; task < NTask; task++)
     recvcounts[task] = 0;
@@ -234,13 +221,13 @@ void force_get_global_cost_for_leavenodes(int nexport)
       byteoffset[task] = byteoffset[task - 1] + bytecounts[task - 1];
     }
 
-  loc_DomainMoment = (struct DomainNODE *) mymalloc("loc_DomainMoment", recvcounts[ThisTask] * sizeof(struct DomainNODE));
+  loc_DomainMoment = (struct DomainNODE *)mymalloc("loc_DomainMoment", recvcounts[ThisTask] * sizeof(struct DomainNODE));
 
   for(n = 0, idx = 0; n < NTopleaves; n++)
     {
       if(DomainTask[n] == ThisTask)
         {
-          loc_DomainMoment[idx].domainCost = DomainCost[n];
+          loc_DomainMoment[idx].domainCost  = DomainCost[n];
           loc_DomainMoment[idx].domainCount = DomainCount[n];
           idx++;
         }
@@ -258,7 +245,7 @@ void force_get_global_cost_for_leavenodes(int nexport)
         {
           idx = recvoffset[task] + recvcounts[task]++;
 
-          DomainCost[n] = DomainMoment[idx].domainCost;
+          DomainCost[n]  = DomainMoment[idx].domainCost;
           DomainCount[n] = DomainMoment[idx].domainCount;
         }
     }
@@ -270,7 +257,6 @@ void force_get_global_cost_for_leavenodes(int nexport)
   myfree(recvcounts);
   myfree(DomainMoment);
 }
-
 
 /*! \brief Comparison function of tree elements.
  *
@@ -297,7 +283,6 @@ static int mydata_cmp(struct mydata *lhs, struct mydata *rhs)
   return 0;
 }
 
-
 /*! \brief Optimization algorithm for the workload balance.
  *
  *  \return void
@@ -306,14 +291,14 @@ void force_optimize_domain_mapping(void)
 {
   int i, j;
 
-  double fac_cost = 0.5 / oldsum;
+  double fac_cost  = 0.5 / oldsum;
   double fac_count = 0.5 / All.TotNumPart;
 
-  int ncpu = NTask * All.MultipleDomains;
-  int ndomain = NTopleaves;
-  double workavg = 1.0 / ncpu;
-  double workhalfnode = 0.5 / NTopleaves;
-  double work_before = 0;
+  int ncpu              = NTask * All.MultipleDomains;
+  int ndomain           = NTopleaves;
+  double workavg        = 1.0 / ncpu;
+  double workhalfnode   = 0.5 / NTopleaves;
+  double work_before    = 0;
   double workavg_before = 0;
 
   int start = 0;
@@ -330,7 +315,8 @@ void force_optimize_domain_mapping(void)
       work += fac_cost * DomainCost[end] + fac_count * DomainCount[end];
 
       while((work + work_before + (end + 1 < NTopleaves ? fac_cost * DomainCost[end + 1] + fac_count * DomainCount[end + 1] : 0) <
-             workavg + workavg_before + workhalfnode) || (i == ncpu - 1 && end < ndomain - 1))
+             workavg + workavg_before + workhalfnode) ||
+            (i == ncpu - 1 && end < ndomain - 1))
         {
           if((ndomain - end) > (ncpu - i))
             end++;
@@ -343,12 +329,12 @@ void force_optimize_domain_mapping(void)
         }
 
       force_domainAssign[i].start = start;
-      force_domainAssign[i].end = end;
-      force_domainAssign[i].work = work;
-      force_domainAssign[i].cost = cost;
+      force_domainAssign[i].end   = end;
+      force_domainAssign[i].work  = work;
+      force_domainAssign[i].cost  = cost;
       force_domainAssign[i].count = count;
 
-      force_domainAssign[i].normalized_load = cost + count;     /* note: they are already multiplied by fac_cost/fac_count */
+      force_domainAssign[i].normalized_load = cost + count; /* note: they are already multiplied by fac_cost/fac_count */
 
       work_before += work;
       workavg_before += workavg;
@@ -358,9 +344,9 @@ void force_optimize_domain_mapping(void)
   qsort(force_domainAssign, ncpu, sizeof(struct force_segments_data), force_sort_load);
 
   /* create three priority trees, one for the cost load, one for the particle count, and one for the combined cost */
-  struct mytree queues[3];      /* 0=cost, 1=count, 2=combi */
+  struct mytree queues[3]; /* 0=cost, 1=count, 2=combi */
 
-  struct mydata *ncost = mymalloc("ncost", NTask * sizeof(struct mydata));
+  struct mydata *ncost  = mymalloc("ncost", NTask * sizeof(struct mydata));
   struct mydata *ncount = mymalloc("ncount", NTask * sizeof(struct mydata));
   struct mydata *ncombi = mymalloc("ncombi", NTask * sizeof(struct mydata));
 
@@ -371,15 +357,15 @@ void force_optimize_domain_mapping(void)
   /* fill in all the tasks into the trees. The priority will be the current cost/count, the tag 'val' is used to label the task */
   for(i = 0; i < NTask; i++)
     {
-      ncost[i].pri = 0;
+      ncost[i].pri    = 0;
       ncost[i].target = i;
       RB_INSERT(mytree, &queues[0], &ncost[i]);
 
-      ncount[i].pri = 0;
+      ncount[i].pri    = 0;
       ncount[i].target = i;
       RB_INSERT(mytree, &queues[1], &ncount[i]);
 
-      ncombi[i].pri = 0;
+      ncombi[i].pri    = 0;
       ncombi[i].target = i;
       RB_INSERT(mytree, &queues[2], &ncombi[i]);
     }
@@ -422,7 +408,7 @@ void force_optimize_domain_mapping(void)
               if(w < bestwork)
                 {
                   bestwork = w;
-                  target = t;
+                  target   = t;
                 }
             }
         }
@@ -466,7 +452,7 @@ void force_optimize_domain_mapping(void)
 
   for(i = 0; i < NTask; i++)
     {
-      TaskCost[i] = 0;
+      TaskCost[i]  = 0;
       TaskCount[i] = 0;
     }
 
@@ -492,7 +478,8 @@ void force_optimize_domain_mapping(void)
 
   if((max / (sum / NTask) > oldmax / (oldsum / NTask)) || (maxload > All.MaxPart))
     {
-      mpi_printf("FORCETREE: The work-load is either worse than before or the memory-balance is not viable. We keep the old distribution.\n");
+      mpi_printf(
+          "FORCETREE: The work-load is either worse than before or the memory-balance is not viable. We keep the old distribution.\n");
       memcpy(DomainNewTask, DomainTask, NTopleaves * sizeof(int));
     }
 }

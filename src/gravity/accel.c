@@ -24,25 +24,22 @@
  *                void compute_grav_accelerations(int timebin, int fullflag)
  *                void gravity(int timebin, int fullflag)
  *                void gravity_force_finalize(int timebin)
- * 
+ *
  * \par Major modifications and contributions:
- * 
+ *
  * - DD.MM.YYYY Description
  * - 03.05.2018 Prepared file for public release -- Rainer Weinberger
  */
 
-
+#include <gsl/gsl_math.h>
+#include <math.h>
 #include <mpi.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <math.h>
-#include <gsl/gsl_math.h>
-
 
 #include "../main/allvars.h"
 #include "../main/proto.h"
-
 
 /*! \brief Computes the gravitational accelerations for all active particles.
  *
@@ -74,14 +71,13 @@ void compute_grav_accelerations(int timebin, int fullflag)
           gravity(timebin, fullflag);
         }
 
-      gravity(timebin, fullflag);       /* computes (short-range) gravity accel. */
+      gravity(timebin, fullflag); /* computes (short-range) gravity accel. */
 
 #ifdef FORCETEST
       gravity_forcetest();
 #endif /* #ifdef FORCETEST */
     }
 }
-
 
 /*! \brief Main routine for tree force calculation.
  *
@@ -128,36 +124,36 @@ void gravity(int timebin, int fullflag)
       gravity_monopole_1d_spherical();
 #else /* #ifdef ONEDIMS_SPHERICAL */
 
-      if(TimeBinsGravity.GlobalNActiveParticles >= 10 * NTask)
-        construct_forcetree(0, 1, 0, timebin);  /* build force tree with all particles */
-      else
-        construct_forcetree(0, 0, 0, timebin);  /* build force tree with all particles */
+    if(TimeBinsGravity.GlobalNActiveParticles >= 10 * NTask)
+      construct_forcetree(0, 1, 0, timebin); /* build force tree with all particles */
+    else
+      construct_forcetree(0, 0, 0, timebin); /* build force tree with all particles */
 
-      gravity_tree(timebin);
+    gravity_tree(timebin);
 
-      gravity_force_finalize(timebin);
+    gravity_force_finalize(timebin);
 
 #ifdef EXACT_GRAVITY_FOR_PARTICLE_TYPE
-      calc_exact_gravity_for_particle_type();
+    calc_exact_gravity_for_particle_type();
 #endif /* #ifdef EXACT_GRAVITY_FOR_PARTICLE_TYPE */
 
 #ifdef EXTERNALGRAVITY
-      gravity_external();
+    gravity_external();
 #endif /* #ifdef EXTERNALGRAVITY */
 
-      /* note: we here moved 'gravity_force_finalize' in front of the non-standard physics;
-       * reminder: restart flag 18: post-processing calculation potential without running simulation
-       */
-      if(fullflag == FLAG_FULL_TREE && RestartFlag != 18)
-        calculate_non_standard_physics_with_valid_gravity_tree();
+    /* note: we here moved 'gravity_force_finalize' in front of the non-standard physics;
+     * reminder: restart flag 18: post-processing calculation potential without running simulation
+     */
+    if(fullflag == FLAG_FULL_TREE && RestartFlag != 18)
+      calculate_non_standard_physics_with_valid_gravity_tree();
 
-      /* this is for runs which have the full tree at each time step; no HIERARCHICAL_GRAVITY */
-      calculate_non_standard_physics_with_valid_gravity_tree_always();
+    /* this is for runs which have the full tree at each time step; no HIERARCHICAL_GRAVITY */
+    calculate_non_standard_physics_with_valid_gravity_tree_always();
 
-      myfree(Father);
-      myfree(Nextnode);
-      myfree(Tree_Points);
-      force_treefree();
+    myfree(Father);
+    myfree(Nextnode);
+    myfree(Tree_Points);
+    force_treefree();
 #endif /* #ifdef ONEDIMS_SPHERICAL #else */
     }
 
@@ -191,9 +187,9 @@ void gravity(int timebin, int fullflag)
 #endif /* defined(SELFGRAVITY) #else */
 
   double tend = second();
-  mpi_printf("GRAVITY: done for timebin %d,  %lld particles  (took %g sec)\n", timebin, TimeBinsGravity.GlobalNActiveParticles, timediff(tstart, tend));
+  mpi_printf("GRAVITY: done for timebin %d,  %lld particles  (took %g sec)\n", timebin, TimeBinsGravity.GlobalNActiveParticles,
+             timediff(tstart, tend));
 }
-
 
 /*! \brief Adds individual gravity contribution and appropriate factors.
  *
@@ -248,16 +244,15 @@ void gravity_force_finalize(int timebin)
           ax = P[i].GravAccel[0] + P[i].GravPM[0] / All.G;
           ay = P[i].GravAccel[1] + P[i].GravPM[1] / All.G;
           az = P[i].GravAccel[2] + P[i].GravPM[2] / All.G;
-#else /* #ifdef PMGRID */
-          ax = P[i].GravAccel[0];
-          ay = P[i].GravAccel[1];
-          az = P[i].GravAccel[2];
+#else  /* #ifdef PMGRID */
+        ax = P[i].GravAccel[0];
+        ay = P[i].GravAccel[1];
+        az = P[i].GravAccel[2];
 #endif /* #ifdef PMGRID #else */
 
           P[i].OldAcc = sqrt(ax * ax + ay * ay + az * az);
         }
     }
-
 
   /*  muliply by G */
   for(idx = 0; idx < TimeBinsGravity.NActiveParticles; idx++)
@@ -278,8 +273,8 @@ void gravity_force_finalize(int timebin)
 #endif /* #ifdef PLACEHIGHRESREGION */
 #endif /* #if defined(PMGRID) && !defined(GRAVITY_NOT_PERIODIC) */
 
-      /* It's better to not remove the self-potential here to get a smooth potential field for co-spatial particles with varying mass or softening.
-       * For calculating the binding energy of a particle, the self-energy should then be removed as
+      /* It's better to not remove the self-potential here to get a smooth potential field for co-spatial particles with varying mass
+       * or softening. For calculating the binding energy of a particle, the self-energy should then be removed as
        *
        *  P[i].Potential += P[i].Mass / (All.ForceSoftening[P[i].SofteningType] / 2.8);
        */
@@ -288,10 +283,10 @@ void gravity_force_finalize(int timebin)
 
 #ifdef PMGRID
 #ifndef FORCETEST_TESTFORCELAW
-      P[i].Potential += P[i].PM_Potential;      /* add in long-range potential */
-#endif /* #ifndef FORCETEST_TESTFORCELAW */
-#endif /* #ifdef PMGRID */
-#endif /* #ifdef EVALPOTENTIAL */
+      P[i].Potential += P[i].PM_Potential; /* add in long-range potential */
+#endif                                     /* #ifndef FORCETEST_TESTFORCELAW */
+#endif                                     /* #ifdef PMGRID */
+#endif                                     /* #ifdef EVALPOTENTIAL */
       if(All.ComovingIntegrationOn)
         {
 #ifdef GRAVITY_NOT_PERIODIC
@@ -326,9 +321,9 @@ void gravity_force_finalize(int timebin)
         }
     }
 
-  /* Finally, the following factor allows a computation of a cosmological
-   * simulation with vacuum energy in physical coordinates
-   */
+    /* Finally, the following factor allows a computation of a cosmological
+     * simulation with vacuum energy in physical coordinates
+     */
 #ifdef GRAVITY_NOT_PERIODIC
 #ifndef PMGRID
   if(All.ComovingIntegrationOn == 0)

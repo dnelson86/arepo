@@ -28,23 +28,20 @@
  *                static int refine_criterion_jeans_ref(int i)
  *                static int jeans_refinement_criteria(int i)
  *                static int refine_criterion_volume(int i)
- * 
+ *
  * \par Major modifications and contributions:
- * 
+ *
  * - DD.MM.YYYY Description
  * - 04.05.2018 Prepared file for public release -- Rainer Weinberger
  */
 
-
+#include <math.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <math.h>
-
 
 #include "../main/allvars.h"
 #include "../main/proto.h"
-
 
 #if defined(REFINEMENT_SPLIT_CELLS) && !defined(ONEDIMS)
 static int can_this_cell_be_split(int i);
@@ -52,16 +49,13 @@ static int refine_criterion_default(int i);
 static int refine_criterion_jeans_ref(int i);
 static int jeans_refinement_criteria(int i);
 
-
 #ifdef REFINEMENT_VOLUME_LIMIT
 static int refine_criterion_volume(int i);
 #endif
 
-
 #ifdef REFINEMENT_MERGE_CELLS
 char *FlagDoNotRefine;
 #endif /* #ifdef REFINEMENT_MERGE_CELLS */
-
 
 /*! \brief Should this cell be refined?
  *
@@ -79,7 +73,7 @@ int should_this_cell_be_split(int i)
     return 0;
 #endif /* #ifdef REFINEMENT_MERGE_CELLS */
 
-  if(P[i].Mass == 0 && P[i].ID == 0)    /* skip cells that have been swallowed or dissolved */
+  if(P[i].Mass == 0 && P[i].ID == 0) /* skip cells that have been swallowed or dissolved */
     return 0;
 
 #if defined(REFINEMENT_VOLUME_LIMIT)
@@ -98,33 +92,31 @@ int should_this_cell_be_split(int i)
       return 1;
 #endif /* #if defined(REFINEMENT_VOLUME_LIMIT) */
 
-  switch (All.RefinementCriterion)      /* select the function that evaluates the refinement criterion */
+  switch(All.RefinementCriterion) /* select the function that evaluates the refinement criterion */
     {
-    case 0:
-      return 0;
-      break;
+      case 0:
+        return 0;
+        break;
 
-    case 1:
-      return refine_criterion_default(i);
-      break;
+      case 1:
+        return refine_criterion_default(i);
+        break;
 
-    case 2:
-      return refine_criterion_jeans_ref(i);
-      break;
+      case 2:
+        return refine_criterion_jeans_ref(i);
+        break;
 
-    default:
-      terminate("invalid refinement criterion specified");
-      break;
+      default:
+        terminate("invalid refinement criterion specified");
+        break;
     }
 
   return 0;
 }
 
-
 /*
  * static functions; i.e. functions that are only called within this file
  */
-
 
 /*! \brief Is cell round enough to be refined?
  *
@@ -142,11 +134,11 @@ static int can_this_cell_be_split(int i)
   if(SphP[i].MaxFaceAngle < 1.5 * All.CellMaxAngleFactor)
     return 1;
 
-#else /* #ifdef REGULARIZE_MESH_FACE_ANGLE */
-  double dx = nearest_x(P[i].Pos[0] - SphP[i].Center[0]);
-  double dy = nearest_y(P[i].Pos[1] - SphP[i].Center[1]);
-  double dz = nearest_z(P[i].Pos[2] - SphP[i].Center[2]);
-  double d = sqrt(dx * dx + dy * dy + dz * dz);
+#else  /* #ifdef REGULARIZE_MESH_FACE_ANGLE */
+  double dx      = nearest_x(P[i].Pos[0] - SphP[i].Center[0]);
+  double dy      = nearest_y(P[i].Pos[1] - SphP[i].Center[1]);
+  double dz      = nearest_z(P[i].Pos[2] - SphP[i].Center[2]);
+  double d       = sqrt(dx * dx + dy * dy + dz * dz);
   double cellrad = get_cell_radius(i);
 
   if(d < 2.0 * All.CellShapingFactor * cellrad) /* only refine cells which are reasonably 'round' */
@@ -155,7 +147,6 @@ static int can_this_cell_be_split(int i)
 
   return 0;
 }
-
 
 /*! \brief Default refinement criterion.
  *
@@ -173,9 +164,8 @@ static int refine_criterion_default(int i)
     if(can_this_cell_be_split(i) && P[i].Mass > 2.0 * All.TargetGasMass)
       return 1;
 
-  return 0;                     /* default is not to refine */
+  return 0; /* default is not to refine */
 }
-
 
 /*! \brief Jeans refinement criterion additional target mass criterion
  *
@@ -198,14 +188,13 @@ static int refine_criterion_jeans_ref(int i)
 
 #ifdef JEANS_REFINEMENT
         return jeans_refinement_criteria(i);
-#else /* #ifdef JEANS_REFINEMENT */
-        return 0;
+#else  /* #ifdef JEANS_REFINEMENT */
+      return 0;
 #endif /* #ifdef JEANS_REFINEMENT #else */
       }
 
   return 0;
 }
-
 
 /*! \brief Refinement criterion according to Jeans stability of a cell.
  *
@@ -223,9 +212,9 @@ static int jeans_refinement_criteria(int i)
     {
       double jeans_number, jeans_length, sound_speed, dx;
 
-      sound_speed = sqrt(GAMMA * SphP[i].Pressure / SphP[i].Density);
+      sound_speed  = sqrt(GAMMA * SphP[i].Pressure / SphP[i].Density);
       jeans_length = sqrt(M_PI / All.G / SphP[i].Density) * sound_speed;
-      dx = 2.0 * get_cell_radius(i);
+      dx           = 2.0 * get_cell_radius(i);
       jeans_number = jeans_length / dx;
 
       if(jeans_number < JEANS_REFINEMENT)
@@ -237,7 +226,6 @@ static int jeans_refinement_criteria(int i)
 
   return 0;
 }
-
 
 #ifdef REFINEMENT_VOLUME_LIMIT
 /*! \brief Refinement criterion for based on the minimum volume of a
@@ -259,15 +247,15 @@ static int refine_criterion_volume(int i)
 #ifdef REGULARIZE_MESH_FACE_ANGLE
       if(SphP[i].MaxFaceAngle < 1.5 * All.CellMaxAngleFactor)
         return 1;
-#else /* #ifdef REGULARIZE_MESH_FACE_ANGLE */
+#else  /* #ifdef REGULARIZE_MESH_FACE_ANGLE */
 
-      double dx = nearest_x(P[i].Pos[0] - SphP[i].Center[0]);
-      double dy = nearest_y(P[i].Pos[1] - SphP[i].Center[1]);
-      double dz = nearest_z(P[i].Pos[2] - SphP[i].Center[2]);
-      double d = sqrt(dx * dx + dy * dy + dz * dz);
+      double dx      = nearest_x(P[i].Pos[0] - SphP[i].Center[0]);
+      double dy      = nearest_y(P[i].Pos[1] - SphP[i].Center[1]);
+      double dz      = nearest_z(P[i].Pos[2] - SphP[i].Center[2]);
+      double d       = sqrt(dx * dx + dy * dy + dz * dz);
       double cellrad = get_cell_radius(i);
 
-      if(d < 2.0 * All.CellShapingFactor * cellrad)     /* only refine cells which are reasonably 'round' */
+      if(d < 2.0 * All.CellShapingFactor * cellrad) /* only refine cells which are reasonably 'round' */
         return 1;
 #endif /* #ifdef REGULARIZE_MESH_FACE_ANGLE #else */
     }
@@ -275,6 +263,5 @@ static int refine_criterion_volume(int i)
   return 0;
 }
 #endif /* #ifdef REFINEMENT_VOLUME_LIMIT */
-
 
 #endif /* #if defined(REFINEMENT_SPLIT_CELLS) && !defined(ONEDIMS) */

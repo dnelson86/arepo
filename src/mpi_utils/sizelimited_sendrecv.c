@@ -28,26 +28,23 @@
  *                  MPI_Datatype sendtype, int dest, int sendtag, void *recvb,
  *                  size_t recvcount, MPI_Datatype recvtype, int source,
  *                  int recvtag, MPI_Comm comm, MPI_Status * status)
- * 
- * 
+ *
+ *
  * \par Major modifications and contributions:
- * 
+ *
  * - DD.MM.YYYY Description
  * - 24.05.2018 Prepared file for public release -- Rainer Weinberger
  */
 
-
+#include <gsl/gsl_math.h>
+#include <math.h>
 #include <mpi.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <math.h>
-#include <gsl/gsl_math.h>
-
 
 #include "../main/allvars.h"
 #include "../main/proto.h"
-
 
 /*! \brief Self-made sendrecv function with limiter to the number of elements
  *         that can be sent in one go.
@@ -70,12 +67,12 @@
  *
  *  \return 0
  */
-int myMPI_Sendrecv(void *sendb, size_t sendcount, MPI_Datatype sendtype,
-                   int dest, int sendtag, void *recvb, size_t recvcount, MPI_Datatype recvtype, int source, int recvtag, MPI_Comm comm, MPI_Status * status)
+int myMPI_Sendrecv(void *sendb, size_t sendcount, MPI_Datatype sendtype, int dest, int sendtag, void *recvb, size_t recvcount,
+                   MPI_Datatype recvtype, int source, int recvtag, MPI_Comm comm, MPI_Status *status)
 {
-  int iter = 0, size_sendtype, size_recvtype, send_now, recv_now;
-  char *sendbuf = (char *) sendb;
-  char *recvbuf = (char *) recvb;
+  int iter      = 0, size_sendtype, size_recvtype, send_now, recv_now;
+  char *sendbuf = (char *)sendb;
+  char *recvbuf = (char *)recvb;
 
   if(dest != source)
     terminate("dest != source");

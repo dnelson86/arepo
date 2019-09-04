@@ -32,18 +32,15 @@
  * - 24.05.2018 Prepared file for public release -- Rainer Weinberger
  */
 
-
+#include <gsl/gsl_math.h>
+#include <math.h>
 #include <mpi.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <math.h>
-#include <gsl/gsl_math.h>
-
 
 #include "../main/allvars.h"
 #include "../main/proto.h"
-
 
 /*! \brief A wrapper around MPI_Alltoallv that can deal with data in
  *         individual sends that are very big.
@@ -68,27 +65,28 @@
  *
  *  \return void
  */
-void myMPI_Alltoallv(void *sendb, size_t * sendcounts, size_t * sdispls, void *recvb, size_t * recvcounts, size_t * rdispls, int len, int big_flag, MPI_Comm comm)
+void myMPI_Alltoallv(void *sendb, size_t *sendcounts, size_t *sdispls, void *recvb, size_t *recvcounts, size_t *rdispls, int len,
+                     int big_flag, MPI_Comm comm)
 {
-  char *sendbuf = (char *) sendb;
-  char *recvbuf = (char *) recvb;
+  char *sendbuf = (char *)sendb;
+  char *recvbuf = (char *)recvb;
 
   if(big_flag == 0)
     {
       int ntask;
       MPI_Comm_size(comm, &ntask);
 
-      int *scount = (int *) mymalloc("scount", ntask * sizeof(int));
-      int *rcount = (int *) mymalloc("rcount", ntask * sizeof(int));
-      int *soff = (int *) mymalloc("soff", ntask * sizeof(int));
-      int *roff = (int *) mymalloc("roff", ntask * sizeof(int));
+      int *scount = (int *)mymalloc("scount", ntask * sizeof(int));
+      int *rcount = (int *)mymalloc("rcount", ntask * sizeof(int));
+      int *soff   = (int *)mymalloc("soff", ntask * sizeof(int));
+      int *roff   = (int *)mymalloc("roff", ntask * sizeof(int));
 
       for(int i = 0; i < ntask; i++)
         {
           scount[i] = sendcounts[i] * len;
           rcount[i] = recvcounts[i] * len;
-          soff[i] = sdispls[i] * len;
-          roff[i] = rdispls[i] * len;
+          soff[i]   = sdispls[i] * len;
+          roff[i]   = rdispls[i] * len;
         }
 
       MPI_Alltoallv(sendbuf, scount, soff, MPI_BYTE, recvbuf, rcount, roff, MPI_BYTE, comm);
@@ -116,7 +114,8 @@ void myMPI_Alltoallv(void *sendb, size_t * sendcounts, size_t * sdispls, void *r
             {
               if(sendcounts[target] > 0 || recvcounts[target] > 0)
                 myMPI_Sendrecv(sendbuf + sdispls[target] * len, sendcounts[target] * len, MPI_BYTE, target, TAG_PDATA + ngrp,
-                               recvbuf + rdispls[target] * len, recvcounts[target] * len, MPI_BYTE, target, TAG_PDATA + ngrp, comm, MPI_STATUS_IGNORE);
+                               recvbuf + rdispls[target] * len, recvcounts[target] * len, MPI_BYTE, target, TAG_PDATA + ngrp, comm,
+                               MPI_STATUS_IGNORE);
             }
         }
     }

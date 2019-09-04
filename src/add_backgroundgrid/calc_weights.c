@@ -28,29 +28,24 @@
  *                static void kernel_imported(void)
  *                void calculate_weights()
  *                int find_cells_evaluate(int target, int mode, int thread_id)
- * 
- * 
+ *
+ *
  * \par Major modifications and contributions:
- * 
+ *
  * - DD.MM.YYYY Description
  * - 11.05.2018 Prepared file for public release -- Rainer Weinberger
  */
 
-
 #include <mpi.h>
 
-
+#include "../domain/domain.h"
 #include "../main/allvars.h"
 #include "../main/proto.h"
-#include "../domain/domain.h"
 #include "add_bggrid.h"
-
 
 #ifdef ADDBACKGROUNDGRID
 
-
 static int find_cells_evaluate(int target, int mode, int thread_id);
-
 
 /*! \brief Local data structure for collecting particle/cell data that is sent
  *         to other processors if needed. Type called data_in and static
@@ -66,7 +61,6 @@ typedef struct
 
 static data_in *DataIn, *DataGet;
 
-
 /*! \brief Routine that fills the relevant particle/cell data into the input
  *         structure defined above. Needed by generic_comm_helpers2.
  *
@@ -76,7 +70,7 @@ static data_in *DataIn, *DataGet;
  *
  *  \return void
  */
-static void particle2in(data_in * in, int i, int firstnode)
+static void particle2in(data_in *in, int i, int firstnode)
 {
   in->Pos[0] = P[i].Pos[0];
   in->Pos[1] = P[i].Pos[1];
@@ -86,7 +80,6 @@ static void particle2in(data_in * in, int i, int firstnode)
 
   in->Firstnode = firstnode;
 }
-
 
 /*! \brief Local data structure that holds results acquired on remote
  *         processors. Type called data_out and static pointers DataResult and
@@ -99,7 +92,6 @@ typedef struct
 
 static data_out *DataResult, *DataOut;
 
-
 /*! \brief Routine to store or combine result data. Needed by
  *         generic_comm_helpers2.
  *
@@ -111,21 +103,19 @@ static data_out *DataResult, *DataOut;
  *
  *  \return void
  */
-static void out2particle(data_out * out, int i, int mode)
+static void out2particle(data_out *out, int i, int mode)
 {
-  if(mode == MODE_LOCAL_PARTICLES)      /* initial store */
+  if(mode == MODE_LOCAL_PARTICLES) /* initial store */
     {
       SphP[i].Weight = out->Weight;
     }
-  else                          /* combine */
+  else /* combine */
     {
       SphP[i].Weight += out->Weight;
     }
 }
 
-
 #include "../utils/generic_comm_helpers2.h"
-
 
 /*! \brief Routine that defines what to do with local particles.
  *
@@ -161,7 +151,6 @@ static void kernel_local(void)
   }
 }
 
-
 /*! \brief Routine that defines what to do with imported particles.
  *
  *  Calls the *_evaluate function in MODE_IMPORTED_PARTICLES.
@@ -187,7 +176,6 @@ static void kernel_imported(void)
   }
 }
 
-
 /*! \brief Calculates SPH weights of each cell.
  *
  *  \return void
@@ -195,7 +183,7 @@ static void kernel_imported(void)
 void calculate_weights()
 {
   domain_free();
-  domain_Decomposition();       /* do new domain decomposition, will also make a new chained-list of synchronized particles */
+  domain_Decomposition(); /* do new domain decomposition, will also make a new chained-list of synchronized particles */
 
   ngb_treeallocate();
   ngb_treebuild(NumGas);
@@ -221,7 +209,6 @@ void calculate_weights()
 
   mpi_printf("ADD BACKGROUND GRID: done\n");
 }
-
 
 /*! \brief finds cells and adds up weights in an SPH fashion
  *
@@ -249,7 +236,7 @@ int find_cells_evaluate(int target, int mode, int thread_id)
       particle2in(&local, target, 0);
       target_data = &local;
 
-      numnodes = 1;
+      numnodes  = 1;
       firstnode = NULL;
     }
   else
@@ -259,13 +246,13 @@ int find_cells_evaluate(int target, int mode, int thread_id)
       generic_get_numnodes(target, &numnodes, &firstnode);
     }
 
-  pos = target_data->Pos;
-  h = target_data->Hsml;
-  h2 = h * h;
+  pos  = target_data->Pos;
+  h    = target_data->Hsml;
+  h2   = h * h;
   hinv = 1.0 / h;
 #ifndef TWODIMS
   hinv3 = hinv * hinv * hinv;
-#else /* #ifndef TWODIMS */
+#else  /* #ifndef TWODIMS */
   hinv3 = hinv * hinv / boxSize_Z;
 #endif /* #ifndef TWODIMS #else */
 
@@ -309,6 +296,5 @@ int find_cells_evaluate(int target, int mode, int thread_id)
 
   return 0;
 }
-
 
 #endif /* #ifdef ADDBACKGROUNDGRID */

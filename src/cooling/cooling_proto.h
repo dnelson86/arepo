@@ -20,11 +20,11 @@
  * \file        src/cooling/cooling_proto.h
  * \date        05/2018
  * \brief       Header for cooling functions.
- * \details     
- * 
- * 
+ * \details
+ *
+ *
  * \par Major modifications and contributions:
- * 
+ *
  * - DD.MM.YYYY Description
  * - 27.05.2018 Prepared file for public release -- Rainer Weinberger
  */
@@ -33,16 +33,13 @@
 #define INLINE_FUNC
 #endif /* #ifndef INLINE_FUNC */
 
-
 void SetOutputGasState(int i, double *ne_guess, double *nH0, double *coolrate);
-
 
 double convert_u_to_temp(double u, double rho, double *ne_guess);
 double CoolingRate(double logT, double rho, double *nelec);
 double CoolingRateFromU(double u, double rho, double *ne_guess);
 double DoCooling(double u_old, double rho, double dt, double *ne_guess);
 double GetCoolingTime(double u_old, double rho, double *ne_guess);
-
 
 void find_abundances_and_rates(double logT, double rho, double *ne_guess);
 void InitCool(void);

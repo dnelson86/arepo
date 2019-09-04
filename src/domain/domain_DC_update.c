@@ -31,32 +31,28 @@
  *                  const void *b)
  *                int domain_compare_recv_trans_data_oldtask(const void *a,
  *                  const void *b)
- * 
- * 
+ *
+ *
  * \par Major modifications and contributions:
- * 
+ *
  * - DD.MM.YYYY Description
  * - 17.05.2018 Prepared file for public release -- Rainer Weinberger
  */
 
-
+#include <math.h>
 #include <mpi.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <strings.h>
-#include <math.h>
-
 
 #include "../main/allvars.h"
 #include "../main/proto.h"
-#include "domain.h"
 #include "../mesh/voronoi/voronoi.h"
-
+#include "domain.h"
 
 struct trans_data *trans_table;
 int N_trans;
-
 
 /*! \brief Data structure for local auxiliary translation table.
  */
@@ -64,9 +60,7 @@ static struct local_aux_trans_data
 {
   MyIDType ID;
   int new_index;
-}
- *local_trans_data;
-
+} * local_trans_data;
 
 /*! \brief Data structure for communicating the translation table.
  */
@@ -76,9 +70,7 @@ static struct aux_trans_data
   int old_task;
   int old_index;
   int new_index;
-}
- *send_trans_data, *recv_trans_data;
-
+} * send_trans_data, *recv_trans_data;
 
 /*! \brief Data structure for transcribing data.
  */
@@ -88,9 +80,7 @@ static struct aux_transscribe_data
   int new_task;
   int new_index;
   int image_flags;
-}
- *send_transscribe_data, *recv_transscribe_data;
-
+} * send_transscribe_data, *recv_transscribe_data;
 
 /*! \brief Fill translation table.
  *
@@ -108,7 +98,7 @@ void domain_mark_in_trans_table(int i, int task)
     {
       if(i < NumGas)
         {
-          trans_table[i].ID = P[i].ID;
+          trans_table[i].ID       = P[i].ID;
           trans_table[i].new_task = task;
 
           int q = SphP[i].first_connection;
@@ -117,12 +107,13 @@ void domain_mark_in_trans_table(int i, int task)
             {
               int qq = DC[q].next;
               if(q == qq)
-                terminate("preventing getting stuck in a loop due to q == DC[q].next : i=%d q=%d last_connection=%d", i, q, SphP[i].last_connection);
+                terminate("preventing getting stuck in a loop due to q == DC[q].next : i=%d q=%d last_connection=%d", i, q,
+                          SphP[i].last_connection);
 
-              if((P[i].Mass == 0 && P[i].ID == 0) || P[i].Type != 0)    /* this cell has been deleted or turned into a star */
+              if((P[i].Mass == 0 && P[i].ID == 0) || P[i].Type != 0) /* this cell has been deleted or turned into a star */
                 DC[q].next = -1;
               else
-                DC[q].next = task;      /* we will temporarily use the next variable to store the new task */
+                DC[q].next = task; /* we will temporarily use the next variable to store the new task */
 
               if(q == SphP[i].last_connection)
                 break;
@@ -131,10 +122,9 @@ void domain_mark_in_trans_table(int i, int task)
             }
         }
       else if(i < N_trans)
-        trans_table[i].new_task = -1;   /* this one has been removed by rerrange_particle_sequence() */
+        trans_table[i].new_task = -1; /* this one has been removed by rerrange_particle_sequence() */
     }
 }
-
 
 /*! \brief Communicates connections.
  *
@@ -191,9 +181,9 @@ void domain_exchange_and_update_DC(void)
       int task = trans_table[i].new_task;
       if(task >= 0)
         {
-          send_trans_data[Send_offset[task] + Send_count[task]].ID = trans_table[i].ID;
+          send_trans_data[Send_offset[task] + Send_count[task]].ID        = trans_table[i].ID;
           send_trans_data[Send_offset[task] + Send_count[task]].old_index = i;
-          send_trans_data[Send_offset[task] + Send_count[task]].old_task = ThisTask;
+          send_trans_data[Send_offset[task] + Send_count[task]].old_task  = ThisTask;
           Send_count[task]++;
         }
     }
@@ -205,9 +195,10 @@ void domain_exchange_and_update_DC(void)
 
       if(recvTask < NTask)
         if(Send_count[recvTask] > 0 || Recv_count[recvTask] > 0)
-          MPI_Sendrecv(&send_trans_data[Send_offset[recvTask]],
-                       Send_count[recvTask] * sizeof(struct aux_trans_data), MPI_BYTE, recvTask,
-                       TAG_DENS_B, &recv_trans_data[Recv_offset[recvTask]], Recv_count[recvTask] * sizeof(struct aux_trans_data), MPI_BYTE, recvTask, TAG_DENS_B, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
+          MPI_Sendrecv(&send_trans_data[Send_offset[recvTask]], Send_count[recvTask] * sizeof(struct aux_trans_data), MPI_BYTE,
+                       recvTask, TAG_DENS_B, &recv_trans_data[Recv_offset[recvTask]],
+                       Recv_count[recvTask] * sizeof(struct aux_trans_data), MPI_BYTE, recvTask, TAG_DENS_B, MPI_COMM_WORLD,
+                       MPI_STATUS_IGNORE);
     }
 
   /* let's now sort the incoming list according to ID */
@@ -217,7 +208,7 @@ void domain_exchange_and_update_DC(void)
   local_trans_data = mymalloc("local_trans_data", NumGas * sizeof(struct local_aux_trans_data));
   for(int i = 0; i < NumGas; i++)
     {
-      local_trans_data[i].ID = P[i].ID;
+      local_trans_data[i].ID        = P[i].ID;
       local_trans_data[i].new_index = i;
     }
   mysort(local_trans_data, NumGas, sizeof(struct local_aux_trans_data), domain_compare_local_trans_data_ID);
@@ -228,7 +219,7 @@ void domain_exchange_and_update_DC(void)
     {
       if(recv_trans_data[i].ID < local_trans_data[j].ID)
         {
-          recv_trans_data[i].new_index = -1;    /* this particle has been eliminated */
+          recv_trans_data[i].new_index = -1; /* this particle has been eliminated */
           i++;
         }
       else if(recv_trans_data[i].ID > local_trans_data[j].ID)
@@ -242,7 +233,7 @@ void domain_exchange_and_update_DC(void)
     }
 
   for(; i < nimport; i++)
-    recv_trans_data[i].new_index = -1;  /* this particle has been eliminated */
+    recv_trans_data[i].new_index = -1; /* this particle has been eliminated */
 
   myfree(local_trans_data);
 
@@ -256,11 +247,11 @@ void domain_exchange_and_update_DC(void)
 
       if(recvTask < NTask)
         if(Send_count[recvTask] > 0 || Recv_count[recvTask] > 0)
-          MPI_Sendrecv(&recv_trans_data[Recv_offset[recvTask]],
-                       Recv_count[recvTask] * sizeof(struct aux_trans_data), MPI_BYTE, recvTask,
-                       TAG_DENS_B, &send_trans_data[Send_offset[recvTask]], Send_count[recvTask] * sizeof(struct aux_trans_data), MPI_BYTE, recvTask, TAG_DENS_B, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
+          MPI_Sendrecv(&recv_trans_data[Recv_offset[recvTask]], Recv_count[recvTask] * sizeof(struct aux_trans_data), MPI_BYTE,
+                       recvTask, TAG_DENS_B, &send_trans_data[Send_offset[recvTask]],
+                       Send_count[recvTask] * sizeof(struct aux_trans_data), MPI_BYTE, recvTask, TAG_DENS_B, MPI_COMM_WORLD,
+                       MPI_STATUS_IGNORE);
     }
-
 
   /* now let's fill in the new_index entry into the translation table */
   for(int i = 0; i < nexport; i++)
@@ -313,7 +304,7 @@ void domain_exchange_and_update_DC(void)
       int task = DC[i].task;
       if(task >= 0)
         {
-          send_transscribe_data[Send_offset[task] + Send_count[task]].old_index = DC[i].index;
+          send_transscribe_data[Send_offset[task] + Send_count[task]].old_index   = DC[i].index;
           send_transscribe_data[Send_offset[task] + Send_count[task]].image_flags = DC[i].image_flags;
           Send_count[task]++;
         }
@@ -326,12 +317,11 @@ void domain_exchange_and_update_DC(void)
 
       if(recvTask < NTask)
         if(Send_count[recvTask] > 0 || Recv_count[recvTask] > 0)
-          MPI_Sendrecv(&send_transscribe_data[Send_offset[recvTask]],
-                       Send_count[recvTask] * sizeof(struct aux_transscribe_data), MPI_BYTE, recvTask,
-                       TAG_DENS_B, &recv_transscribe_data[Recv_offset[recvTask]],
-                       Recv_count[recvTask] * sizeof(struct aux_transscribe_data), MPI_BYTE, recvTask, TAG_DENS_B, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
+          MPI_Sendrecv(&send_transscribe_data[Send_offset[recvTask]], Send_count[recvTask] * sizeof(struct aux_transscribe_data),
+                       MPI_BYTE, recvTask, TAG_DENS_B, &recv_transscribe_data[Recv_offset[recvTask]],
+                       Recv_count[recvTask] * sizeof(struct aux_transscribe_data), MPI_BYTE, recvTask, TAG_DENS_B, MPI_COMM_WORLD,
+                       MPI_STATUS_IGNORE);
     }
-
 
   for(int i = 0; i < nimport; i++)
     {
@@ -343,20 +333,20 @@ void domain_exchange_and_update_DC(void)
 
       int old_index = recv_transscribe_data[i].old_index;
 
-      recv_transscribe_data[i].new_task = trans_table[old_index].new_task;
+      recv_transscribe_data[i].new_task  = trans_table[old_index].new_task;
       recv_transscribe_data[i].new_index = trans_table[old_index].new_index;
 
 #if !defined(GRAVITY_NOT_PERIODIC) && !defined(DO_NOT_RANDOMIZE_DOMAINCENTER) && defined(SELFGRAVITY)
       // Nothing to do here
-#else /* #if !defined(GRAVITY_NOT_PERIODIC) && !defined(DO_NOT_RANDOMIZE_DOMAINCENTER) && defined(SELFGRAVITY) */
+#else  /* #if !defined(GRAVITY_NOT_PERIODIC) && !defined(DO_NOT_RANDOMIZE_DOMAINCENTER) && defined(SELFGRAVITY) */
       if(recv_transscribe_data[i].new_task >= 0)
         {
           if(trans_table[old_index].wrapped)
             {
               int bitflags = ffs(recv_transscribe_data[i].image_flags) - 1;
-              int zbits = (bitflags / 9);
-              int ybits = (bitflags - zbits * 9) / 3;
-              int xbits = bitflags - zbits * 9 - ybits * 3;
+              int zbits    = (bitflags / 9);
+              int ybits    = (bitflags - zbits * 9) / 3;
+              int xbits    = bitflags - zbits * 9 - ybits * 3;
 
               if(trans_table[old_index].wrapped & 1)
                 {
@@ -364,7 +354,7 @@ void domain_exchange_and_update_DC(void)
                     xbits = 0;
                   else if(xbits == 0)
                     xbits = 2;
-                  else          /* xbits == 2 */
+                  else /* xbits == 2 */
                     terminate("b");
                 }
               else if(trans_table[old_index].wrapped & 2)
@@ -375,7 +365,7 @@ void domain_exchange_and_update_DC(void)
                     }
                   else if(xbits == 0)
                     xbits = 1;
-                  else          /* xbits == 2 */
+                  else /* xbits == 2 */
                     xbits = 0;
                 }
 
@@ -438,12 +428,11 @@ void domain_exchange_and_update_DC(void)
 
       if(recvTask < NTask)
         if(Send_count[recvTask] > 0 || Recv_count[recvTask] > 0)
-          MPI_Sendrecv(&recv_transscribe_data[Recv_offset[recvTask]],
-                       Recv_count[recvTask] * sizeof(struct aux_transscribe_data), MPI_BYTE, recvTask,
-                       TAG_DENS_B, &send_transscribe_data[Send_offset[recvTask]],
-                       Send_count[recvTask] * sizeof(struct aux_transscribe_data), MPI_BYTE, recvTask, TAG_DENS_B, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
+          MPI_Sendrecv(&recv_transscribe_data[Recv_offset[recvTask]], Recv_count[recvTask] * sizeof(struct aux_transscribe_data),
+                       MPI_BYTE, recvTask, TAG_DENS_B, &send_transscribe_data[Send_offset[recvTask]],
+                       Send_count[recvTask] * sizeof(struct aux_transscribe_data), MPI_BYTE, recvTask, TAG_DENS_B, MPI_COMM_WORLD,
+                       MPI_STATUS_IGNORE);
     }
-
 
   for(int j = 0; j < NTask; j++)
     Send_count[j] = 0;
@@ -454,8 +443,8 @@ void domain_exchange_and_update_DC(void)
       int task = DC[i].task;
       if(task >= 0)
         {
-          DC[i].task = send_transscribe_data[Send_offset[task] + Send_count[task]].new_task;
-          DC[i].index = send_transscribe_data[Send_offset[task] + Send_count[task]].new_index;
+          DC[i].task        = send_transscribe_data[Send_offset[task] + Send_count[task]].new_task;
+          DC[i].index       = send_transscribe_data[Send_offset[task] + Send_count[task]].new_index;
           DC[i].image_flags = send_transscribe_data[Send_offset[task] + Send_count[task]].image_flags;
           Send_count[task]++;
         }
@@ -463,7 +452,6 @@ void domain_exchange_and_update_DC(void)
 
   myfree(recv_transscribe_data);
   myfree(send_transscribe_data);
-
 
   /* now we can exchange the DC data. The task where each item should go is stored in 'next' at this point */
   for(int j = 0; j < NTask; j++)
@@ -478,7 +466,8 @@ void domain_exchange_and_update_DC(void)
           if(task >= 0)
             {
               if(task >= NTask)
-                terminate("Thistask=%d  i=%d Nvc=%d MaxNvc=%d DC[i].task=%d DC[i].next=%d\n", ThisTask, i, Nvc, MaxNvc, DC[i].task, DC[i].next);
+                terminate("Thistask=%d  i=%d Nvc=%d MaxNvc=%d DC[i].task=%d DC[i].next=%d\n", ThisTask, i, Nvc, MaxNvc, DC[i].task,
+                          DC[i].next);
 
               if(DC[i].index >= 0)
                 Send_count[task]++;
@@ -541,8 +530,9 @@ void domain_exchange_and_update_DC(void)
 
       if(recvTask < NTask)
         if(Send_count[recvTask] > 0 || Recv_count[recvTask] > 0)
-          MPI_Sendrecv(&tmpDC[Send_offset[recvTask]], Send_count[recvTask] * sizeof(connection), MPI_BYTE,
-                       recvTask, TAG_DENS_B, &DC[Recv_offset[recvTask]], Recv_count[recvTask] * sizeof(connection), MPI_BYTE, recvTask, TAG_DENS_B, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
+          MPI_Sendrecv(&tmpDC[Send_offset[recvTask]], Send_count[recvTask] * sizeof(connection), MPI_BYTE, recvTask, TAG_DENS_B,
+                       &DC[Recv_offset[recvTask]], Recv_count[recvTask] * sizeof(connection), MPI_BYTE, recvTask, TAG_DENS_B,
+                       MPI_COMM_WORLD, MPI_STATUS_IGNORE);
     }
 
   myfree(tmpDC);
@@ -568,13 +558,12 @@ void domain_exchange_and_update_DC(void)
   local_trans_data = mymalloc("local_trans_data", NumGas * sizeof(struct local_aux_trans_data));
   for(int i = 0; i < NumGas; i++)
     {
-      local_trans_data[i].ID = P[i].ID;
-      local_trans_data[i].new_index = i;        /* is here used as rank of the particle */
+      local_trans_data[i].ID        = P[i].ID;
+      local_trans_data[i].new_index = i; /* is here used as rank of the particle */
     }
   mysort(local_trans_data, NumGas, sizeof(struct local_aux_trans_data), domain_compare_local_trans_data_ID);
 
   mysort(DC, Nvc, sizeof(connection), domain_compare_connection_ID);
-
 
   int last = -1;
   for(i = 0, j = 0; i < NumGas && j < Nvc; i++)
@@ -585,7 +574,7 @@ void domain_exchange_and_update_DC(void)
         {
           /* this particle has no connection information (new cell) */
           SphP[k].first_connection = -1;
-          SphP[k].last_connection = -1;
+          SphP[k].last_connection  = -1;
         }
       else if(P[k].ID == DC[j].ID)
         {
@@ -614,9 +603,9 @@ void domain_exchange_and_update_DC(void)
 
   for(; i < NumGas; i++)
     {
-      int k = local_trans_data[i].new_index;
+      int k                    = local_trans_data[i].new_index;
       SphP[k].first_connection = -1;
-      SphP[k].last_connection = -1;
+      SphP[k].last_connection  = -1;
     }
 
   if(last >= 0)
@@ -627,7 +616,6 @@ void domain_exchange_and_update_DC(void)
   double t1 = second();
   mpi_printf("DOMAIN: done with rearranging connection information (took %g sec)\n", timediff(t0, t1));
 }
-
 
 /*! \brief Compare which ID is larger.
  *
@@ -640,15 +628,14 @@ void domain_exchange_and_update_DC(void)
  */
 int domain_compare_connection_ID(const void *a, const void *b)
 {
-  if(((connection *) a)->ID < (((connection *) b)->ID))
+  if(((connection *)a)->ID < (((connection *)b)->ID))
     return -1;
 
-  if(((connection *) a)->ID > (((connection *) b)->ID))
+  if(((connection *)a)->ID > (((connection *)b)->ID))
     return +1;
 
   return 0;
 }
-
 
 /*! \brief Compare which ID is larger.
  *
@@ -661,15 +648,14 @@ int domain_compare_connection_ID(const void *a, const void *b)
  */
 int domain_compare_local_trans_data_ID(const void *a, const void *b)
 {
-  if(((struct local_aux_trans_data *) a)->ID < (((struct local_aux_trans_data *) b)->ID))
+  if(((struct local_aux_trans_data *)a)->ID < (((struct local_aux_trans_data *)b)->ID))
     return -1;
 
-  if(((struct local_aux_trans_data *) a)->ID > (((struct local_aux_trans_data *) b)->ID))
+  if(((struct local_aux_trans_data *)a)->ID > (((struct local_aux_trans_data *)b)->ID))
     return +1;
 
   return 0;
 }
-
 
 /*! \brief Compare which ID is larger.
  *
@@ -682,15 +668,14 @@ int domain_compare_local_trans_data_ID(const void *a, const void *b)
  */
 int domain_compare_recv_trans_data_ID(const void *a, const void *b)
 {
-  if(((struct aux_trans_data *) a)->ID < (((struct aux_trans_data *) b)->ID))
+  if(((struct aux_trans_data *)a)->ID < (((struct aux_trans_data *)b)->ID))
     return -1;
 
-  if(((struct aux_trans_data *) a)->ID > (((struct aux_trans_data *) b)->ID))
+  if(((struct aux_trans_data *)a)->ID > (((struct aux_trans_data *)b)->ID))
     return +1;
 
   return 0;
 }
-
 
 /*! \brief Compare which old_task is larger.
  *
@@ -703,10 +688,10 @@ int domain_compare_recv_trans_data_ID(const void *a, const void *b)
  */
 int domain_compare_recv_trans_data_oldtask(const void *a, const void *b)
 {
-  if(((struct aux_trans_data *) a)->old_task < (((struct aux_trans_data *) b)->old_task))
+  if(((struct aux_trans_data *)a)->old_task < (((struct aux_trans_data *)b)->old_task))
     return -1;
 
-  if(((struct aux_trans_data *) a)->old_task > (((struct aux_trans_data *) b)->old_task))
+  if(((struct aux_trans_data *)a)->old_task > (((struct aux_trans_data *)b)->old_task))
     return +1;
 
   return 0;

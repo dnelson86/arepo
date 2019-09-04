@@ -29,13 +29,10 @@
  * - 27.05.2018 Prepared file for public release -- Rainer Weinberger
  */
 
-
 #ifndef VERSION_H
 #define VERSION_H
 
-
 extern const char* GIT_DATE;
 extern const char* GIT_COMMIT;
-
 
 #endif /* #ifndef VERSION_H */

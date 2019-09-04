@@ -37,21 +37,17 @@
  * - 05.05.2018 Prepared file for public release -- Rainer Weinberger
  */
 
-
+#include <math.h>
 #include <mpi.h>
 #include <stdlib.h>
 #include <string.h>
-#include <math.h>
 
-
+#include "../domain/domain.h"
 #include "../main/allvars.h"
 #include "../main/proto.h"
-#include "../domain/domain.h"
-
 
 #ifdef EXTERNALGRAVITY
 static void gravity_external_get_force(double pos[3], int type, MyIDType ID, double acc[3], double *pot, int *flag_set);
-
 
 /*! \brief Main routine to add contribution of external gravitational potential
  *  to accelerations.
@@ -138,7 +134,6 @@ void gravity_external(void)
   TIMER_STOP(CPU_TREE);
 }
 
-
 /*! \brief Calculates the force from the external potential given a position.
  *
  *  \param[in] pos Position at which force is to be evaluated.
@@ -159,7 +154,7 @@ static void gravity_external_get_force(double pos[3], int type, MyIDType ID, dou
 
 #ifdef EXTERNALGY
   acc[1] += EXTERNALGY;
-  *pot = -(EXTERNALGY) * pos[1];
+  *pot = -(EXTERNALGY)*pos[1];
 #endif /* #ifdef EXTERNALGY */
 
 #ifdef STATICISO
@@ -239,10 +234,8 @@ static void gravity_external_get_force(double pos[3], int type, MyIDType ID, dou
       }
   }
 #endif /* #ifdef STATICHQ */
-
 }
 #endif /* #ifdef EXTERNALGRAVITY */
-
 
 #ifdef ONEDIMS_SPHERICAL
 /*! \brief One-dimensional gravity in the spherically symmetric case.
@@ -263,7 +256,7 @@ void gravity_monopole_1d_spherical()
         r0 = 0.5 * (P[i].Pos[0] + P[i - 1].Pos[0]);
       else
         r0 = All.CoreRadius;
-      double dm = 4. / 3. * M_PI * (SphP[i].Center[0] * SphP[i].Center[0] * SphP[i].Center[0] - r0 * r0 * r0) * SphP[i].Density;
+      double dm  = 4. / 3. * M_PI * (SphP[i].Center[0] * SphP[i].Center[0] * SphP[i].Center[0] - r0 * r0 * r0) * SphP[i].Density;
       double rad = SphP[i].Center[0];
 
       P[i].GravAccel[0] = -(msum + dm) * All.G / (rad * rad);
@@ -282,7 +275,6 @@ void gravity_monopole_1d_spherical()
 }
 #endif /* #ifdef ONEDIMS_SPHERICAL */
 
-
 #ifdef STATICNFW
 /*! \brief Auxiliary function for static NFW potential.
  *
@@ -298,12 +290,13 @@ double enclosed_mass(double R)
     R = Rs * NFW_C;
 
   return fac * 4 * M_PI * RhoCrit * Dc *
-    (-(Rs * Rs * Rs * (1 - NFW_Eps + log(Rs) - 2 * NFW_Eps * log(Rs) + NFW_Eps * NFW_Eps * log(NFW_Eps * Rs)))
-     / ((NFW_Eps - 1) * (NFW_Eps - 1)) +
-     (Rs * Rs * Rs * (Rs - NFW_Eps * Rs - (2 * NFW_Eps - 1) * (R + Rs) * log(R + Rs) + NFW_Eps * NFW_Eps * (R + Rs) * log(R + NFW_Eps * Rs))) / ((NFW_Eps - 1) * (NFW_Eps - 1) * (R + Rs)));
+         (-(Rs * Rs * Rs * (1 - NFW_Eps + log(Rs) - 2 * NFW_Eps * log(Rs) + NFW_Eps * NFW_Eps * log(NFW_Eps * Rs))) /
+              ((NFW_Eps - 1) * (NFW_Eps - 1)) +
+          (Rs * Rs * Rs *
+           (Rs - NFW_Eps * Rs - (2 * NFW_Eps - 1) * (R + Rs) * log(R + Rs) + NFW_Eps * NFW_Eps * (R + Rs) * log(R + NFW_Eps * Rs))) /
+              ((NFW_Eps - 1) * (NFW_Eps - 1) * (R + Rs)));
 }
 #endif /* #ifdef STATICNFW */
-
 
 #ifdef EXACT_GRAVITY_FOR_PARTICLE_TYPE
 /*! \brief Routine that computes gravitational force by direct summation.
@@ -317,12 +310,12 @@ void calc_exact_gravity_for_particle_type(void)
   int i, idx;
 #ifdef EXACT_GRAVITY_REACTION
   double *accx, *accy, *accz;
-  accx = (double *) mymalloc("accx", All.MaxPartSpecial * sizeof(double));
-  accy = (double *) mymalloc("accy", All.MaxPartSpecial * sizeof(double));
-  accz = (double *) mymalloc("accz", All.MaxPartSpecial * sizeof(double));
+  accx = (double *)mymalloc("accx", All.MaxPartSpecial * sizeof(double));
+  accy = (double *)mymalloc("accy", All.MaxPartSpecial * sizeof(double));
+  accz = (double *)mymalloc("accz", All.MaxPartSpecial * sizeof(double));
 #ifdef EVALPOTENTIAL
   double *pot;
-  pot = (double *) mymalloc("pot", All.MaxPartSpecial * sizeof(double));
+  pot = (double *)mymalloc("pot", All.MaxPartSpecial * sizeof(double));
 #endif /* #ifdef EVALPOTENTIAL */
   int n;
   for(n = 0; n < All.MaxPartSpecial; n++)
@@ -358,28 +351,29 @@ void calc_exact_gravity_for_particle_type(void)
           dz = P[i].Pos[2] - PartSpecialListGlobal[k].pos[2];
 
           r2 = dx * dx + dy * dy + dz * dz;
-          r = sqrt(r2);
+          r  = sqrt(r2);
 
-          //using spline softening
+          // using spline softening
           if(r >= h)
             {
               fac = 1 / (r2 * r);
-              wp = -1 / r;
+              wp  = -1 / r;
             }
           else
             {
-              h_inv = 1.0 / h;
+              h_inv  = 1.0 / h;
               h3_inv = h_inv * h_inv * h_inv;
-              u = r * h_inv;
+              u      = r * h_inv;
 
               if(u < 0.5)
                 {
                   fac = h3_inv * (10.666666666667 + u * u * (32.0 * u - 38.4));
-                  wp = h_inv * (-2.8 + u * u * (5.333333333333 + u * u * (6.4 * u - 9.6)));
+                  wp  = h_inv * (-2.8 + u * u * (5.333333333333 + u * u * (6.4 * u - 9.6)));
                 }
               else
                 {
-                  fac = h3_inv * (21.333333333333 - 48.0 * u + 38.4 * u * u - 10.666666666667 * u * u * u - 0.066666666667 / (u * u * u));
+                  fac = h3_inv *
+                        (21.333333333333 - 48.0 * u + 38.4 * u * u - 10.666666666667 * u * u * u - 0.066666666667 / (u * u * u));
                   wp = h_inv * (-3.2 + 0.066666666667 / u + u * u * (10.666666666667 + u * (-16.0 + u * (9.6 - 2.133333333333 * u))));
                 }
             }
@@ -406,7 +400,7 @@ void calc_exact_gravity_for_particle_type(void)
         }
     }
 #ifdef EXACT_GRAVITY_REACTION
-  double *buf = (double *) mymalloc("buf", All.MaxPartSpecial * sizeof(double));
+  double *buf = (double *)mymalloc("buf", All.MaxPartSpecial * sizeof(double));
 
   MPI_Allreduce(accx, buf, All.MaxPartSpecial, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
   for(n = 0; n < All.MaxPartSpecial; n++)
@@ -452,7 +446,6 @@ void calc_exact_gravity_for_particle_type(void)
 #endif /* #ifdef EXACT_GRAVITY_REACTION */
 }
 
-
 /*! \brief Creates list of special particles, i.e. particles for which gravity
  *  is calculated by direct summation.
  *
@@ -463,7 +456,8 @@ void calc_exact_gravity_for_particle_type(void)
 void special_particle_create_list()
 {
   struct special_particle_data *SpecialPartList;
-  SpecialPartList = (struct special_particle_data *) mymalloc("SpecialPartList", All.MaxPartSpecial * sizeof(struct special_particle_data));
+  SpecialPartList =
+      (struct special_particle_data *)mymalloc("SpecialPartList", All.MaxPartSpecial * sizeof(struct special_particle_data));
 
   int i, j, nsrc, nimport, ngrp;
   for(i = 0, nsrc = 0; i < NumPart; i++)
@@ -506,19 +500,16 @@ void special_particle_create_list()
           if(Send_count[recvTask] > 0 || Recv_count[recvTask] > 0)
             {
               /* get the particles */
-              MPI_Sendrecv(&SpecialPartList[Send_offset[recvTask]],
-                           Send_count[recvTask] * sizeof(struct special_particle_data), MPI_BYTE,
-                           recvTask, TAG_DENS_A,
-                           &PartSpecialListGlobal[Recv_offset[recvTask]],
-                           Recv_count[recvTask] * sizeof(struct special_particle_data), MPI_BYTE, recvTask, TAG_DENS_A, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
+              MPI_Sendrecv(&SpecialPartList[Send_offset[recvTask]], Send_count[recvTask] * sizeof(struct special_particle_data),
+                           MPI_BYTE, recvTask, TAG_DENS_A, &PartSpecialListGlobal[Recv_offset[recvTask]],
+                           Recv_count[recvTask] * sizeof(struct special_particle_data), MPI_BYTE, recvTask, TAG_DENS_A, MPI_COMM_WORLD,
+                           MPI_STATUS_IGNORE);
             }
         }
     }
 
   myfree(SpecialPartList);
-
 }
-
 
 /*! \brief Updates list of special particles, i.e. particles for which gravity
  *  is calculated by direct summation.
@@ -530,7 +521,8 @@ void special_particle_create_list()
 void special_particle_update_list()
 {
   struct special_particle_data *SpecialPartList;
-  SpecialPartList = (struct special_particle_data *) mymalloc("SpecialPartList", All.MaxPartSpecial * sizeof(struct special_particle_data));
+  SpecialPartList =
+      (struct special_particle_data *)mymalloc("SpecialPartList", All.MaxPartSpecial * sizeof(struct special_particle_data));
 
   int i, j, nsrc, nimport, ngrp;
   for(i = 0, nsrc = 0; i < NumPart; i++)
@@ -573,16 +565,14 @@ void special_particle_update_list()
           if(Send_count[recvTask] > 0 || Recv_count[recvTask] > 0)
             {
               /* get the particles */
-              MPI_Sendrecv(&SpecialPartList[Send_offset[recvTask]],
-                           Send_count[recvTask] * sizeof(struct special_particle_data), MPI_BYTE,
-                           recvTask, TAG_DENS_A,
-                           &PartSpecialListGlobal[Recv_offset[recvTask]],
-                           Recv_count[recvTask] * sizeof(struct special_particle_data), MPI_BYTE, recvTask, TAG_DENS_A, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
+              MPI_Sendrecv(&SpecialPartList[Send_offset[recvTask]], Send_count[recvTask] * sizeof(struct special_particle_data),
+                           MPI_BYTE, recvTask, TAG_DENS_A, &PartSpecialListGlobal[Recv_offset[recvTask]],
+                           Recv_count[recvTask] * sizeof(struct special_particle_data), MPI_BYTE, recvTask, TAG_DENS_A, MPI_COMM_WORLD,
+                           MPI_STATUS_IGNORE);
             }
         }
     }
 
   myfree(SpecialPartList);
-
 }
 #endif /* #ifdef  EXACT_GRAVITY_FOR_PARTICLE_TYPE */

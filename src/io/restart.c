@@ -48,44 +48,39 @@
  *                void byten_hash(void *x, size_t n, int modus, int hash)
  *                void allocate_iobuf(void)
  *                void deallocate_iobuf(int modus)
- * 
+ *
  * \par Major modifications and contributions:
- * 
+ *
  * - DD.MM.YYYY Description
  * - 21.05.2018 Prepared file for public release -- Rainer Weinberger
  */
 
-
 #ifndef __USE_GNU
-#define  _GNU_SOURCE            /* needed for USE_DIRECT_IO_FOR_RESTARTS */
-#endif /* #ifndef __USE_GNU */
+#define _GNU_SOURCE /* needed for USE_DIRECT_IO_FOR_RESTARTS */
+#endif              /* #ifndef __USE_GNU */
 
-
+#include <fcntl.h>
+#include <gsl/gsl_rng.h>
+#include <math.h>
 #include <mpi.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <math.h>
-#include <fcntl.h>
+#include <sys/file.h>
 #include <sys/stat.h>
 #include <sys/types.h>
-#include <sys/file.h>
 #include <unistd.h>
-#include <gsl/gsl_rng.h>
 
-
+#include "../debug_md5/Md5.h"
+#include "../domain/domain.h"
 #include "../main/allvars.h"
 #include "../main/proto.h"
-#include "../domain/domain.h"
 #include "../mesh/voronoi/voronoi.h"
-#include "../debug_md5/Md5.h"
 
-
-#define MODUS_WRITE         0
-#define MODUS_READ          1
-#define MODUS_READCHECK     2
-#define MODUS_CHECK         3
-
+#define MODUS_WRITE 0
+#define MODUS_READ 1
+#define MODUS_READCHECK 2
+#define MODUS_CHECK 3
 
 /*! \brief Data for scheduling restart file IO.
  */
@@ -94,8 +89,7 @@ static struct seq_data
   int thistask;
   int rankinnode;
   int thisnode;
-} *seq;
-
+} * seq;
 
 /*! \brief Metadata of restart files to be compared to when checking.
  */
@@ -103,14 +97,11 @@ static struct check
 {
   long long byte_count;
   unsigned char hash[16];
-} *checks;
-
+} * checks;
 
 static char *write_success;
 
-
 static int fdint;
-
 
 static void in(int *x, int modus);
 static void byten(void *x, size_t n, int modus);
@@ -120,9 +111,7 @@ static void write_or_read_this_processors_restart_file(int modus, char *fname, s
 static int execute_write_or_read(int modus, char *buf, struct check *ch);
 static void contents_restart_file(int modus);
 
-
 #define MAX_BLOCK_SIZE (32 * 1024 * 1024)
-
 
 static int PageSize;
 static char *iobuf_aligned, *io_buf;
@@ -130,19 +119,15 @@ static size_t fillp, iop;
 void allocate_iobuf(void);
 void deallocate_iobuf(int modus);
 
-
 static long long byte_count;
 static int files_started;
 static int files_completed;
 static int files_concurrent;
 static int files_groups;
 
-
 static MD5_CTX mysum;
 
-
 static struct global_data_all_processes all;
-
 
 /*! \brief This function loads the last restart file.
  *
@@ -168,7 +153,6 @@ void loadrestart(void)
   reread_params_after_loading_restart();
 }
 
-
 /*! \brief This function takes from the parameter file values that are allowed
  *         to change after restart.
  *
@@ -192,13 +176,16 @@ void reread_params_after_loading_restart(void)
     warn("TimeBetSnapshot modified from %g to %g while restarting at Time=%g", All.TimeBetSnapshot, all.TimeBetSnapshot, All.Time);
   All.TimeBetSnapshot = all.TimeBetSnapshot;
   if(ThisTask == 0 && All.TimeBetStatistics != all.TimeBetStatistics)
-    warn("TimeBetStatistics modified from %g to %g while restarting at Time=%g", All.TimeBetStatistics, all.TimeBetStatistics, All.Time);
+    warn("TimeBetStatistics modified from %g to %g while restarting at Time=%g", All.TimeBetStatistics, all.TimeBetStatistics,
+         All.Time);
   All.TimeBetStatistics = all.TimeBetStatistics;
   if(ThisTask == 0 && All.CpuTimeBetRestartFile != all.CpuTimeBetRestartFile)
-    warn("CpuTimeBetRestartFile modified from %g to %g while restarting at Time=%g", All.CpuTimeBetRestartFile, all.CpuTimeBetRestartFile, All.Time);
+    warn("CpuTimeBetRestartFile modified from %g to %g while restarting at Time=%g", All.CpuTimeBetRestartFile,
+         all.CpuTimeBetRestartFile, All.Time);
   All.CpuTimeBetRestartFile = all.CpuTimeBetRestartFile;
   if(ThisTask == 0 && All.ErrTolIntAccuracy != all.ErrTolIntAccuracy)
-    warn("ErrTolIntAccuracy modified from %g to %g while restarting at Time=%g", All.ErrTolIntAccuracy, all.ErrTolIntAccuracy, All.Time);
+    warn("ErrTolIntAccuracy modified from %g to %g while restarting at Time=%g", All.ErrTolIntAccuracy, all.ErrTolIntAccuracy,
+         All.Time);
   All.ErrTolIntAccuracy = all.ErrTolIntAccuracy;
   if(ThisTask == 0 && All.SnapFormat != all.SnapFormat)
     warn("SnapFormat modified from %d to %d while restarting at Time=%g", All.SnapFormat, all.SnapFormat, All.Time);
@@ -208,26 +195,33 @@ void reread_params_after_loading_restart(void)
     warn("ErrTolForceAcc modified from %g to %g while restarting at Time=%g", All.ErrTolForceAcc, all.ErrTolForceAcc, All.Time);
   All.ErrTolForceAcc = all.ErrTolForceAcc;
   if(ThisTask == 0 && All.TypeOfTimestepCriterion != all.TypeOfTimestepCriterion)
-    warn("TypeOfTimestepCriterion modified from %d to %d while restarting at Time=%g", All.TypeOfTimestepCriterion, all.TypeOfTimestepCriterion, All.Time);
+    warn("TypeOfTimestepCriterion modified from %d to %d while restarting at Time=%g", All.TypeOfTimestepCriterion,
+         all.TypeOfTimestepCriterion, All.Time);
   All.TypeOfTimestepCriterion = all.TypeOfTimestepCriterion;
   if(ThisTask == 0 && All.TypeOfOpeningCriterion != all.TypeOfOpeningCriterion)
-    warn("TypeOfOpeningCriterion modified from %d to %d while restarting at Time=%g", All.TypeOfOpeningCriterion, all.TypeOfOpeningCriterion, All.Time);
+    warn("TypeOfOpeningCriterion modified from %d to %d while restarting at Time=%g", All.TypeOfOpeningCriterion,
+         all.TypeOfOpeningCriterion, All.Time);
   All.TypeOfOpeningCriterion = all.TypeOfOpeningCriterion;
   if(ThisTask == 0 && All.NumFilesWrittenInParallel != all.NumFilesWrittenInParallel)
-    warn("NumFilesWrittenInParallel modified from %d to %d while restarting at Time=%g", All.NumFilesWrittenInParallel, all.NumFilesWrittenInParallel, All.Time);
+    warn("NumFilesWrittenInParallel modified from %d to %d while restarting at Time=%g", All.NumFilesWrittenInParallel,
+         all.NumFilesWrittenInParallel, All.Time);
   All.NumFilesWrittenInParallel = all.NumFilesWrittenInParallel;
   if(ThisTask == 0 && All.NumFilesPerSnapshot != all.NumFilesPerSnapshot)
-    warn("NumFilesPerSnapshot modified from %d to %d while restarting at Time=%g", All.NumFilesPerSnapshot, all.NumFilesPerSnapshot, All.Time);
+    warn("NumFilesPerSnapshot modified from %d to %d while restarting at Time=%g", All.NumFilesPerSnapshot, all.NumFilesPerSnapshot,
+         All.Time);
   All.NumFilesPerSnapshot = all.NumFilesPerSnapshot;
 
   if(ThisTask == 0 && All.LimitUBelowThisDensity != all.LimitUBelowThisDensity)
-    warn("LimitUBelowThisDensity modified from %g to %g while restarting at Time=%g", All.LimitUBelowThisDensity, all.LimitUBelowThisDensity, All.Time);
+    warn("LimitUBelowThisDensity modified from %g to %g while restarting at Time=%g", All.LimitUBelowThisDensity,
+         all.LimitUBelowThisDensity, All.Time);
   All.LimitUBelowThisDensity = all.LimitUBelowThisDensity;
   if(ThisTask == 0 && All.LimitUBelowCertainDensityToThisValue != all.LimitUBelowCertainDensityToThisValue)
-    warn("LimitUBelowCertainDensityToThisValue modified from %g to %g while restarting at Time=%g", All.LimitUBelowCertainDensityToThisValue, all.LimitUBelowCertainDensityToThisValue, All.Time);
+    warn("LimitUBelowCertainDensityToThisValue modified from %g to %g while restarting at Time=%g",
+         All.LimitUBelowCertainDensityToThisValue, all.LimitUBelowCertainDensityToThisValue, All.Time);
   All.LimitUBelowCertainDensityToThisValue = all.LimitUBelowCertainDensityToThisValue;
   if(ThisTask == 0 && All.MinimumDensityOnStartUp != all.MinimumDensityOnStartUp)
-    warn("MinimumDensityOnStartUp modified from %g to %g while restarting at Time=%g", All.MinimumDensityOnStartUp, all.MinimumDensityOnStartUp, All.Time);
+    warn("MinimumDensityOnStartUp modified from %g to %g while restarting at Time=%g", All.MinimumDensityOnStartUp,
+         all.MinimumDensityOnStartUp, All.Time);
   All.MinimumDensityOnStartUp = all.MinimumDensityOnStartUp;
   if(ThisTask == 0 && All.MultipleDomains != all.MultipleDomains)
     warn("MultipleDomains modified from %d to %d while restarting at Time=%g", All.MultipleDomains, all.MultipleDomains, All.Time);
@@ -236,7 +230,8 @@ void reread_params_after_loading_restart(void)
     warn("TopNodeFactor modified from %g to %g while restarting at Time=%g", All.TopNodeFactor, all.TopNodeFactor, All.Time);
   All.TopNodeFactor = all.TopNodeFactor;
   if(ThisTask == 0 && All.ActivePartFracForNewDomainDecomp != all.ActivePartFracForNewDomainDecomp)
-    warn("ActivePartFracForNewDomainDecomp modified from %g to %g while restarting at Time=%g", All.ActivePartFracForNewDomainDecomp, all.ActivePartFracForNewDomainDecomp, All.Time);
+    warn("ActivePartFracForNewDomainDecomp modified from %g to %g while restarting at Time=%g", All.ActivePartFracForNewDomainDecomp,
+         all.ActivePartFracForNewDomainDecomp, All.Time);
   All.ActivePartFracForNewDomainDecomp = all.ActivePartFracForNewDomainDecomp;
   if(ThisTask == 0 && All.OutputListOn != all.OutputListOn)
     warn("OutputListOn modified from %d to %d while restarting at Time=%g", All.OutputListOn, all.OutputListOn, All.Time);
@@ -246,11 +241,13 @@ void reread_params_after_loading_restart(void)
   All.CourantFac = all.CourantFac;
 #ifdef REGULARIZE_MESH_FACE_ANGLE
   if(ThisTask == 0 && All.CellMaxAngleFactor != all.CellMaxAngleFactor)
-    warn("CellMaxAngleFactor modified from %g to %g while restarting at Time=%g", All.CellMaxAngleFactor, all.CellMaxAngleFactor, All.Time);
+    warn("CellMaxAngleFactor modified from %g to %g while restarting at Time=%g", All.CellMaxAngleFactor, all.CellMaxAngleFactor,
+         All.Time);
   All.CellMaxAngleFactor = all.CellMaxAngleFactor;
-#else /* #ifdef REGULARIZE_MESH_FACE_ANGLE */
+#else  /* #ifdef REGULARIZE_MESH_FACE_ANGLE */
   if(ThisTask == 0 && All.CellShapingFactor != all.CellShapingFactor)
-    warn("CellShapingFactor modified from %g to %g while restarting at Time=%g", All.CellShapingFactor, all.CellShapingFactor, All.Time);
+    warn("CellShapingFactor modified from %g to %g while restarting at Time=%g", All.CellShapingFactor, all.CellShapingFactor,
+         All.Time);
   All.CellShapingFactor = all.CellShapingFactor;
 #endif /* #ifdef REGULARIZE_MESH_FACE_ANGLE #else */
   if(ThisTask == 0 && All.CellShapingSpeed != all.CellShapingSpeed)
@@ -271,7 +268,8 @@ void reread_params_after_loading_restart(void)
     warn("ResubmitCommand modified from %s to %s while restarting at Time=%g", All.ResubmitCommand, all.ResubmitCommand, All.Time);
   strcpy(All.ResubmitCommand, all.ResubmitCommand);
   if(ThisTask == 0 && strcmp(All.OutputListFilename, all.OutputListFilename) != 0)
-    warn("OutputListFilename modified from %s to %s while restarting at Time=%g", All.OutputListFilename, all.OutputListFilename, All.Time);
+    warn("OutputListFilename modified from %s to %s while restarting at Time=%g", All.OutputListFilename, all.OutputListFilename,
+         All.Time);
   strcpy(All.OutputListFilename, all.OutputListFilename);
   if(ThisTask == 0 && strcmp(All.OutputDir, all.OutputDir) != 0)
     warn("OutputDir modified from %s to %s while restarting at Time=%g", All.OutputDir, all.OutputDir, All.Time);
@@ -297,7 +295,6 @@ void reread_params_after_loading_restart(void)
     }
 }
 
-
 /*! \brief Sorting kernel for seq_data strucutre.
  *
  *  Compares (top priority first)
@@ -309,27 +306,26 @@ void reread_params_after_loading_restart(void)
  */
 static int compare_seq_data(const void *a, const void *b)
 {
-  if(((struct seq_data *) a)->rankinnode < ((struct seq_data *) b)->rankinnode)
+  if(((struct seq_data *)a)->rankinnode < ((struct seq_data *)b)->rankinnode)
     return -1;
 
-  if(((struct seq_data *) a)->rankinnode > ((struct seq_data *) b)->rankinnode)
+  if(((struct seq_data *)a)->rankinnode > ((struct seq_data *)b)->rankinnode)
     return +1;
 
-  if(((struct seq_data *) a)->thisnode < ((struct seq_data *) b)->thisnode)
+  if(((struct seq_data *)a)->thisnode < ((struct seq_data *)b)->thisnode)
     return -1;
 
-  if(((struct seq_data *) a)->thisnode > ((struct seq_data *) b)->thisnode)
+  if(((struct seq_data *)a)->thisnode > ((struct seq_data *)b)->thisnode)
     return +1;
 
-  if(((struct seq_data *) a)->thistask < ((struct seq_data *) b)->thistask)
+  if(((struct seq_data *)a)->thistask < ((struct seq_data *)b)->thistask)
     return -1;
 
-  if(((struct seq_data *) a)->thistask > ((struct seq_data *) b)->thistask)
+  if(((struct seq_data *)a)->thistask > ((struct seq_data *)b)->thistask)
     return +1;
 
   return 0;
 }
-
 
 /*! \brief Creates the restart file directory with appropriate permissions.
  *
@@ -354,7 +350,6 @@ static void create_restartfiles_dir()
 #endif /* #ifdef TOLERATE_WRITE_ERROR */
 }
 
-
 /*! \brief Sets filename of restart file on local task.
  *
  *  \param[out] buf Buffer to which filename is written.
@@ -374,7 +369,6 @@ static void get_restart_filename(char *buf, int task, int modus)
     sprintf(buf, "%s/restartfiles_%03d/%s.%d", All.OutputDir, All.RestartFileCount - 1, "restart", task);
 #endif /* #ifdef MULTIPLE_RESTARTS */
 }
-
 
 /*! \brief Renames existing restartfiles to backup-restartfiles.
  *
@@ -425,7 +419,8 @@ static void backup_restartfiles(int task)
   MPI_Allreduce(&bak_files_status, &bak_files_status_sum, 1, MPI_INT, MPI_SUM, MPI_COMM_WORLD);
 
   if(bak_files_status_sum != NTask && bak_files_status_sum != 0)
-    warn("RESTART: some (%d) restart files were renamed to bak, but some (%d) weren't - something is very possibly wrong!", bak_files_status, NTask - bak_files_status);
+    warn("RESTART: some (%d) restart files were renamed to bak, but some (%d) weren't - something is very possibly wrong!",
+         bak_files_status, NTask - bak_files_status);
   if(bak_files_status_sum == NTask)
     mpi_printf("RESTART: done renaming pre-existing restart files to bak files.\n");
   else if(bak_files_status_sum == 0)
@@ -433,7 +428,6 @@ static void backup_restartfiles(int task)
 
   myflush(stdout);
 }
-
 
 /*! \brief Returns the index of file which is to be checked by local task.
  *
@@ -445,11 +439,7 @@ static void backup_restartfiles(int task)
  *
  *  \return File number.
  */
-static int get_file_to_check(int task)
-{
-  return (task + NTask / 2) % NTask;
-}
-
+static int get_file_to_check(int task) { return (task + NTask / 2) % NTask; }
 
 /*! \brief Checks restart files via an md5sum.
  *
@@ -474,10 +464,10 @@ static void check_restart_files(char *buf, struct check *ch, int *success)
           if(fd)
             {
               size_t n = PageSize - (size % PageSize);
-              char *p = calloc(n, 1);
+              char *p  = calloc(n, 1);
               if(p == NULL)
                 terminate("p == NULL");
-              printf("RESTART: Topping of restart file '%s' by %lld bytes\n", buf, (long long) n);
+              printf("RESTART: Topping of restart file '%s' by %lld bytes\n", buf, (long long)n);
               fwrite(p, n, 1, fd);
               fclose(fd);
               free(p);
@@ -537,7 +527,8 @@ static void check_restart_files(char *buf, struct check *ch, int *success)
       sprintf(newname, "%s-damaged", buf);
       rename(buf, newname);
 
-      terminate("RESTART: file '%s' has MD5 hash of '%s', does not match expected hash '%s' or written hash '%s'.", newname, str_has, str_expected, str_written);
+      terminate("RESTART: file '%s' has MD5 hash of '%s', does not match expected hash '%s' or written hash '%s'.", newname, str_has,
+                str_expected, str_written);
       *success = 0;
     }
   else
@@ -553,7 +544,8 @@ static void check_restart_files(char *buf, struct check *ch, int *success)
 
       str_has[32] = str_expected[32] = str_written[32] = 0;
 
-      printf("RESTART: Task %d: file '%s' has MD5 hash of '%s', does match expected hash '%s' and written hash '%s'.\n", ThisTask, buf, str_has, str_expected, str_written);
+      printf("RESTART: Task %d: file '%s' has MD5 hash of '%s', does match expected hash '%s' and written hash '%s'.\n", ThisTask, buf,
+             str_has, str_expected, str_written);
 #endif /* #ifdef VERBOSE */
       *success = 1;
     }
@@ -561,7 +553,6 @@ static void check_restart_files(char *buf, struct check *ch, int *success)
 
   close(fdint);
 }
-
 
 /*! \brief Distributes information and meta-data to task that is supposed to
  *         check the restart file which has just been written.
@@ -597,7 +588,6 @@ static void send_work_request(int modus, int i)
         MPI_Ssend(&checks[task], sizeof(struct check), MPI_BYTE, seq[i].thistask, TAG_N, MPI_COMM_WORLD);
     }
 }
-
 
 /*! \brief Gets work request.
  *
@@ -642,11 +632,14 @@ static void polling(int modus)
                 if((files_started % files_concurrent) == 0)
                   {
                     if(modus == MODUS_READ)
-                      mpi_printf("RESTART: Loading restart files group #%d out of %d...\n", (files_started / files_concurrent) + 1, files_groups);
+                      mpi_printf("RESTART: Loading restart files group #%d out of %d...\n", (files_started / files_concurrent) + 1,
+                                 files_groups);
                     else if(modus == MODUS_WRITE)
-                      mpi_printf("RESTART: Writing restart files group #%d out of %d...\n", (files_started / files_concurrent) + 1, files_groups);
+                      mpi_printf("RESTART: Writing restart files group #%d out of %d...\n", (files_started / files_concurrent) + 1,
+                                 files_groups);
                     else
-                      mpi_printf("RESTART: Checking restart files group #%d out of %d...\n", (files_started / files_concurrent) + 1, files_groups);
+                      mpi_printf("RESTART: Checking restart files group #%d out of %d...\n", (files_started / files_concurrent) + 1,
+                                 files_groups);
                   }
 
                 send_work_request(modus, files_started++);
@@ -654,7 +647,6 @@ static void polling(int modus)
           }
       }
 }
-
 
 /*! \brief Schedule the reading/writing/checking of restart files to ensure
  *         only NumFilesWrittenInParallel are written in parallel.
@@ -670,9 +662,9 @@ static void work_files(int modus)
       terminate("can't allocate seq_data");
 
   struct seq_data seq_loc;
-  seq_loc.thistask = ThisTask;
+  seq_loc.thistask   = ThisTask;
   seq_loc.rankinnode = RankInThisNode;
-  seq_loc.thisnode = ThisNode;
+  seq_loc.thisnode   = ThisNode;
 
   MPI_Gather(&seq_loc, sizeof(struct seq_data), MPI_BYTE, seq, sizeof(struct seq_data), MPI_BYTE, 0, MPI_COMM_WORLD);
 
@@ -682,17 +674,20 @@ static void work_files(int modus)
       if(seq[0].thistask != 0)
         terminate("unexpected");
 
-      files_started = 0;
+      files_started   = 0;
       files_completed = 0;
 
       if((files_started % files_concurrent) == 0)
         {
           if(modus == MODUS_READ)
-            mpi_printf("RESTART: Loading restart files group #%d out of %d...\n", (files_started / files_concurrent) + 1, files_groups);
+            mpi_printf("RESTART: Loading restart files group #%d out of %d...\n", (files_started / files_concurrent) + 1,
+                       files_groups);
           else if(modus == MODUS_WRITE)
-            mpi_printf("RESTART: Writing restart files group #%d out of %d...\n", (files_started / files_concurrent) + 1, files_groups);
+            mpi_printf("RESTART: Writing restart files group #%d out of %d...\n", (files_started / files_concurrent) + 1,
+                       files_groups);
           else
-            mpi_printf("RESTART: Checking restart files group #%d out of %d...\n", (files_started / files_concurrent) + 1, files_groups);
+            mpi_printf("RESTART: Checking restart files group #%d out of %d...\n", (files_started / files_concurrent) + 1,
+                       files_groups);
         }
 
       for(int i = 1; i < All.NumFilesWrittenInParallel; i++)
@@ -728,11 +723,14 @@ static void work_files(int modus)
           if((files_started % files_concurrent) == 0)
             {
               if(modus == MODUS_READ)
-                mpi_printf("RESTART: Loading restart files group #%d out of %d...\n", (files_started / files_concurrent) + 1, files_groups);
+                mpi_printf("RESTART: Loading restart files group #%d out of %d...\n", (files_started / files_concurrent) + 1,
+                           files_groups);
               else if(modus == MODUS_WRITE)
-                mpi_printf("RESTART: Writing restart files group #%d out of %d...\n", (files_started / files_concurrent) + 1, files_groups);
+                mpi_printf("RESTART: Writing restart files group #%d out of %d...\n", (files_started / files_concurrent) + 1,
+                           files_groups);
               else
-                mpi_printf("RESTART: Checking restart files group #%d out of %d...\n", (files_started / files_concurrent) + 1, files_groups);
+                mpi_printf("RESTART: Checking restart files group #%d out of %d...\n", (files_started / files_concurrent) + 1,
+                           files_groups);
             }
 
           send_work_request(modus, files_started++);
@@ -785,10 +783,8 @@ static void work_files(int modus)
           int dummy = 1;
           MPI_Ssend(&dummy, 1, MPI_INT, 0, TAG_KEY, MPI_COMM_WORLD);
         }
-
     }
 }
-
 
 /*! \brief This function reads or writes the restart files.
  *
@@ -805,7 +801,7 @@ static void work_files(int modus)
 void restart(int modus)
 {
   CPU_Step[CPU_MISC] += measure_time();
-  double t0 = second();
+  double t0  = second();
   byte_count = 0;
 
   PageSize = getpagesize();
@@ -831,12 +827,12 @@ void restart(int modus)
     All.NumFilesWrittenInParallel = 1;
 
   files_concurrent = All.NumFilesWrittenInParallel;
-  files_groups = NTask / All.NumFilesWrittenInParallel;
+  files_groups     = NTask / All.NumFilesWrittenInParallel;
   if(NTask % All.NumFilesWrittenInParallel)
     files_groups++;
 
 #ifndef MULTIPLE_RESTARTS
-  if(modus == MODUS_WRITE)      /* write */
+  if(modus == MODUS_WRITE) /* write */
     backup_restartfiles(ThisTask);
 #endif /* #ifndef MULTIPLE_RESTARTS */
 
@@ -851,7 +847,7 @@ void restart(int modus)
         for(int i = 0; i < NTask; i++)
           {
             checks[i].byte_count = 0;
-            write_success[i] = 0;
+            write_success[i]     = 0;
           }
       }
 
@@ -861,7 +857,7 @@ void restart(int modus)
 
   if(modus == MODUS_WRITE)
     {
-      int iter = 0;
+      int iter    = 0;
       int success = 0;
       while(!success)
         {
@@ -903,7 +899,7 @@ void restart(int modus)
     }
 
   /* check whether the restarts are all at the same time */
-  if(modus == MODUS_READ)       /* read */
+  if(modus == MODUS_READ) /* read */
     {
       struct global_data_all_processes all_task0;
 
@@ -921,12 +917,12 @@ void restart(int modus)
 
   double t1 = second();
 
-  mpi_printf("RESTART: load/save took %g sec, corresponds to I/O rate of %g MB/sec\n", timediff(t0, t1), byte_count_all / (1024.0 * 1024.0) / timediff(t0, t1));
+  mpi_printf("RESTART: load/save took %g sec, corresponds to I/O rate of %g MB/sec\n", timediff(t0, t1),
+             byte_count_all / (1024.0 * 1024.0) / timediff(t0, t1));
 
   CPU_Step[CPU_RESTART] += measure_time();
   mpi_printf("RESTART: done.\n");
 }
-
 
 /*! \brief Reads or writes restart file.
  *
@@ -951,12 +947,10 @@ static void write_or_read_this_processors_restart_file(int modus, char *buf, str
       do
         {
           execute_write_or_read(MODUS_WRITE, buf, ch);
-
         }
       while(failed > 0);
     }
 }
-
 
 /*! \brief Reads or writes a restart file.
  *
@@ -993,10 +987,10 @@ static int execute_write_or_read(int modus, char *buf, struct check *ch)
                   if(fd)
                     {
                       size_t n = PageSize - (size % PageSize);
-                      char *p = calloc(n, 1);
+                      char *p  = calloc(n, 1);
                       if(p == NULL)
                         terminate("p == NULL");
-                      printf("RESTART: Topping of restart file '%s' by %lld bytes\n", buf, (long long) n);
+                      printf("RESTART: Topping of restart file '%s' by %lld bytes\n", buf, (long long)n);
                       fwrite(p, n, 1, fd);
                       fclose(fd);
                       free(p);
@@ -1044,12 +1038,12 @@ static int execute_write_or_read(int modus, char *buf, struct check *ch)
           if(try_open == IO_TRIALS)
             terminate("Opening of restart file failed too often!");
 #else /* #ifdef TOLERATE_WRITE_ERROR */
-          int oflag = O_WRONLY | O_CREAT | O_TRUNC;
+      int oflag = O_WRONLY | O_CREAT | O_TRUNC;
 #ifdef USE_DIRECT_IO_FOR_RESTARTS
-          oflag |= O_DIRECT;
+      oflag |= O_DIRECT;
 #endif /* #ifdef USE_DIRECT_IO_FOR_RESTARTS */
-          if((fdint = open(buf, oflag, S_IRUSR | S_IWUSR | S_IRGRP)) < 0)
-            terminate("Restart file '%s' cannot be opened.\n", buf);
+      if((fdint = open(buf, oflag, S_IRUSR | S_IWUSR | S_IRGRP)) < 0)
+        terminate("Restart file '%s' cannot be opened.\n", buf);
 #endif /* #ifdef TOLERATE_WRITE_ERROR #else */
           allocate_iobuf();
         }
@@ -1100,7 +1094,9 @@ static int execute_write_or_read(int modus, char *buf, struct check *ch)
 
               failed_flag = 1;
 
-              terminate("RESTART-READCHECK: file '%s' does not match expected MD5 hash of '%s' after read-back check, has '%s' instead.", buf, str_should, str_has);
+              terminate(
+                  "RESTART-READCHECK: file '%s' does not match expected MD5 hash of '%s' after read-back check, has '%s' instead.",
+                  buf, str_should, str_has);
             }
 #ifdef VERBOSE
           else
@@ -1114,7 +1110,8 @@ static int execute_write_or_read(int modus, char *buf, struct check *ch)
 
               str_should[32] = str_has[32] = 0;
 
-              printf("RESTART-READCHECK: Task %d: file '%s' does match expected MD5 hash of '%s' after read-back check, has '%s'.\n", ThisTask, buf, str_should, str_has);
+              printf("RESTART-READCHECK: Task %d: file '%s' does match expected MD5 hash of '%s' after read-back check, has '%s'.\n",
+                     ThisTask, buf, str_should, str_has);
             }
 #endif /* #ifdef VERBOSE */
         }
@@ -1146,7 +1143,8 @@ static int execute_write_or_read(int modus, char *buf, struct check *ch)
           char alternative_fname[MAXLEN_PATH];
           sprintf(alternative_fname, "%s/restartfiles/%s.%d", AlternativeOutputDir, "restart", ThisTask);
 
-          printf("TOLERATE_WRITE_ERROR: Try to write to alternative file: Task=%d try_io=%d alternative-filename='%s'\n", ThisTask, try_io, alternative_fname);
+          printf("TOLERATE_WRITE_ERROR: Try to write to alternative file: Task=%d try_io=%d alternative-filename='%s'\n", ThisTask,
+                 try_io, alternative_fname);
           myflush(stdout);
           strncpy(buf, alternative_fname, MAXLEN_PATH); /* try on a different output directory */
         }
@@ -1159,7 +1157,6 @@ static int execute_write_or_read(int modus, char *buf, struct check *ch)
 
   return failed_flag;
 }
-
 
 /*! \brief Defines contents of restart file.
  *
@@ -1178,7 +1175,7 @@ static void contents_restart_file(int modus)
 
   polling(modus);
 
-  if(modus == MODUS_READ)       /* read */
+  if(modus == MODUS_READ) /* read */
     allocate_memory();
 
   int ntask = NTask;
@@ -1209,7 +1206,7 @@ static void contents_restart_file(int modus)
   in(&MaxNvc, modus);
   in(&FirstUnusedConnection, modus);
 
-  if(modus == MODUS_READ)       /* read */
+  if(modus == MODUS_READ) /* read */
     DC = mymalloc_movable(&DC, "DC", MaxNvc * sizeof(connection));
 
   byten(DC, MaxNvc * sizeof(connection), modus);
@@ -1266,7 +1263,7 @@ static void contents_restart_file(int modus)
 
   polling(modus);
 
-  if(modus == MODUS_READ)       /* read */
+  if(modus == MODUS_READ) /* read */
     {
       domain_allocate();
       ngb_treeallocate();
@@ -1296,7 +1293,6 @@ static void contents_restart_file(int modus)
   byten(&DomainBigFac, sizeof(double), modus);
 }
 
-
 /*! \brief Adjusts the timeline if the TimeMax variable is
  *  increased between a restart.
  *
@@ -1323,9 +1319,9 @@ void readjust_timebase(double TimeMax_old, double TimeMax_new)
     terminate("\nIt is not allowed to reduce All.TimeMax\n\n");
 
   if(All.ComovingIntegrationOn)
-    ti_end = (long long) (log(TimeMax_new / All.TimeBegin) / All.Timebase_interval);
+    ti_end = (long long)(log(TimeMax_new / All.TimeBegin) / All.Timebase_interval);
   else
-    ti_end = (long long) ((TimeMax_new - All.TimeBegin) / All.Timebase_interval);
+    ti_end = (long long)((TimeMax_new - All.TimeBegin) / All.Timebase_interval);
 
   while(ti_end > TIMEBASE)
     {
@@ -1372,7 +1368,6 @@ void readjust_timebase(double TimeMax_old, double TimeMax_new)
   All.TimeMax = TimeMax_new;
 }
 
-
 /*! \brief Reads/writes one integer to a restart file.
  *
  *  \param[in, out] x pointer to the integer.
@@ -1381,11 +1376,7 @@ void readjust_timebase(double TimeMax_old, double TimeMax_new)
  *
  *  \return void
  */
-void in(int *x, int modus)
-{
-  byten(x, sizeof(int), modus);
-}
-
+void in(int *x, int modus) { byten(x, sizeof(int), modus); }
 
 /*! \brief Reads/writes n bytes to restart file buffer.
  *
@@ -1396,11 +1387,7 @@ void in(int *x, int modus)
  *
  *  \return void
  */
-void byten(void *x, size_t n, int modus)
-{
-  byten_hash(x, n, modus, 1);
-}
-
+void byten(void *x, size_t n, int modus) { byten_hash(x, n, modus, 1); }
 
 /*! \brief Wrapper for byten; called with hash=0.
  *
@@ -1414,11 +1401,7 @@ void byten(void *x, size_t n, int modus)
  *
  *  \return void
  */
-void byten_nohash(void *x, size_t n, int modus)
-{
-  byten_hash(x, n, modus, 0);
-}
-
+void byten_nohash(void *x, size_t n, int modus) { byten_hash(x, n, modus, 0); }
 
 /*! \brief Reads/writes n bytes to restart file buffer.
  *
@@ -1439,7 +1422,7 @@ void byten_hash(void *x, size_t n, int modus, int hash)
     {
       size_t nin = n;
 
-      if(modus == MODUS_READ || modus == MODUS_READCHECK || modus == MODUS_CHECK)       /* read */
+      if(modus == MODUS_READ || modus == MODUS_READCHECK || modus == MODUS_CHECK) /* read */
         {
           if(modus == MODUS_READCHECK || modus == MODUS_CHECK)
             x = mymalloc("x", n);
@@ -1464,7 +1447,7 @@ void byten_hash(void *x, size_t n, int modus, int hash)
                 {
                   if(iop == MAX_BLOCK_SIZE)
                     {
-                      iop = 0;
+                      iop   = 0;
                       fillp = 0;
                     }
 
@@ -1482,13 +1465,13 @@ void byten_hash(void *x, size_t n, int modus, int hash)
                 }
             }
 
-          if(hash)              /* to prevent call if we write/load the checksum itself */
+          if(hash) /* to prevent call if we write/load the checksum itself */
             MD5UpdateLong(&mysum, x, nin);
 
           if(modus == MODUS_READCHECK || modus == MODUS_CHECK)
             myfree(x);
         }
-      else                      /* write */
+      else /* write */
         {
           unsigned char *ptr = x;
 
@@ -1515,12 +1498,11 @@ void byten_hash(void *x, size_t n, int modus, int hash)
                 }
             }
 
-          if(hash)              /* to prevent call if we write/load the checksum itself */
+          if(hash) /* to prevent call if we write/load the checksum itself */
             MD5UpdateLong(&mysum, x, nin);
         }
     }
 }
-
 
 /*! \brief Allocates the IO buffer for reading/writing the restart-file buffer.
  *
@@ -1534,12 +1516,11 @@ void allocate_iobuf(void)
   if(!(io_buf = malloc(MAX_BLOCK_SIZE + PageSize)))
     terminate("cannot allocated IO buffer");
 
-  iobuf_aligned = (char *) (((((size_t) io_buf) + (PageSize - 1)) / PageSize) * PageSize);
+  iobuf_aligned = (char *)(((((size_t)io_buf) + (PageSize - 1)) / PageSize) * PageSize);
 
   fillp = 0;
-  iop = 0;
+  iop   = 0;
 }
-
 
 /*! \brief Frees the IO buffer for reading/writing the restart-files.
  *
@@ -1551,7 +1532,7 @@ void allocate_iobuf(void)
  */
 void deallocate_iobuf(int modus)
 {
-  if(modus == MODUS_WRITE)      /* write */
+  if(modus == MODUS_WRITE) /* write */
     {
       if(iop > 0)
         {

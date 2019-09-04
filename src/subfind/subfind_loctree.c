@@ -31,28 +31,25 @@
  *                int subfind_locngb_treefind_variable(MyDouble searchcenter[3], double hguess)
  *                size_t subfind_loctree_treeallocate(int maxnodes, int maxpart)
  *                void subfind_loctree_treefree(void)
- * 
- * 
+ *
+ *
  * \par Major modifications and contributions:
- * 
+ *
  * - DD.MM.YYYY Description
  * - 14.05.2018 Prepared file for public release -- Rainer Weinberger
  */
 
-
+#include <math.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <math.h>
 #include <time.h>
 
-
-#include "../main/allvars.h"
-#include "../main/proto.h"
 #include "../domain/domain.h"
 #include "../gravity/forcetree.h"
+#include "../main/allvars.h"
+#include "../main/proto.h"
 #include "subfind.h"
-
 
 #ifdef SUBFIND
 static double RootLen, RootFac, RootBigFac, RootInverseLen, RootCenter[3], RootCorner[3];
@@ -62,41 +59,36 @@ static int *LocNextNode;
 
 static unsigned long long *LocTree_IntPos_list;
 
-
 /*! \brief Node structure for subfind tree.
  */
 static struct LocNODE
 {
   union
   {
-    int suns[8];                /*!< temporary pointers to daughter nodes */
+    int suns[8]; /*!< temporary pointers to daughter nodes */
     struct
     {
-      MyDouble s[3];            /*!< center of mass of node */
-      MyDouble mass;            /*!< mass of node */
+      MyDouble s[3]; /*!< center of mass of node */
+      MyDouble mass; /*!< mass of node */
       unsigned char maxsofttype;
 #if defined(MULTIPLE_NODE_SOFTENING) && defined(ADAPTIVE_HYDRO_SOFTENING)
       unsigned char maxhydrosofttype;
       unsigned char minhydrosofttype;
-#endif                          /* #if defined(MULTIPLE_NODE_SOFTENING) && defined(ADAPTIVE_HYDRO_SOFTENING) */
-      int sibling;              /*!< this gives the next node in the walk in case the current node can be used */
-      int nextnode;             /*!< this gives the next node in case the current node needs to be opened */
-    }
-    d;
-  }
-  u;
+#endif              /* #if defined(MULTIPLE_NODE_SOFTENING) && defined(ADAPTIVE_HYDRO_SOFTENING) */
+      int sibling;  /*!< this gives the next node in the walk in case the current node can be used */
+      int nextnode; /*!< this gives the next node in case the current node needs to be opened */
+    } d;
+  } u;
 
-  MyDouble center[3];           /*!< geometrical center of node */
-  MyFloat len;                  /*!< sidelength of treenode */
+  MyDouble center[3]; /*!< geometrical center of node */
+  MyFloat len;        /*!< sidelength of treenode */
 
 #ifdef MULTIPLE_NODE_SOFTENING
   MyDouble mass_per_type[NSOFTTYPES];
-#endif                          /* #ifdef MULTIPLE_NODE_SOFTENING */
-}
- *LocNodes_base,                /*!< points to the actual memory allocted for the nodes */
- *LocNodes;                     /*!< this is a pointer used to access the nodes which is shifted such that Nodes[LocMaxPart]
-                                   gives the first allocated node */
-
+#endif             /* #ifdef MULTIPLE_NODE_SOFTENING */
+} * LocNodes_base, /*!< points to the actual memory allocted for the nodes */
+    *LocNodes;     /*!< this is a pointer used to access the nodes which is shifted such that Nodes[LocMaxPart]
+                      gives the first allocated node */
 
 /*! \brief Calculates min/max coordinate of particles in unbind data.
  *
@@ -157,10 +149,10 @@ void subfind_loctree_findExtent(int npart, struct unbind_data *mp)
 
   len *= 1.001;
 
-  RootLen = len;
+  RootLen        = len;
   RootInverseLen = 1.0 / RootLen;
-  RootFac = 1.0 / len * (((peanokey) 1) << (BITS_PER_DIMENSION));
-  RootBigFac = (RootLen / (((long long) 1) << 52));
+  RootFac        = 1.0 / len * (((peanokey)1) << (BITS_PER_DIMENSION));
+  RootBigFac     = (RootLen / (((long long)1) << 52));
 
   for(j = 0; j < 3; j++)
     {
@@ -168,7 +160,6 @@ void subfind_loctree_findExtent(int npart, struct unbind_data *mp)
       RootCorner[j] = 0.5 * (xmin[j] + xmax[j]) - 0.5 * len;
     }
 }
-
 
 /*! \brief Copy extent information from SubDomain to Root.
  *
@@ -184,12 +175,11 @@ void subfind_loctree_copyExtent(void)
       RootCenter[j] = SubDomainCenter[j];
       RootCorner[j] = SubDomainCorner[j];
     }
-  RootLen = SubDomainLen;
+  RootLen        = SubDomainLen;
   RootInverseLen = SubDomainInverseLen;
-  RootFac = SubDomainFac;
-  RootBigFac = SubDomainBigFac;
+  RootFac        = SubDomainFac;
+  RootBigFac     = SubDomainBigFac;
 }
-
 
 /*! \brief Construct the subfind tree.
  *
@@ -206,15 +196,15 @@ int subfind_loctree_treebuild(int npart, struct unbind_data **udp)
   struct unbind_data *mp;
 
   /* select first node */
-  nfree = LocMaxPart;
+  nfree  = LocMaxPart;
   nfreep = &LocNodes[nfree];
 
   mp = *udp;
 
   /* create an empty  root node  */
-  nfreep->len = (MyFloat) RootLen;
+  nfreep->len = (MyFloat)RootLen;
   for(i = 0; i < 3; i++)
-    nfreep->center[i] = (MyFloat) RootCenter[i];
+    nfreep->center[i] = (MyFloat)RootCenter[i];
 
   for(i = 0; i < 8; i++)
     nfreep->u.suns[i] = -1;
@@ -225,7 +215,8 @@ int subfind_loctree_treebuild(int npart, struct unbind_data **udp)
 
   /* insert all particles */
 
-  LocTree_IntPos_list = (unsigned long long *) mymalloc_movable(&LocTree_IntPos_list, "LocTree_IntPos_list", 3 * NumPart * sizeof(unsigned long long));
+  LocTree_IntPos_list =
+      (unsigned long long *)mymalloc_movable(&LocTree_IntPos_list, "LocTree_IntPos_list", 3 * NumPart * sizeof(unsigned long long));
 
   for(k = 0; k < npart; k++)
     {
@@ -243,15 +234,15 @@ int subfind_loctree_treebuild(int npart, struct unbind_data **udp)
 #endif /* #ifdef CELL_CENTER_GRAVITY */
         posp = &P[i].Pos[0];
 
-      unsigned long long xxb = force_double_to_int(((posp[0] - RootCorner[0]) * RootInverseLen) + 1.0);
-      unsigned long long yyb = force_double_to_int(((posp[1] - RootCorner[1]) * RootInverseLen) + 1.0);
-      unsigned long long zzb = force_double_to_int(((posp[2] - RootCorner[2]) * RootInverseLen) + 1.0);
-      unsigned long long mask = ((unsigned long long) 1) << (52 - 1);
-      unsigned char shiftx = (52 - 1);
-      unsigned char shifty = (52 - 2);
-      unsigned char shiftz = (52 - 3);
+      unsigned long long xxb      = force_double_to_int(((posp[0] - RootCorner[0]) * RootInverseLen) + 1.0);
+      unsigned long long yyb      = force_double_to_int(((posp[1] - RootCorner[1]) * RootInverseLen) + 1.0);
+      unsigned long long zzb      = force_double_to_int(((posp[2] - RootCorner[2]) * RootInverseLen) + 1.0);
+      unsigned long long mask     = ((unsigned long long)1) << (52 - 1);
+      unsigned char shiftx        = (52 - 1);
+      unsigned char shifty        = (52 - 2);
+      unsigned char shiftz        = (52 - 3);
       signed long long centermask = (0xFFF0000000000000llu);
-      unsigned char levels = 0;
+      unsigned char levels        = 0;
 
       unsigned long long *intposp = &LocTree_IntPos_list[3 * i];
 
@@ -263,9 +254,10 @@ int subfind_loctree_treebuild(int npart, struct unbind_data **udp)
 
       while(1)
         {
-          if(th >= LocMaxPart)  /* we are dealing with an internal node */
+          if(th >= LocMaxPart) /* we are dealing with an internal node */
             {
-              subnode = (((unsigned char) ((xxb & mask) >> (shiftx--))) | ((unsigned char) ((yyb & mask) >> (shifty--))) | ((unsigned char) ((zzb & mask) >> (shiftz--))));
+              subnode = (((unsigned char)((xxb & mask) >> (shiftx--))) | ((unsigned char)((yyb & mask) >> (shifty--))) |
+                         ((unsigned char)((zzb & mask) >> (shiftz--))));
 
               centermask >>= 1;
               mask >>= 1;
@@ -291,10 +283,10 @@ int subfind_loctree_treebuild(int npart, struct unbind_data **udp)
 
               nn = LocNodes[th].u.suns[subnode];
 
-              if(nn >= 0)       /* ok, something is in the daughter slot already, need to continue */
+              if(nn >= 0) /* ok, something is in the daughter slot already, need to continue */
                 {
-                  parent = th;  /* note: subnode can still be used in the next step of the walk */
-                  th = nn;
+                  parent = th; /* note: subnode can still be used in the next step of the walk */
+                  th     = nn;
                 }
               else
                 {
@@ -302,7 +294,7 @@ int subfind_loctree_treebuild(int npart, struct unbind_data **udp)
                    * attach the new particle as a leaf
                    */
                   LocNodes[th].u.suns[subnode] = i;
-                  break;        /* done for this particle */
+                  break; /* done for this particle */
                 }
             }
           else
@@ -313,12 +305,12 @@ int subfind_loctree_treebuild(int npart, struct unbind_data **udp)
               LocNodes[parent].u.suns[subnode] = nfree;
 
               /* the other is: */
-              double len = ((double) (mask << 1)) * RootBigFac;
-              double cx = ((double) ((xxb & centermask) | mask)) * RootBigFac + RootCorner[0];
-              double cy = ((double) ((yyb & centermask) | mask)) * RootBigFac + RootCorner[1];
-              double cz = ((double) ((zzb & centermask) | mask)) * RootBigFac + RootCorner[2];
+              double len = ((double)(mask << 1)) * RootBigFac;
+              double cx  = ((double)((xxb & centermask) | mask)) * RootBigFac + RootCorner[0];
+              double cy  = ((double)((yyb & centermask) | mask)) * RootBigFac + RootCorner[1];
+              double cz  = ((double)((zzb & centermask) | mask)) * RootBigFac + RootCorner[2];
 
-              nfreep->len = len;
+              nfreep->len       = len;
               nfreep->center[0] = cx;
               nfreep->center[1] = cy;
               nfreep->center[2] = cz;
@@ -334,12 +326,13 @@ int subfind_loctree_treebuild(int npart, struct unbind_data **udp)
 
               unsigned long long *intppos = &LocTree_IntPos_list[3 * th];
 
-              subnode = (((unsigned char) ((intppos[0] & mask) >> shiftx)) | ((unsigned char) ((intppos[1] & mask) >> shifty)) | ((unsigned char) ((intppos[2] & mask) >> shiftz)));
+              subnode = (((unsigned char)((intppos[0] & mask) >> shiftx)) | ((unsigned char)((intppos[1] & mask) >> shifty)) |
+                         ((unsigned char)((intppos[2] & mask) >> shiftz)));
 
               nfreep->u.suns[subnode] = th;
 
-              th = nfree;       /* resume trying to insert the new particle at
-                                   the newly created internal node */
+              th = nfree; /* resume trying to insert the new particle at
+                             the newly created internal node */
 
               numnodes++;
               nfree++;
@@ -349,16 +342,17 @@ int subfind_loctree_treebuild(int npart, struct unbind_data **udp)
                 {
                   MaxNodes *= 1.2;
 
-                  LocNodes_base = (struct LocNODE *) myrealloc_movable(LocNodes_base, (MaxNodes + 1) * sizeof(struct LocNODE));
-                  LocNodes = LocNodes_base - LocMaxPart;
-                  nfreep = &LocNodes[nfree];
-                  mp = *udp;
+                  LocNodes_base = (struct LocNODE *)myrealloc_movable(LocNodes_base, (MaxNodes + 1) * sizeof(struct LocNODE));
+                  LocNodes      = LocNodes_base - LocMaxPart;
+                  nfreep        = &LocNodes[nfree];
+                  mp            = *udp;
 
                   if(numnodes > MaxNodes)
                     {
                       char buf[1000];
 
-                      sprintf(buf, "maximum number %d of tree-nodes reached., for particle %d  %g %g %g", MaxNodes, i, P[i].Pos[0], P[i].Pos[1], P[i].Pos[2]);
+                      sprintf(buf, "maximum number %d of tree-nodes reached., for particle %d  %g %g %g", MaxNodes, i, P[i].Pos[0],
+                              P[i].Pos[1], P[i].Pos[2]);
                       terminate(buf);
                     }
                 }
@@ -379,7 +373,6 @@ int subfind_loctree_treebuild(int npart, struct unbind_data **udp)
 
   return numnodes;
 }
-
 
 /*! \brief Compute multipole moments.
  *
@@ -410,8 +403,8 @@ void subfind_loctree_update_node_recursive(int no, int sib, int father)
   if(no >= LocMaxPart)
     {
       for(j = 0; j < 8; j++)
-        suns[j] = LocNodes[no].u.suns[j];       /* this "backup" is necessary because the nextnode entry will
-                                                   overwrite one element (union!) */
+        suns[j] = LocNodes[no].u.suns[j]; /* this "backup" is necessary because the nextnode entry will
+                                             overwrite one element (union!) */
       if(last >= 0)
         {
           if(last >= LocMaxPart)
@@ -422,10 +415,10 @@ void subfind_loctree_update_node_recursive(int no, int sib, int father)
 
       last = no;
 
-      mass = 0;
-      s[0] = 0;
-      s[1] = 0;
-      s[2] = 0;
+      mass        = 0;
+      s[0]        = 0;
+      s[1]        = 0;
+      s[2]        = 0;
       maxsofttype = NSOFTTYPES + NSOFTTYPES_HYDRO;
 
 #ifdef MULTIPLE_NODE_SOFTENING
@@ -447,14 +440,14 @@ void subfind_loctree_update_node_recursive(int no, int sib, int father)
                 if((pp = suns[jj]) >= 0)
                   break;
 
-              if(jj < 8)        /* yes, we do */
+              if(jj < 8) /* yes, we do */
                 nextsib = pp;
               else
                 nextsib = sib;
 
               subfind_loctree_update_node_recursive(p, nextsib, no);
 
-              if(p >= LocMaxPart)       /* an internal node  */
+              if(p >= LocMaxPart) /* an internal node  */
                 {
                   mass += LocNodes[p].u.d.mass; /* we assume a fixed particle mass */
                   s[0] += LocNodes[p].u.d.mass * LocNodes[p].u.d.s[0];
@@ -477,7 +470,7 @@ void subfind_loctree_update_node_recursive(int no, int sib, int father)
 #endif /* #ifdef ADAPTIVE_HYDRO_SOFTENING */
 #endif /* #ifdef MULTIPLE_NODE_SOFTENING */
                 }
-              else              /* a particle */
+              else /* a particle */
                 {
                   mass += P[p].Mass;
 #ifdef CELL_CENTER_GRAVITY
@@ -508,7 +501,7 @@ void subfind_loctree_update_node_recursive(int no, int sib, int father)
                       if(minhydrosofttype > P[p].SofteningType)
                         minhydrosofttype = P[p].SofteningType;
                     }
-#else /* #ifdef ADAPTIVE_HYDRO_SOFTENING */
+#else  /* #ifdef ADAPTIVE_HYDRO_SOFTENING */
                   mass_per_type[P[p].SofteningType] += P[p].Mass;
 #endif /* #ifdef ADAPTIVE_HYDRO_SOFTENING #else */
 #endif /* #ifdef MULTIPLE_NODE_SOFTENING */
@@ -529,10 +522,10 @@ void subfind_loctree_update_node_recursive(int no, int sib, int father)
           s[2] = LocNodes[no].center[2];
         }
 
-      LocNodes[no].u.d.s[0] = (MyFloat) s[0];
-      LocNodes[no].u.d.s[1] = (MyFloat) s[1];
-      LocNodes[no].u.d.s[2] = (MyFloat) s[2];
-      LocNodes[no].u.d.mass = (MyFloat) mass;
+      LocNodes[no].u.d.s[0]        = (MyFloat)s[0];
+      LocNodes[no].u.d.s[1]        = (MyFloat)s[1];
+      LocNodes[no].u.d.s[2]        = (MyFloat)s[2];
+      LocNodes[no].u.d.mass        = (MyFloat)mass;
       LocNodes[no].u.d.maxsofttype = maxsofttype;
 #ifdef MULTIPLE_NODE_SOFTENING
       int k;
@@ -547,7 +540,7 @@ void subfind_loctree_update_node_recursive(int no, int sib, int father)
 
       LocNodes[no].u.d.sibling = sib;
     }
-  else                          /* single particle or pseudo particle */
+  else /* single particle or pseudo particle */
     {
       if(last >= 0)
         {
@@ -560,7 +553,6 @@ void subfind_loctree_update_node_recursive(int no, int sib, int father)
       last = no;
     }
 }
-
 
 /*! \brief Evaluates the potential by walking the subfind local tree.
  *
@@ -600,8 +592,8 @@ double subfind_loctree_treeevaluate_potential(int target)
     {
 #ifdef MULTIPLE_NODE_SOFTENING
       int indi_flag1 = -1, indi_flag2 = 0;
-#endif /* #ifdef MULTIPLE_NODE_SOFTENING */
-      if(no < LocMaxPart)       /* single particle */
+#endif                    /* #ifdef MULTIPLE_NODE_SOFTENING */
+      if(no < LocMaxPart) /* single particle */
         {
 #ifdef CELL_CENTER_GRAVITY
           if(P[no].Type == 0)
@@ -633,7 +625,7 @@ double subfind_loctree_treeevaluate_potential(int target)
         }
       else
         {
-          nop = &LocNodes[no];
+          nop  = &LocNodes[no];
           mass = nop->u.d.mass;
 
           dx = GRAVITY_NEAREST_X(nop->u.d.s[0] - pos_x);
@@ -670,7 +662,7 @@ double subfind_loctree_treeevaluate_potential(int target)
 #endif /* #ifdef ADAPTIVE_HYDRO_SOFTENING */
               indi_flag1 = 0;
               indi_flag2 = NSOFTTYPES;
-#else /* #ifdef MULTIPLE_NODE_SOFTENING */
+#else  /* #ifdef MULTIPLE_NODE_SOFTENING */
 
               if(r2 < h_j * h_j)
                 {
@@ -684,7 +676,7 @@ double subfind_loctree_treeevaluate_potential(int target)
           else
             hmax = h_i;
 
-          no = nop->u.d.sibling;        /* node can be used */
+          no = nop->u.d.sibling; /* node can be used */
         }
 
       r = sqrt(r2);
@@ -736,7 +728,6 @@ double subfind_loctree_treeevaluate_potential(int target)
   return pot;
 }
 
-
 /*! \brief Comparison function for r2type objects.
  *
  *  Compares element r2.
@@ -748,15 +739,14 @@ double subfind_loctree_treeevaluate_potential(int target)
  */
 int subfind_locngb_compare_key(const void *a, const void *b)
 {
-  if(((r2type *) a)->r2 < (((r2type *) b)->r2))
+  if(((r2type *)a)->r2 < (((r2type *)b)->r2))
     return -1;
 
-  if(((r2type *) a)->r2 > (((r2type *) b)->r2))
+  if(((r2type *)a)->r2 > (((r2type *)b)->r2))
     return +1;
 
   return 0;
 }
-
 
 /*! \brief Iterates on smoothing length of  neighbor search to get a desired
  *         number of neighbors.
@@ -798,7 +788,6 @@ double subfind_locngb_treefind(MyDouble xyz[3], int desngb, double hguess)
   return sqrt(h2max);
 }
 
-
 /*! \brief (Local) tree-search in subfind tree.
  *
  *  Adds these cells to R2list.
@@ -818,13 +807,13 @@ int subfind_locngb_treefind_variable(MyDouble searchcenter[3], double hguess)
   h2 = hguess * hguess;
 
   numngb = 0;
-  no = LocMaxPart;
+  no     = LocMaxPart;
 
   while(no >= 0)
     {
-      if(no < LocMaxPart)       /* single particle */
+      if(no < LocMaxPart) /* single particle */
         {
-          p = no;
+          p  = no;
           no = LocNextNode[no];
 #ifdef CELL_CENTER_GRAVITY
           if(P[p].Type == 0)
@@ -860,7 +849,7 @@ int subfind_locngb_treefind_variable(MyDouble searchcenter[3], double hguess)
 
           if(r2 <= h2)
             {
-              R2list[numngb].r2 = r2;
+              R2list[numngb].r2    = r2;
               R2list[numngb].index = p;
               numngb++;
             }
@@ -869,7 +858,7 @@ int subfind_locngb_treefind_variable(MyDouble searchcenter[3], double hguess)
         {
           thisnode = &LocNodes[no];
 
-          no = LocNodes[no].u.d.sibling;        /* in case the node can be discarded */
+          no = LocNodes[no].u.d.sibling; /* in case the node can be discarded */
 
           if((GRAVITY_NEAREST_X(thisnode->center[0] - searchcenter[0]) + 0.5 * thisnode->len) < -hguess)
             continue;
@@ -884,13 +873,12 @@ int subfind_locngb_treefind_variable(MyDouble searchcenter[3], double hguess)
           if((GRAVITY_NEAREST_Z(thisnode->center[2] - searchcenter[2]) - 0.5 * thisnode->len) > hguess)
             continue;
 
-          no = thisnode->u.d.nextnode;  /* ok, we need to open the node */
+          no = thisnode->u.d.nextnode; /* ok, we need to open the node */
         }
     }
 
   return numngb;
 }
-
 
 /*! \brief Allocates memory used for storage of the tree
  *         and auxiliary arrays for tree-walk and link-lists.
@@ -907,22 +895,21 @@ size_t subfind_loctree_treeallocate(int maxnodes, int maxpart)
   if(LocNextNode)
     terminate("loctree already allocated");
 
-  MaxNodes = maxnodes;
+  MaxNodes   = maxnodes;
   LocMaxPart = maxpart;
 
-  LocNextNode = (int *) mymalloc("LocNextNode", bytes = maxpart * sizeof(int));
+  LocNextNode = (int *)mymalloc("LocNextNode", bytes = maxpart * sizeof(int));
   allbytes += bytes;
 
-  R2list = (r2type *) mymalloc("R2list", bytes = maxpart * sizeof(r2type));
+  R2list = (r2type *)mymalloc("R2list", bytes = maxpart * sizeof(r2type));
   allbytes += bytes;
 
-  LocNodes_base = (struct LocNODE *) mymalloc_movable(&LocNodes_base, "LocNodes_base", bytes = (MaxNodes + 1) * sizeof(struct LocNODE));
-  LocNodes = LocNodes_base - LocMaxPart;
+  LocNodes_base = (struct LocNODE *)mymalloc_movable(&LocNodes_base, "LocNodes_base", bytes = (MaxNodes + 1) * sizeof(struct LocNODE));
+  LocNodes      = LocNodes_base - LocMaxPart;
   allbytes += bytes;
 
   return allbytes;
 }
-
 
 /*! \brief Frees the memory allocated for subfind_loctree.
  *
@@ -934,10 +921,9 @@ void subfind_loctree_treefree(void)
   myfree(R2list);
   myfree(LocNextNode);
 
-  LocNextNode = NULL;
-  R2list = NULL;
+  LocNextNode   = NULL;
+  R2list        = NULL;
   LocNodes_base = NULL;
 }
-
 
 #endif /* #ifdef SUBFIND */

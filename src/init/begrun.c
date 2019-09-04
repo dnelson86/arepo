@@ -36,24 +36,21 @@
  * - 03.05.2018 Prepared file for public release -- Rainer Weinberger
  */
 
-
+#include <gsl/gsl_errno.h>
+#include <gsl/gsl_rng.h>
+#include <math.h>
 #include <mpi.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <math.h>
-#include <sys/types.h>
 #include <sys/stat.h>
+#include <sys/types.h>
 #include <unistd.h>
-#include <gsl/gsl_rng.h>
-#include <gsl/gsl_errno.h>
 
-
+#include "../domain/domain.h"
 #include "../main/allvars.h"
 #include "../main/proto.h"
 #include "../mesh/voronoi/voronoi.h"
-#include "../domain/domain.h"
-
 
 #ifdef HAVE_HDF5
 #include <hdf5.h>
@@ -62,16 +59,16 @@ herr_t my_hdf5_error_handler(void *unused);
 
 static void delete_end_file(void);
 
-
 /*! \brief Prints a welcome message.
  *
  *  \return void
  */
 void hello(void)
 {
-  mpi_printf("\n   __    ____  ____  ____  _____\n  /__\\  (  _ \\( ___)(  _ \\(  _  )\n /(__)\\  )   / )__)  )___/ )(_)(\n(__)(__)(_)\\_)(____)(__)  (_____)\n\n");
+  mpi_printf(
+      "\n   __    ____  ____  ____  _____\n  /__\\  (  _ \\( ___)(  _ \\(  _  )\n /(__)\\  )   / )__)  )___/ "
+      ")(_)(\n(__)(__)(_)\\_)(____)(__)  (_____)\n\n");
 }
-
 
 /*! \brief Prints used compile options.
  *
@@ -79,16 +76,16 @@ void hello(void)
  */
 void begrun0(void)
 {
-  mpi_printf
-    ("\nThis is Arepo, version %s.\n\nRunning with %d MPI tasks.\n\nApparently we're using %d compute nodes (we have a minimum of %d MPI tasks per node, and a maximum of %d)\n\nCode was compiled with settings:\n\n",
-     AREPO_VERSION, NTask, NumNodes, MinTasksPerNode, MaxTasksPerNode);
+  mpi_printf(
+      "\nThis is Arepo, version %s.\n\nRunning with %d MPI tasks.\n\nApparently we're using %d compute nodes (we have a minimum of %d "
+      "MPI tasks per node, and a maximum of %d)\n\nCode was compiled with settings:\n\n",
+      AREPO_VERSION, NTask, NumNodes, MinTasksPerNode, MaxTasksPerNode);
 
   if(ThisTask == 0)
     {
       output_compile_time_options();
     }
 }
-
 
 /*! \brief Initial setup of the simulation.
  *
@@ -103,9 +100,9 @@ void begrun0(void)
  */
 void begrun1(void)
 {
-  read_parameter_file(ParameterFile);   /* ... read in parameters for this run */
+  read_parameter_file(ParameterFile); /* ... read in parameters for this run */
 
-  check_parameters();           /* consistency check of parameters */
+  check_parameters(); /* consistency check of parameters */
 
 #ifdef HAVE_HDF5
   H5Eset_auto(my_hdf5_error_handler, NULL);
@@ -117,16 +114,16 @@ void begrun1(void)
   enable_core_dumps_and_fpu_exceptions();
 #endif /* #ifdef DEBUG */
 
-  mpi_printf("BEGRUN: Size of particle structure       %3d  [bytes]\n", (int) sizeof(struct particle_data));
-  mpi_printf("BEGRUN: Size of sph particle structure   %3d  [bytes]\n", (int) sizeof(struct sph_particle_data));
-  mpi_printf("BEGRUN: Size of gravity tree node        %3d  [bytes]\n", (int) sizeof(struct NODE));
+  mpi_printf("BEGRUN: Size of particle structure       %3d  [bytes]\n", (int)sizeof(struct particle_data));
+  mpi_printf("BEGRUN: Size of sph particle structure   %3d  [bytes]\n", (int)sizeof(struct sph_particle_data));
+  mpi_printf("BEGRUN: Size of gravity tree node        %3d  [bytes]\n", (int)sizeof(struct NODE));
 #ifdef MULTIPLE_NODE_SOFTENING
-  mpi_printf("BEGRUN: Size of auxiliary gravity node   %3d  [bytes]\n", (int) sizeof(struct ExtNODE));
+  mpi_printf("BEGRUN: Size of auxiliary gravity node   %3d  [bytes]\n", (int)sizeof(struct ExtNODE));
 #endif /* #ifdef MULTIPLE_NODE_SOFTENING */
 
   set_units();
 
-  if(RestartFlag == 1)          /* this is needed here to allow domain decomposition right after restart */
+  if(RestartFlag == 1) /* this is needed here to allow domain decomposition right after restart */
     if(All.ComovingIntegrationOn)
       init_drift_table();
 
@@ -134,12 +131,12 @@ void begrun1(void)
 
   force_short_range_init();
 
-#if defined (FORCETEST) && !defined(FORCETEST_TESTFORCELAW)
+#if defined(FORCETEST) && !defined(FORCETEST_TESTFORCELAW)
   forcetest_ewald_init();
 #endif /* #if defined (FORCETEST) && !defined(FORCETEST_TESTFORCELAW) */
 
   /* set up random number generators */
-  random_generator = gsl_rng_alloc(gsl_rng_ranlxd1);
+  random_generator     = gsl_rng_alloc(gsl_rng_ranlxd1);
   random_generator_aux = gsl_rng_alloc(gsl_rng_ranlxd1);
 
   /* individual start-up seed */
@@ -197,9 +194,7 @@ void begrun1(void)
   init_scalars();
 
   init_gradients();
-
 }
-
 
 /*! \brief Late setup, after the IC file has been loaded but before run() is
  *  called.
@@ -233,7 +228,7 @@ void begrun2(void)
   special_particle_create_list();
 #endif /* #ifdef EXACT_GRAVITY_FOR_PARTICLE_TYPE */
 
-  if(RestartFlag != 1)          /* this needs to be done here because here All.TimeBegin has the correct value */
+  if(RestartFlag != 1) /* this needs to be done here because here All.TimeBegin has the correct value */
     if(All.ComovingIntegrationOn)
       init_drift_table();
 
@@ -255,7 +250,6 @@ void begrun2(void)
 #endif /* #if defined(FORCETEST) && defined(FORCETEST_TESTFORCELAW) */
 }
 
-
 /*! \brief Computes conversion factors between internal code units and the
  *  cgs-system.
  *
@@ -271,7 +265,7 @@ void set_units(void)
   double Mtot;
 #endif /* #ifdef STATICNFW */
 
-  All.UnitTime_in_s = All.UnitLength_in_cm / All.UnitVelocity_in_cm_per_s;
+  All.UnitTime_in_s         = All.UnitLength_in_cm / All.UnitVelocity_in_cm_per_s;
   All.UnitTime_in_Megayears = All.UnitTime_in_s / SEC_PER_MEGAYEAR;
 
   if(All.GravityConstantInternal == 0)
@@ -279,10 +273,10 @@ void set_units(void)
   else
     All.G = All.GravityConstantInternal;
 
-  All.UnitDensity_in_cgs = All.UnitMass_in_g / pow(All.UnitLength_in_cm, 3);
-  All.UnitPressure_in_cgs = All.UnitMass_in_g / All.UnitLength_in_cm / pow(All.UnitTime_in_s, 2);
+  All.UnitDensity_in_cgs     = All.UnitMass_in_g / pow(All.UnitLength_in_cm, 3);
+  All.UnitPressure_in_cgs    = All.UnitMass_in_g / All.UnitLength_in_cm / pow(All.UnitTime_in_s, 2);
   All.UnitCoolingRate_in_cgs = All.UnitPressure_in_cgs / All.UnitTime_in_s;
-  All.UnitEnergy_in_cgs = All.UnitMass_in_g * pow(All.UnitLength_in_cm, 2) / pow(All.UnitTime_in_s, 2);
+  All.UnitEnergy_in_cgs      = All.UnitMass_in_g * pow(All.UnitLength_in_cm, 2) / pow(All.UnitTime_in_s, 2);
 
   /* convert some physical input parameters to internal units */
 
@@ -297,7 +291,7 @@ void set_units(void)
   mpi_printf("BEGRUN: UnitEnergy_in_cgs         = %g\n", All.UnitEnergy_in_cgs);
   mpi_printf("\n");
 
-  meanweight = 4.0 / (1 + 3 * HYDROGEN_MASSFRAC);       /* note: assuming NEUTRAL GAS */
+  meanweight = 4.0 / (1 + 3 * HYDROGEN_MASSFRAC); /* note: assuming NEUTRAL GAS */
 
   if(All.MinEgySpec == 0)
     {
@@ -312,22 +306,21 @@ void set_units(void)
 #endif /* #if defined(USE_SFR) */
 
 #ifdef STATICNFW
-  R200 = pow(NFW_M200 * All.G / (100 * All.Hubble * All.Hubble), 1.0 / 3);
-  Rs = R200 / NFW_C;
-  Dc = 200.0 / 3 * NFW_C * NFW_C * NFW_C / (log(1 + NFW_C) - NFW_C / (1 + NFW_C));
+  R200    = pow(NFW_M200 * All.G / (100 * All.Hubble * All.Hubble), 1.0 / 3);
+  Rs      = R200 / NFW_C;
+  Dc      = 200.0 / 3 * NFW_C * NFW_C * NFW_C / (log(1 + NFW_C) - NFW_C / (1 + NFW_C));
   RhoCrit = 3 * All.Hubble * All.Hubble / (8 * M_PI * All.G);
-  V200 = 10 * All.Hubble * R200;
+  V200    = 10 * All.Hubble * R200;
   mpi_printf("V200= %g\n", V200);
 
-  fac = 1.0;
+  fac  = 1.0;
   Mtot = enclosed_mass(R200);
   mpi_printf("M200= %g\n", Mtot);
-  fac = V200 * V200 * V200 / (10 * All.G * All.Hubble) / Mtot;
+  fac  = V200 * V200 * V200 / (10 * All.G * All.Hubble) / Mtot;
   Mtot = enclosed_mass(R200);
   mpi_printf("M200= %g\n", Mtot);
 #endif /* #ifdef STATICNFW */
 }
-
 
 /*! \brief deletes the end file if it exists.
  *
@@ -338,10 +331,10 @@ void set_units(void)
  */
 static void delete_end_file(void)
 {
-  if(RestartFlag > 2) // no simulation happening
-  {
-    return;
-  }
+  if(RestartFlag > 2)  // no simulation happening
+    {
+      return;
+    }
 
   char endfname[1000];
   sprintf(endfname, "%send", All.OutputDir);

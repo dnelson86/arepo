@@ -24,29 +24,25 @@
  *                void set_vertex_velocities(void)
  *                static void validate_vertex_velocities_1d()
  *                void validate_vertex_velocities(void)
- * 
+ *
  * \par Major modifications and contributions:
- * 
+ *
  * - DD.MM.YYYY Description
  * - 08.05.2018 Prepared file for public release -- Rainer Weinberger
  */
 
-
+#include <math.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <math.h>
-
 
 #include "../main/allvars.h"
 #include "../main/proto.h"
 #include "../mesh/voronoi/voronoi.h"
 
-
 #ifdef ONEDIMS_SPHERICAL
 static void validate_vertex_velocities_1d();
 #endif /* #ifdef ONEDIMS_SPHERICAL */
-
 
 /*! \brief Sets velocities of individual mesh-generating points.
  *
@@ -59,7 +55,7 @@ void set_vertex_velocities(void)
   int idx, i, j;
   double dt;
 
-#if defined (VORONOI_STATIC_MESH) || defined (NOHYDRO)
+#if defined(VORONOI_STATIC_MESH) || defined(NOHYDRO)
   for(idx = 0; idx < TimeBinsHydro.NActiveParticles; idx++)
     {
       i = TimeBinsHydro.ActiveParticleList[idx];
@@ -82,17 +78,17 @@ void set_vertex_velocities(void)
 #ifdef MESHRELAX
       for(j = 0; j < 3; j++)
         SphP[i].VelVertex[j] = 0;
-#else /* #ifdef MESHRELAX */
+#else  /* #ifdef MESHRELAX */
       for(j = 0; j < 3; j++)
-        SphP[i].VelVertex[j] = P[i].Vel[j];     /* make cell velocity equal to fluid's velocity */
+        SphP[i].VelVertex[j] = P[i].Vel[j]; /* make cell velocity equal to fluid's velocity */
 #endif /* #ifdef MESHRELAX #else */
 
       double acc[3];
 
       /*  the actual time-step of particle */
-      integertime ti_step = P[i].TimeBinHydro ? (((integertime) 1) << P[i].TimeBinHydro) : 0;
-      dt = ti_step * All.Timebase_interval;
-      dt /= All.cf_hubble_a;    /* this gives the actual timestep: dt = dloga/ (adot/a) */
+      integertime ti_step = P[i].TimeBinHydro ? (((integertime)1) << P[i].TimeBinHydro) : 0;
+      dt                  = ti_step * All.Timebase_interval;
+      dt /= All.cf_hubble_a; /* this gives the actual timestep: dt = dloga/ (adot/a) */
 
       /* now let's add the gradient of the pressure force
        * note that the gravity half-step was already included in P[i].Vel[j]
@@ -134,8 +130,8 @@ void set_vertex_velocities(void)
       dz = nearest_z(P[i].Pos[2] - SphP[i].Center[2]);
 
       /*  the actual time-step of particle */
-      dt = (P[i].TimeBinHydro ? (((integertime) 1) << P[i].TimeBinHydro) : 0) * All.Timebase_interval;
-      dt /= All.cf_hubble_a;    /* this is dt, the actual timestep  */
+      dt = (P[i].TimeBinHydro ? (((integertime)1) << P[i].TimeBinHydro) : 0) * All.Timebase_interval;
+      dt /= All.cf_hubble_a; /* this is dt, the actual timestep  */
 
       double cellrad = get_cell_radius(i);
 
@@ -144,13 +140,14 @@ void set_vertex_velocities(void)
        * This makes sure that the Lloyd scheme does not simply iterate towards cells of equal volume, instead
        * we keep cells of roughly equal mass.
        */
-      double dgrad = sqrt(SphP[i].Grad.drho[0] * SphP[i].Grad.drho[0] + SphP[i].Grad.drho[1] * SphP[i].Grad.drho[1] + SphP[i].Grad.drho[2] * SphP[i].Grad.drho[2]);
+      double dgrad = sqrt(SphP[i].Grad.drho[0] * SphP[i].Grad.drho[0] + SphP[i].Grad.drho[1] * SphP[i].Grad.drho[1] +
+                          SphP[i].Grad.drho[2] * SphP[i].Grad.drho[2]);
 
       if(dgrad > 0)
         {
           double scale = SphP[i].Density / dgrad;
-          double tmp = 3 * cellrad + scale;
-          double x = (tmp - sqrt(tmp * tmp - 8 * cellrad * cellrad)) / 4;
+          double tmp   = 3 * cellrad + scale;
+          double x     = (tmp - sqrt(tmp * tmp - 8 * cellrad * cellrad)) / 4;
 
           if(x < 0.25 * cellrad)
             {
@@ -173,7 +170,7 @@ void set_vertex_velocities(void)
           else
             fraction = All.CellShapingSpeed * (d - 0.75 * All.CellShapingFactor * cellrad) / (0.25 * All.CellShapingFactor * cellrad);
         }
-#else /* #if !defined(REGULARIZE_MESH_FACE_ANGLE) */
+#else  /* #if !defined(REGULARIZE_MESH_FACE_ANGLE) */
       if(SphP[i].MaxFaceAngle > 0.75 * All.CellMaxAngleFactor && dt > 0)
         {
           if(SphP[i].MaxFaceAngle > All.CellMaxAngleFactor)
@@ -197,7 +194,7 @@ void set_vertex_velocities(void)
           ax = SphP[i].FullGravAccel[0];
           ay = SphP[i].FullGravAccel[1];
           az = SphP[i].FullGravAccel[2];
-#else /* #ifdef HIERARCHICAL_GRAVITY */
+#else  /* #ifdef HIERARCHICAL_GRAVITY */
           ax = P[i].GravAccel[0];
           ay = P[i].GravAccel[1];
           az = P[i].GravAccel[2];
@@ -207,7 +204,7 @@ void set_vertex_velocities(void)
           ay += P[i].GravPM[1];
           az += P[i].GravPM[2];
 #endif /* #ifdef PMGRID */
-          ac = sqrt(ax * ax + ay * ay + az * az);
+          ac    = sqrt(ax * ax + ay * ay + az * az);
           vgrav = 4 * sqrt(All.cf_atime * cellrad * ac);
           if(v < vgrav)
             v = vgrav;
@@ -217,10 +214,10 @@ void set_vertex_velocities(void)
           if(v < vcurl)
             v = vcurl;
 
-#else /* #ifdef REGULARIZE_MESH_CM_DRIFT_USE_SOUNDSPEED */
-          v = All.cf_atime * All.cf_atime * d / dt;     /* use fiducial velocity */
+#else  /* #ifdef REGULARIZE_MESH_CM_DRIFT_USE_SOUNDSPEED */
+          v = All.cf_atime * All.cf_atime * d / dt; /* use fiducial velocity */
 
-          double vel = sqrt(P[i].Vel[0] * P[i].Vel[0] + P[i].Vel[1] * P[i].Vel[1] + P[i].Vel[2] * P[i].Vel[2]);
+          double vel  = sqrt(P[i].Vel[0] * P[i].Vel[0] + P[i].Vel[1] * P[i].Vel[1] + P[i].Vel[2] * P[i].Vel[2]);
           double vmax = dmax(All.cf_atime * get_sound_speed(i), vel);
           if(v > vmax)
             v = vmax;
@@ -248,7 +245,7 @@ void set_vertex_velocities(void)
 #endif /* #ifdef REGULARIZE_MESH_CM_DRIFT */
 
       for(j = NUMDIMS; j < 3; j++)
-        SphP[i].VelVertex[j] = 0;       /* vertex velocities for unused dimensions set to zero */
+        SphP[i].VelVertex[j] = 0; /* vertex velocities for unused dimensions set to zero */
     }
 
 #ifdef OUTPUT_VERTEX_VELOCITY_DIVERGENCE
@@ -267,7 +264,6 @@ void set_vertex_velocities(void)
   TIMER_STOP(CPU_SET_VERTEXVELS);
 }
 
-
 #ifdef ONEDIMS_SPHERICAL
 /*! \brief Handles inner boundary cells in 1d spherical case.
  *
@@ -275,12 +271,11 @@ void set_vertex_velocities(void)
  */
 static void validate_vertex_velocities_1d()
 {
-  double dt = (P[0].TimeBinHydro ? (((integertime) 1) << P[0].TimeBinHydro) : 0) * All.Timebase_interval;
+  double dt = (P[0].TimeBinHydro ? (((integertime)1) << P[0].TimeBinHydro) : 0) * All.Timebase_interval;
   if(P[0].Pos[0] + dt * SphP[0].VelVertex[0] < All.CoreRadius)
     SphP[0].VelVertex[0] = 0.;
 }
 #endif /* #ifdef ONEDIMS_SPHERICAL */
-
 
 #if defined(REFLECTIVE_X) || defined(REFLECTIVE_Y) || defined(REFLECTIVE_Z)
 /*! \brief Checks validity of vertex velocities with boundary conditions.
@@ -300,7 +295,7 @@ void validate_vertex_velocities(void)
       if(i < 0)
         continue;
 
-      integertime ti_step = P[i].TimeBinHydro ? (((integertime) 1) << P[i].TimeBinHydro) : 0;
+      integertime ti_step = P[i].TimeBinHydro ? (((integertime)1) << P[i].TimeBinHydro) : 0;
       double dt_drift;
 
       if(All.ComovingIntegrationOn)

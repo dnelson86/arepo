@@ -54,24 +54,21 @@
  *                  struct TimeBinData *tbData, int timebin)
  *                void timebin_add_particles_of_timebin_to_list_of_active_
  *                  particles(struct TimeBinData *tbData, int timebin)
- * 
+ *
  * \par Major modifications and contributions:
- * 
+ *
  * - DD.MM.YYYY Description
  * - 11.05.2018 Prepared file for public release -- Rainer Weinberger
  */
 
-
+#include <math.h>
 #include <mpi.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <math.h>
-
 
 #include "../main/allvars.h"
 #include "../main/proto.h"
-
 
 /*! \brief Sets various cosmological factors for the current simulation time.
  *
@@ -81,32 +78,31 @@ void set_cosmo_factors_for_current_time(void)
 {
   if(All.ComovingIntegrationOn)
     {
-      All.cf_atime = All.Time;
-      All.cf_a2inv = 1 / (All.Time * All.Time);
-      All.cf_a3inv = 1 / (All.Time * All.Time * All.Time);
-      All.cf_afac1 = pow(All.Time, 3 * GAMMA_MINUS1);
-      All.cf_afac2 = 1 / pow(All.Time, 3 * GAMMA - 2);
-      All.cf_afac3 = pow(All.Time, 3 * (1 - GAMMA) / 2.0);
+      All.cf_atime    = All.Time;
+      All.cf_a2inv    = 1 / (All.Time * All.Time);
+      All.cf_a3inv    = 1 / (All.Time * All.Time * All.Time);
+      All.cf_afac1    = pow(All.Time, 3 * GAMMA_MINUS1);
+      All.cf_afac2    = 1 / pow(All.Time, 3 * GAMMA - 2);
+      All.cf_afac3    = pow(All.Time, 3 * (1 - GAMMA) / 2.0);
       All.cf_hubble_a = All.cf_H = All.cf_Hrate = hubble_function(All.Time);
-      All.cf_time_hubble_a = All.Time * All.cf_hubble_a;
-      All.cf_redshift = 1 / All.Time - 1;
+      All.cf_time_hubble_a                      = All.Time * All.cf_hubble_a;
+      All.cf_redshift                           = 1 / All.Time - 1;
     }
   else
     {
-      All.cf_atime = 1;
-      All.cf_a2inv = 1;
-      All.cf_a3inv = 1;
-      All.cf_afac1 = 1;
-      All.cf_afac2 = 1;
-      All.cf_afac3 = 1;
-      All.cf_hubble_a = 1;
-      All.cf_H = All.Hubble;
+      All.cf_atime         = 1;
+      All.cf_a2inv         = 1;
+      All.cf_a3inv         = 1;
+      All.cf_afac1         = 1;
+      All.cf_afac2         = 1;
+      All.cf_afac3         = 1;
+      All.cf_hubble_a      = 1;
+      All.cf_H             = All.Hubble;
       All.cf_time_hubble_a = 1;
-      All.cf_Hrate = 0;
-      All.cf_redshift = 0;
+      All.cf_Hrate         = 0;
+      All.cf_redshift      = 0;
     }
 }
-
 
 /*! \brief Finds hydrodynamic timesteps for all particles.
  *
@@ -133,7 +129,7 @@ void find_timesteps_without_gravity(void)
   globTimeStep = get_timestep_pm();
 #endif /* #ifdef PMGRID */
 
-#if (defined(SELFGRAVITY) || defined(EXTERNALGRAVITY) || defined(EXACT_GRAVITY_FOR_PARTICLE_TYPE)) && !defined(MESHRELAX)
+#if(defined(SELFGRAVITY) || defined(EXTERNALGRAVITY) || defined(EXACT_GRAVITY_FOR_PARTICLE_TYPE)) && !defined(MESHRELAX)
   for(idx = 0; idx < TimeBinsGravity.NActiveParticles; idx++)
     {
       i = TimeBinsGravity.ActiveParticleList[idx];
@@ -144,14 +140,14 @@ void find_timesteps_without_gravity(void)
       if(ti_step < globTimeStep)
         globTimeStep = ti_step;
     }
-#endif /* #if (defined(SELFGRAVITY) || defined(EXTERNALGRAVITY) || defined(EXACT_GRAVITY_FOR_PARTICLE_TYPE)) && !defined(MESHRELAX) */
+#endif /* #if (defined(SELFGRAVITY) || defined(EXTERNALGRAVITY) || defined(EXACT_GRAVITY_FOR_PARTICLE_TYPE)) && !defined(MESHRELAX) \
+        */
 
   for(idx = 0; idx < TimeBinsHydro.NActiveParticles; idx++)
     {
       i = TimeBinsHydro.ActiveParticleList[idx];
       if(i < 0)
         continue;
-
 
       ti_step = get_timestep_hydro(i);
       if(ti_step < globTimeStep)
@@ -160,7 +156,7 @@ void find_timesteps_without_gravity(void)
 
 #ifdef ENLARGE_DYNAMIC_RANGE_IN_TIME
   minimum_large_ints(1, &globTimeStep, &All.GlobalTimeStep);
-#else /* #ifdef ENLARGE_DYNAMIC_RANGE_IN_TIME */
+#else  /* #ifdef ENLARGE_DYNAMIC_RANGE_IN_TIME */
   MPI_Allreduce(&globTimeStep, &All.GlobalTimeStep, 1, MPI_INT, MPI_MIN, MPI_COMM_WORLD);
 #endif /* #ifdef ENLARGE_DYNAMIC_RANGE_IN_TIME #else */
 
@@ -188,7 +184,7 @@ void find_timesteps_without_gravity(void)
       P[i].TimeBinHydro = bin;
     }
 
-#else /* #ifdef FORCE_EQUAL_TIMESTEPS */
+#else  /* #ifdef FORCE_EQUAL_TIMESTEPS */
   /* Calculate and assign hydro timesteps */
 
   for(idx = 0; idx < TimeBinsHydro.NActiveParticles; idx++)
@@ -213,8 +209,6 @@ void find_timesteps_without_gravity(void)
   TIMER_STOP(CPU_TIMELINE);
 }
 
-
-
 /*! \brief Moves particles to lower timestep bin if required by gravity
  *         timestep criterion.
  *
@@ -223,12 +217,13 @@ void find_timesteps_without_gravity(void)
 void update_timesteps_from_gravity(void)
 {
 #ifdef FORCE_EQUAL_TIMESTEPS
-  return;                       /* don't need to do this */
-#endif /* #ifdef FORCE_EQUAL_TIMESTEPS */
+  return; /* don't need to do this */
+#endif    /* #ifdef FORCE_EQUAL_TIMESTEPS */
 
 #if !((defined(SELFGRAVITY) || defined(EXTERNALGRAVITY) || defined(EXACT_GRAVITY_FOR_PARTICLE_TYPE))) || defined(MESHRELAX)
   return;
-#endif /* #if !((defined(SELFGRAVITY) || defined(EXTERNALGRAVITY) || defined(EXACT_GRAVITY_FOR_PARTICLE_TYPE))) || defined(MESHRELAX) */
+#endif /* #if !((defined(SELFGRAVITY) || defined(EXTERNALGRAVITY) || defined(EXACT_GRAVITY_FOR_PARTICLE_TYPE))) || defined(MESHRELAX) \
+        */
 
   TIMER_START(CPU_TIMELINE);
 
@@ -251,7 +246,6 @@ void update_timesteps_from_gravity(void)
   TIMER_STOP(CPU_TIMELINE);
 }
 
-
 #ifdef PMGRID
 /*! \brief Returns particle-mesh timestep as an integer-time variable.
  *
@@ -265,22 +259,21 @@ integertime get_timestep_pm(void)
 
   if(ti_step > (All.PM_Ti_endstep - All.PM_Ti_begstep)) /* PM-timestep wants to increase */
     {
-      int bin = get_timestep_bin(ti_step);
+      int bin    = get_timestep_bin(ti_step);
       int binold = get_timestep_bin(All.PM_Ti_endstep - All.PM_Ti_begstep);
 
-      while(TimeBinSynchronized[bin] == 0 && bin > binold)      /* make sure the new step is synchronized */
+      while(TimeBinSynchronized[bin] == 0 && bin > binold) /* make sure the new step is synchronized */
         bin--;
 
-      ti_step = bin ? (((integertime) 1) << bin) : 0;
+      ti_step = bin ? (((integertime)1) << bin) : 0;
     }
 
-  if(All.Ti_Current == TIMEBASE)        /* we here finish the last timestep. */
+  if(All.Ti_Current == TIMEBASE) /* we here finish the last timestep. */
     ti_step = 0;
 
   return ti_step;
 }
 #endif /* #ifdef PMGRID */
-
 
 /*! \brief Returns gravity timestep as an integer-time variable.
  *
@@ -306,20 +299,20 @@ integertime get_timestep_gravity(int p)
     az += All.cf_a2inv * P[p].GravPM[2];
 #endif /* #if defined(PMGRID) && !defined(NO_PMFORCE_IN_SHORT_RANGE_TIMESTEP) */
 
-    ac = sqrt(ax * ax + ay * ay + az * az);     /* this is now the physical acceleration */
+    ac = sqrt(ax * ax + ay * ay + az * az); /* this is now the physical acceleration */
 
     if(ac == 0)
       ac = 1.0e-30;
 
-    switch (All.TypeOfTimestepCriterion)
+    switch(All.TypeOfTimestepCriterion)
       {
-      case 0:
-        /* only type 0 implemented at the moment -> remove type ? */
-        dt = sqrt(2 * All.ErrTolIntAccuracy * All.cf_atime * All.ForceSoftening[P[p].SofteningType] / 2.8 / ac);
-        break;
-      default:
-        terminate("Undefined timestep criterion");
-        break;
+        case 0:
+          /* only type 0 implemented at the moment -> remove type ? */
+          dt = sqrt(2 * All.ErrTolIntAccuracy * All.cf_atime * All.ForceSoftening[P[p].SofteningType] / 2.8 / ac);
+          break;
+        default:
+          terminate("Undefined timestep criterion");
+          break;
       }
 
 #ifdef EXTERNALGRAVITY
@@ -332,7 +325,7 @@ integertime get_timestep_gravity(int p)
   dt *= All.cf_hubble_a;
 
   if(P[p].Mass == 0 && P[p].ID == 0)
-    dt = All.MaxSizeTimestep;   /* this particle has been swallowed or eliminated */
+    dt = All.MaxSizeTimestep; /* this particle has been swallowed or eliminated */
 
   if(dt >= All.MaxSizeTimestep)
     dt = All.MaxSizeTimestep;
@@ -341,7 +334,7 @@ integertime get_timestep_gravity(int p)
     {
 #ifdef NOSTOP_WHEN_BELOW_MINTIMESTEP
       dt = All.MinSizeTimestep;
-#else /* #ifdef NOSTOP_WHEN_BELOW_MINTIMESTEP */
+#else  /* #ifdef NOSTOP_WHEN_BELOW_MINTIMESTEP */
       print_particle_info(p);
       terminate("Timestep dt=%g below All.MinSizeTimestep=%g", dt, All.MinSizeTimestep);
 #endif /* #ifdef NOSTOP_WHEN_BELOW_MINTIMESTEP #else */
@@ -352,13 +345,12 @@ integertime get_timestep_gravity(int p)
     dt = All.DtDisplacement;
 #endif /* #ifdef PMGRID */
 
-  ti_step = (integertime) (dt / All.Timebase_interval);
+  ti_step = (integertime)(dt / All.Timebase_interval);
 
   validate_timestep(dt, ti_step, p);
 
   return ti_step;
 }
-
 
 /*! \brief Returns hydrodynamics timestep as an integer-time variable.
  *
@@ -400,7 +392,7 @@ integertime get_timestep_hydro(int p)
 
 #if defined(USE_SFR)
 
-  if(P[p].Type == 0)            /* to protect using a particle that has been turned into a star */
+  if(P[p].Type == 0) /* to protect using a particle that has been turned into a star */
     {
       double sfr = get_starformation_rate(p);
 
@@ -411,9 +403,9 @@ integertime get_timestep_hydro(int p)
 #endif /* #if defined(USE_SFR) */
 
 #ifdef MHD_POWELL_LIMIT_TIMESTEP
-  double b = sqrt(SphP[p].B[0] * SphP[p].B[0] + SphP[p].B[1] * SphP[p].B[1] + SphP[p].B[2] * SphP[p].B[2]);
-  double bmin = sqrt(2 * 0.01 * SphP[p].Utherm * SphP[p].Density * All.cf_atime);
-  double v = sqrt(P[p].Vel[0] * P[p].Vel[0] + P[p].Vel[1] * P[p].Vel[1] + P[p].Vel[2] * P[p].Vel[2]) / All.cf_atime;
+  double b         = sqrt(SphP[p].B[0] * SphP[p].B[0] + SphP[p].B[1] * SphP[p].B[1] + SphP[p].B[2] * SphP[p].B[2]);
+  double bmin      = sqrt(2 * 0.01 * SphP[p].Utherm * SphP[p].Density * All.cf_atime);
+  double v         = sqrt(P[p].Vel[0] * P[p].Vel[0] + P[p].Vel[1] * P[p].Vel[1] + P[p].Vel[2] * P[p].Vel[2]) / All.cf_atime;
   double dt_powell = 0.5 * (b + bmin) / (fabs(SphP[p].DivB / All.cf_atime * v));
 
   if(dt_powell < dt)
@@ -438,7 +430,7 @@ integertime get_timestep_hydro(int p)
     {
 #ifdef NOSTOP_WHEN_BELOW_MINTIMESTEP
       dt = All.MinSizeTimestep;
-#else /* #ifdef NOSTOP_WHEN_BELOW_MINTIMESTEP */
+#else  /* #ifdef NOSTOP_WHEN_BELOW_MINTIMESTEP */
       print_particle_info(p);
       terminate("Timestep dt=%g below All.MinSizeTimestep=%g", dt, All.MinSizeTimestep);
 #endif /* #ifdef NOSTOP_WHEN_BELOW_MINTIMESTEP #else */
@@ -449,13 +441,12 @@ integertime get_timestep_hydro(int p)
     dt = All.DtDisplacement;
 #endif /* #ifdef PMGRID */
 
-  ti_step = (integertime) (dt / All.Timebase_interval);
+  ti_step = (integertime)(dt / All.Timebase_interval);
 
   validate_timestep(dt, ti_step, p);
 
   return ti_step;
 }
-
 
 /*! \brief Checks if timestep is a valid one.
  *
@@ -467,11 +458,15 @@ void validate_timestep(double dt, integertime ti_step, int p)
 {
   if(!(ti_step > 0 && ti_step < TIMEBASE))
     {
-      printf("\nError: An invalid timestep was assigned on the integer timeline!\n" "We better stop.\n" "Task=%d Part-ID=%lld type=%d", ThisTask, (long long) P[p].ID, P[p].Type);
+      printf(
+          "\nError: An invalid timestep was assigned on the integer timeline!\n"
+          "We better stop.\n"
+          "Task=%d Part-ID=%lld type=%d",
+          ThisTask, (long long)P[p].ID, P[p].Type);
 
-      printf("tibase=%g dt=%g ti_step=%d, xyz=(%g|%g|%g) vel=(%g|%g|%g) tree=(%g|%g|%g) mass=%g\n\n",
-             All.Timebase_interval, dt, (int) ti_step, P[p].Pos[0], P[p].Pos[1], P[p].Pos[2], P[p].Vel[0], P[p].Vel[1], P[p].Vel[2], P[p].GravAccel[0], P[p].GravAccel[1], P[p].GravAccel[2],
-             P[p].Mass);
+      printf("tibase=%g dt=%g ti_step=%d, xyz=(%g|%g|%g) vel=(%g|%g|%g) tree=(%g|%g|%g) mass=%g\n\n", All.Timebase_interval, dt,
+             (int)ti_step, P[p].Pos[0], P[p].Pos[1], P[p].Pos[2], P[p].Vel[0], P[p].Vel[1], P[p].Vel[2], P[p].GravAccel[0],
+             P[p].GravAccel[1], P[p].GravAccel[2], P[p].Mass);
 
       print_particle_info(p);
       myflush(stdout);
@@ -480,11 +475,11 @@ void validate_timestep(double dt, integertime ti_step, int p)
 
   if(ti_step == 1)
     {
-      printf("Time-step of integer size 1 found for particle i=%d, pos=(%g|%g|%g), ID=%lld, dt=%g\n", p, P[p].Pos[0], P[p].Pos[1], P[p].Pos[2], (long long) P[p].ID, dt);
+      printf("Time-step of integer size 1 found for particle i=%d, pos=(%g|%g|%g), ID=%lld, dt=%g\n", p, P[p].Pos[0], P[p].Pos[1],
+             P[p].Pos[2], (long long)P[p].ID, dt);
       print_particle_info(p);
     }
 }
-
 
 /*! \brief Checks if timestep according to its present timebin is too large
  *         compared to the requirements from gravity and hydrodynamics
@@ -498,7 +493,7 @@ void validate_timestep(double dt, integertime ti_step, int p)
  */
 int test_if_grav_timestep_is_too_large(int p, int bin)
 {
-  integertime ti_step_bin = bin ? (((integertime) 1) << bin) : 0;
+  integertime ti_step_bin = bin ? (((integertime)1) << bin) : 0;
 
   integertime ti_step = get_timestep_gravity(p);
 
@@ -506,8 +501,8 @@ int test_if_grav_timestep_is_too_large(int p, int bin)
     {
       if((P[p].ID != 0) && (P[p].Mass != 0))
         {
-          int bin_hydro = P[p].TimeBinHydro;
-          integertime ti_step_hydro = bin_hydro ? (((integertime) 1) << bin_hydro) : 0;
+          int bin_hydro             = P[p].TimeBinHydro;
+          integertime ti_step_hydro = bin_hydro ? (((integertime)1) << bin_hydro) : 0;
           if(ti_step_hydro < ti_step)
             ti_step = ti_step_hydro;
         }
@@ -518,7 +513,6 @@ int test_if_grav_timestep_is_too_large(int p, int bin)
   else
     return 0;
 }
-
 
 #ifdef PMGRID
 /*! \brief Sets the global timestep for the long-range force calculation.
@@ -548,7 +542,7 @@ void find_long_range_step_constraint(void)
           ay = All.cf_a2inv * P[p].GravPM[1];
           az = All.cf_a2inv * P[p].GravPM[2];
 
-          ac = sqrt(ax * ax + ay * ay + az * az);       /* this is now the physical acceleration */
+          ac = sqrt(ax * ax + ay * ay + az * az); /* this is now the physical acceleration */
 
           if(ac < MIN_FLOAT_NUMBER)
             ac = MIN_FLOAT_NUMBER;
@@ -562,7 +556,7 @@ void find_long_range_step_constraint(void)
         }
     }
 
-  dtmin *= 2.0;                 /* move it one timebin higher to prevent being too conservative */
+  dtmin *= 2.0; /* move it one timebin higher to prevent being too conservative */
 
   MPI_Allreduce(&dtmin, &All.DtDisplacement, 1, MPI_DOUBLE, MPI_MIN, MPI_COMM_WORLD);
 
@@ -575,7 +569,6 @@ void find_long_range_step_constraint(void)
     All.DtDisplacement = All.MinSizeTimestep;
 }
 #endif /* #ifdef PMGRID */
-
 
 /*! \brief Converts an integer time to a time bin.
  *
@@ -602,7 +595,6 @@ int get_timestep_bin(integertime ti_step)
   return bin;
 }
 
-
 /*! \brief Calculates time difference in Gyr between two time integration unit
  *         values.
  *
@@ -625,32 +617,31 @@ double get_time_difference_in_Gyr(double a0, double a1)
 
       factor1 = 2.0 / (3.0 * sqrt(All.OmegaLambda));
 
-      term1 = sqrt(All.OmegaLambda / All.Omega0) * pow(a0, 1.5);
-      term2 = sqrt(1 + All.OmegaLambda / All.Omega0 * pow(a0, 3));
+      term1   = sqrt(All.OmegaLambda / All.Omega0) * pow(a0, 1.5);
+      term2   = sqrt(1 + All.OmegaLambda / All.Omega0 * pow(a0, 3));
       factor2 = log(term1 + term2);
 
       t0 = factor1 * factor2;
 
-      term1 = sqrt(All.OmegaLambda / All.Omega0) * pow(a1, 1.5);
-      term2 = sqrt(1 + All.OmegaLambda / All.Omega0 * pow(a1, 3));
+      term1   = sqrt(All.OmegaLambda / All.Omega0) * pow(a1, 1.5);
+      term2   = sqrt(1 + All.OmegaLambda / All.Omega0 * pow(a1, 3));
       factor2 = log(term1 + term2);
 
       t1 = factor1 * factor2;
 
       result = t1 - t0;
 
-      time_diff = result / (HUBBLE * All.HubbleParam);  /* now in seconds */
-      time_diff /= SEC_PER_MEGAYEAR * 1000;     /* now in gigayears */
+      time_diff = result / (HUBBLE * All.HubbleParam); /* now in seconds */
+      time_diff /= SEC_PER_MEGAYEAR * 1000;            /* now in gigayears */
     }
   else
     {
-      time_diff = (a1 - a0) * All.UnitTime_in_s / All.HubbleParam;      /* now in seconds */
-      time_diff /= SEC_PER_MEGAYEAR * 1000;     /* now in gigayears */
+      time_diff = (a1 - a0) * All.UnitTime_in_s / All.HubbleParam; /* now in seconds */
+      time_diff /= SEC_PER_MEGAYEAR * 1000;                        /* now in gigayears */
     }
 
   return time_diff;
 }
-
 
 /*! \brief Initializes time bin data.
  *
@@ -665,13 +656,13 @@ double get_time_difference_in_Gyr(double a0, double a1)
 void timebins_init(struct TimeBinData *tbData, const char *name, int *MaxPart)
 {
   int i;
-  tbData->NActiveParticles = 0;
+  tbData->NActiveParticles   = 0;
   tbData->ActiveParticleList = 0;
 
   for(i = 0; i < TIMEBINS; i++)
     {
       tbData->FirstInTimeBin[i] = -1;
-      tbData->LastInTimeBin[i] = -1;
+      tbData->LastInTimeBin[i]  = -1;
     }
 
   tbData->NextInTimeBin = 0;
@@ -679,9 +670,8 @@ void timebins_init(struct TimeBinData *tbData, const char *name, int *MaxPart)
 
   strncpy(tbData->Name, name, 99);
   tbData->Name[99] = 0;
-  tbData->MaxPart = MaxPart;
+  tbData->MaxPart  = MaxPart;
 }
-
 
 /*! \brief Allocates linked lists in time bin data.
  *
@@ -697,15 +687,14 @@ void timebins_allocate(struct TimeBinData *tbData)
   Identifier[199] = 0;
 
   snprintf(Identifier, 199, "NextActiveParticle%s", tbData->Name);
-  tbData->ActiveParticleList = (int *) mymalloc_movable(&tbData->ActiveParticleList, Identifier, *(tbData->MaxPart) * sizeof(int));
+  tbData->ActiveParticleList = (int *)mymalloc_movable(&tbData->ActiveParticleList, Identifier, *(tbData->MaxPart) * sizeof(int));
 
   snprintf(Identifier, 199, "NextInTimeBin%s", tbData->Name);
-  tbData->NextInTimeBin = (int *) mymalloc_movable(&tbData->NextInTimeBin, Identifier, *(tbData->MaxPart) * sizeof(int));
+  tbData->NextInTimeBin = (int *)mymalloc_movable(&tbData->NextInTimeBin, Identifier, *(tbData->MaxPart) * sizeof(int));
 
   snprintf(Identifier, 199, "PrevInTimeBin%s", tbData->Name);
-  tbData->PrevInTimeBin = (int *) mymalloc_movable(&tbData->PrevInTimeBin, Identifier, *(tbData->MaxPart) * sizeof(int));
+  tbData->PrevInTimeBin = (int *)mymalloc_movable(&tbData->PrevInTimeBin, Identifier, *(tbData->MaxPart) * sizeof(int));
 }
-
 
 /*! \brief Re-allocates linked lists in time bin data.
  *
@@ -717,11 +706,10 @@ void timebins_allocate(struct TimeBinData *tbData)
  */
 void timebins_reallocate(struct TimeBinData *tbData)
 {
-  tbData->ActiveParticleList = (int *) myrealloc_movable(tbData->ActiveParticleList, *(tbData->MaxPart) * sizeof(int));
-  tbData->NextInTimeBin = (int *) myrealloc_movable(tbData->NextInTimeBin, *(tbData->MaxPart) * sizeof(int));
-  tbData->PrevInTimeBin = (int *) myrealloc_movable(tbData->PrevInTimeBin, *(tbData->MaxPart) * sizeof(int));
+  tbData->ActiveParticleList = (int *)myrealloc_movable(tbData->ActiveParticleList, *(tbData->MaxPart) * sizeof(int));
+  tbData->NextInTimeBin      = (int *)myrealloc_movable(tbData->NextInTimeBin, *(tbData->MaxPart) * sizeof(int));
+  tbData->PrevInTimeBin      = (int *)myrealloc_movable(tbData->PrevInTimeBin, *(tbData->MaxPart) * sizeof(int));
 }
-
 
 /*! \brief Gets timebin and checks if bin is valid.
  *
@@ -757,28 +745,27 @@ void timebins_get_bin_and_do_validity_checks(integertime ti_step, int *bin_new, 
       ti_step >>= 1;
     }
 
-  if(bin > bin_old)             /* timestep wants to increase */
+  if(bin > bin_old) /* timestep wants to increase */
     {
-      while(TimeBinSynchronized[bin] == 0 && bin > bin_old)     /* make sure the new step is synchronized */
+      while(TimeBinSynchronized[bin] == 0 && bin > bin_old) /* make sure the new step is synchronized */
         bin--;
 
-      ti_step = bin ? (((integertime) 1) << bin) : 0;
+      ti_step = bin ? (((integertime)1) << bin) : 0;
     }
 
-  if(All.Ti_Current >= TIMEBASE)        /* we here finish the last timestep. */
+  if(All.Ti_Current >= TIMEBASE) /* we here finish the last timestep. */
     {
       ti_step = 0;
-      bin = 0;
+      bin     = 0;
     }
 
-  if((TIMEBASE - All.Ti_Current) < ti_step)     /* check that we don't run beyond the end */
+  if((TIMEBASE - All.Ti_Current) < ti_step) /* check that we don't run beyond the end */
     {
-      terminate("we are beyond the end of the timeline");       /* should not happen */
+      terminate("we are beyond the end of the timeline"); /* should not happen */
     }
 
   *bin_new = bin;
 }
-
 
 /*! \brief Move particle from one time bin to another.
  *
@@ -810,10 +797,10 @@ void timebin_move_particle(struct TimeBinData *tbData, int p, int timeBin_old, i
 
   if(tbData->TimeBinCount[timeBin_new] > 0)
     {
-      tbData->PrevInTimeBin[p] = tbData->LastInTimeBin[timeBin_new];
+      tbData->PrevInTimeBin[p]                                  = tbData->LastInTimeBin[timeBin_new];
       tbData->NextInTimeBin[tbData->LastInTimeBin[timeBin_new]] = p;
-      tbData->NextInTimeBin[p] = -1;
-      tbData->LastInTimeBin[timeBin_new] = p;
+      tbData->NextInTimeBin[p]                                  = -1;
+      tbData->LastInTimeBin[timeBin_new]                        = p;
     }
   else
     {
@@ -829,7 +816,6 @@ void timebin_move_particle(struct TimeBinData *tbData, int p, int timeBin_old, i
 #endif /* #ifdef USE_SFR */
 }
 
-
 /*! \brief Removes a particle from time bin structure.
  *
  *  Can only be done with active particles.
@@ -843,7 +829,7 @@ void timebin_move_particle(struct TimeBinData *tbData, int p, int timeBin_old, i
  */
 void timebin_remove_particle(struct TimeBinData *tbData, int idx, int bin)
 {
-  int p = tbData->ActiveParticleList[idx];
+  int p                           = tbData->ActiveParticleList[idx];
   tbData->ActiveParticleList[idx] = -1;
 
   if(bin == -1)
@@ -873,7 +859,6 @@ void timebin_remove_particle(struct TimeBinData *tbData, int idx, int bin)
     }
 }
 
-
 /* \brief Inserts a particle into the timebin struct behind another already
  *        existing particle.
  *
@@ -899,9 +884,9 @@ void timebin_add_particle(struct TimeBinData *tbData, int i_new, int i_old, int 
         {
           /* the timebin is empty at the moment, so just add the new particle */
           tbData->FirstInTimeBin[timeBin] = i_new;
-          tbData->LastInTimeBin[timeBin] = i_new;
-          tbData->NextInTimeBin[i_new] = -1;
-          tbData->PrevInTimeBin[i_new] = -1;
+          tbData->LastInTimeBin[timeBin]  = i_new;
+          tbData->NextInTimeBin[i_new]    = -1;
+          tbData->PrevInTimeBin[i_new]    = -1;
         }
     }
 
@@ -923,7 +908,6 @@ void timebin_add_particle(struct TimeBinData *tbData, int i_new, int i_old, int 
       tbData->NActiveParticles++;
     }
 }
-
 
 /*! \brief Removes active particles that have ID and Mass 0, i.e. that were
  *         flagged as deleted from time bin data structure.
@@ -962,7 +946,6 @@ void timebin_move_sfr(int p, int timeBin_old, int timeBin_new)
 }
 #endif /* #ifdef USE_SFR */
 
-
 /*! \brief Crates list of active particles up to a specified timebin.
  *
  *  \param[in, out] tbData Time bin data to be operated on.
@@ -977,7 +960,6 @@ void timebin_make_list_of_active_particles_up_to_timebin(struct TimeBinData *tbD
   for(tbin = timebin; tbin >= 0; tbin--)
     timebin_add_particles_of_timebin_to_list_of_active_particles(tbData, tbin);
 }
-
 
 /*! \brief Add particles of a specific timebin to active particle list.
  *

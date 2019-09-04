@@ -26,29 +26,25 @@
  *                int derefine_should_this_cell_be_merged(int i, int flag)
  *                static int derefine_criterion_default(int i)
  *                static int derefine_criterion_jeans_ref(int i)
- * 
+ *
  * \par Major modifications and contributions:
- * 
+ *
  * - DD.MM.YYYY Description
  * - 04.05.2018 Prepared file for public release -- Rainer Weinberger
  */
 
-
+#include <math.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <math.h>
-
 
 #include "../main/allvars.h"
 #include "../main/proto.h"
-
 
 #if defined(REFINEMENT_MERGE_CELLS) && !defined(ONEDIMS)
 static int derefine_criterion_jeans_ref(int i);
 static int derefine_criterion_default(int i);
 static int jeans_derefinement_criteria(int i);
-
 
 /*! \brief Should this cell be dissolved?
  *
@@ -95,33 +91,31 @@ int derefine_should_this_cell_be_merged(int i, int flag)
   if(flag)
     return flag;
 
-  switch (All.DerefinementCriterion)
+  switch(All.DerefinementCriterion)
     {
-    case 0:
-      return 0;
-      break;
+      case 0:
+        return 0;
+        break;
 
-    case 1:
-      return derefine_criterion_default(i);
-      break;
+      case 1:
+        return derefine_criterion_default(i);
+        break;
 
-    case 2:
-      return derefine_criterion_jeans_ref(i);
-      break;
+      case 2:
+        return derefine_criterion_jeans_ref(i);
+        break;
 
-    default:
-      terminate("invalid derefinement criterion specified");
-      break;
+      default:
+        terminate("invalid derefinement criterion specified");
+        break;
     }
 
   return 0;
 }
 
-
 /*
  * static functions; i.e. functions that are only called within this file
  */
-
 
 /*! \brief Default de-refinement criterion.
  *
@@ -142,7 +136,6 @@ static int derefine_criterion_default(int i)
   return 0;
 }
 
-
 /*! \brief Wrapper for Jeans de-refinement criterion.
  *
  *  \param[in] i Index of cell in P and SphP arrays.
@@ -156,7 +149,6 @@ static int derefine_criterion_jeans_ref(int i)
 #endif /* #ifdef JEANS_REFINEMENT */
   return 0;
 }
-
 
 /*! \brief De-refinement criterion according to Jeans stability of a cell.
  *
@@ -175,9 +167,9 @@ static int jeans_derefinement_criteria(int i)
 
 #ifdef JEANS_REFINEMENT
   double jeans_number, jeans_length, sound_speed, dx;
-  sound_speed = sqrt(GAMMA * SphP[i].Pressure / SphP[i].Density);
+  sound_speed  = sqrt(GAMMA * SphP[i].Pressure / SphP[i].Density);
   jeans_length = sqrt(M_PI / All.G / SphP[i].Density) * sound_speed;
-  dx = 2.0 * get_cell_radius(i);
+  dx           = 2.0 * get_cell_radius(i);
   jeans_number = jeans_length / dx;
 
   if(jeans_number > 1.5 * JEANS_REFINEMENT && P[i].Mass < 0.5 * All.TargetGasMass)
@@ -185,6 +177,5 @@ static int jeans_derefinement_criteria(int i)
 #endif /* #ifdef JEANS_REFINEMENT */
   return 0;
 }
-
 
 #endif /* #if defined(REFINEMENT_MERGE_CELLS) && !defined(ONEDIMS) */

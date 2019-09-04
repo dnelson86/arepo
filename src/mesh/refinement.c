@@ -25,29 +25,24 @@
  *                void refinement_prepare()
  *                void refinement_cleanup()
  *                void move_collisionless_particle(int new_i, int old_i)
- * 
+ *
  * \par Major modifications and contributions:
- * 
+ *
  * - DD.MM.YYYY Description
  * - 06.05.2018 Prepared file for public release -- Rainer Weinberger
  */
 
-
 #include "../main/allvars.h"
-
 
 #ifdef REFINEMENT
 #include "../main/proto.h"
 
-
-#if defined (REFINEMENT_MERGE_CELLS) && defined (REFINEMENT_SPLIT_CELLS)
+#if defined(REFINEMENT_MERGE_CELLS) && defined(REFINEMENT_SPLIT_CELLS)
 char *FlagDoNotRefine;
 #endif /* #if defined (REFINEMENT_MERGE_CELLS) && defined (REFINEMENT_SPLIT_CELLS) */
 
-
 static void refinement_prepare();
 static void refinement_cleanup();
-
 
 /*! \brief Main routine to trigger refinement and de-refinements.
  *
@@ -70,7 +65,6 @@ void do_derefinements_and_refinements()
   refinement_cleanup();
 }
 
-
 /*! \brief Prepares for refinement.
  *
  *  Determines quantities needed by refinement routine;
@@ -86,7 +80,7 @@ void refinement_prepare()
   int idx, i;
 #endif /* #ifdef REFINEMENT_VOLUME_LIMIT */
 
-#if defined (REFINEMENT_MERGE_CELLS) && defined (REFINEMENT_SPLIT_CELLS)
+#if defined(REFINEMENT_MERGE_CELLS) && defined(REFINEMENT_SPLIT_CELLS)
   FlagDoNotRefine = mymalloc_movable(&FlagDoNotRefine, "FlagDoNotRefine", NumGas * sizeof(char));
 #endif /* #if defined (REFINEMENT_MERGE_CELLS) && defined (REFINEMENT_SPLIT_CELLS) */
 
@@ -102,7 +96,7 @@ void refinement_prepare()
       int q = SphP[i].first_connection;
       while(q >= 0)
         {
-          int dp = DC[q].dp_index;
+          int dp       = DC[q].dp_index;
           int particle = Mesh.DP[dp].index;
 
           if(particle < 0)
@@ -124,7 +118,7 @@ void refinement_prepare()
             {
 #ifndef OPTIMIZE_MESH_MEMORY_FOR_REFINEMENT
               Volume = PrimExch[particle].Volume;
-#else /* #ifndef OPTIMIZE_MESH_MEMORY_FOR_REFINEMENT */
+#else  /* #ifndef OPTIMIZE_MESH_MEMORY_FOR_REFINEMENT */
               Volume = RefExch[particle].Volume;
 #endif /* #ifndef OPTIMIZE_MESH_MEMORY_FOR_REFINEMENT #else */
             }
@@ -137,13 +131,11 @@ void refinement_prepare()
 
           q = DC[q].next;
         }
-
     }
 #endif /* #ifdef REFINEMENT_VOLUME_LIMIT */
 
   TIMER_STOP(CPU_REFINE);
 }
-
 
 /*! \brief Cleans up after refinement.
  *
@@ -153,11 +145,10 @@ void refinement_prepare()
  */
 void refinement_cleanup()
 {
-#if defined (REFINEMENT_MERGE_CELLS) && defined (REFINEMENT_SPLIT_CELLS)
+#if defined(REFINEMENT_MERGE_CELLS) && defined(REFINEMENT_SPLIT_CELLS)
   myfree(FlagDoNotRefine);
 #endif /* #if defined (REFINEMENT_MERGE_CELLS) && defined (REFINEMENT_SPLIT_CELLS) */
 }
-
 
 /*! \brief Moves collisionless particle from index old_i to new_i.
  *
@@ -185,7 +176,7 @@ void move_collisionless_particle(int new_i, int old_i)
     return;
 
   tbData = &TimeBinsGravity;
-  bin = P[old_i].TimeBinGrav;
+  bin    = P[old_i].TimeBinGrav;
 
   if(TimeBinSynchronized[bin])
     {
@@ -195,7 +186,7 @@ void move_collisionless_particle(int new_i, int old_i)
       tbData->NActiveParticles++;
     }
 
-  /* now move it in the link list of its timebin 
+  /* now move it in the link list of its timebin
      we only need to change the gravity timebin here */
 
   tbData->NextInTimeBin[new_i] = tbData->NextInTimeBin[old_i];
@@ -221,7 +212,6 @@ void move_collisionless_particle(int new_i, int old_i)
         terminate("strange");
       tbData->LastInTimeBin[bin] = new_i;
     }
-
 }
 
 #endif /* REFINEMENT */

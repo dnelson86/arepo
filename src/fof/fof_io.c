@@ -53,25 +53,22 @@
  * - 24.05.2018 Prepared file for public release -- Rainer Weinberger
  */
 
-
+#include <gsl/gsl_math.h>
+#include <inttypes.h>
+#include <math.h>
 #include <mpi.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <math.h>
 #include <sys/stat.h>
 #include <sys/types.h>
-#include <gsl/gsl_math.h>
-#include <inttypes.h>
 
-
+#include "../domain/domain.h"
+#include "../gitversion/version.h"
 #include "../main/allvars.h"
 #include "../main/proto.h"
-#include "../domain/domain.h"
-#include "fof.h"
 #include "../subfind/subfind.h"
-#include "../gitversion/version.h"
-
+#include "fof.h"
 
 #ifdef HAVE_HDF5
 #include <hdf5.h>
@@ -79,7 +76,6 @@ void fof_subfind_write_header_attributes_in_hdf5(hid_t handle);
 void write_parameters_attributes_in_hdf5(hid_t handle);
 void write_compile_time_options_in_hdf5(hid_t handle);
 #endif /* #ifdef HAVE_HDF5 */
-
 
 #ifdef FOF
 
@@ -90,7 +86,7 @@ void write_compile_time_options_in_hdf5(hid_t handle);
  *
  *  \return double: wrapped coordinate
  */
-MyOutputFloat static wrap_position( MyOutputFloat pos, int dim )
+MyOutputFloat static wrap_position(MyOutputFloat pos, int dim)
 {
 #if defined(REFLECTIVE_X)
   if(dim == 0)
@@ -102,11 +98,11 @@ MyOutputFloat static wrap_position( MyOutputFloat pos, int dim )
     return pos;
 #endif
 
- #if defined(REFLECTIVE_Z)
+#if defined(REFLECTIVE_Z)
   if(dim == 2)
     return pos;
 #endif
-  
+
   double boxsize = All.BoxSize;
 
 #ifdef LONG_X
@@ -153,14 +149,16 @@ void fof_save_groups(int num)
 
   if(NTask < All.NumFilesPerSnapshot)
     {
-      warn("Number of processors must be larger or equal than All.NumFilesPerSnapshot! Reducing All.NumFilesPerSnapshot accordingly.\n");
+      warn(
+          "Number of processors must be larger or equal than All.NumFilesPerSnapshot! Reducing All.NumFilesPerSnapshot "
+          "accordingly.\n");
       All.NumFilesPerSnapshot = NTask;
     }
 
   if(All.SnapFormat < 1 || All.SnapFormat > 3)
     mpi_printf("Unsupported File-Format. All.SnapFormat=%d\n", All.SnapFormat);
 
-#ifndef  HAVE_HDF5
+#ifndef HAVE_HDF5
   if(All.SnapFormat == 3)
     {
       mpi_terminate("Code wasn't compiled with HDF5 support enabled!\n");
@@ -191,7 +189,7 @@ void fof_save_groups(int num)
 
   for(gr = 0; gr < ngrps; gr++)
     {
-      if((filenr / All.NumFilesWrittenInParallel) == gr)        /* ok, it's this processor's turn */
+      if((filenr / All.NumFilesWrittenInParallel) == gr) /* ok, it's this processor's turn */
         fof_subfind_write_file(buf, masterTask, lastTask);
 
       MPI_Barrier(MPI_COMM_WORLD);
@@ -207,7 +205,6 @@ void fof_save_groups(int num)
 
   mpi_printf("FOF: Group catalogues saved. took = %g sec\n", timediff(t0, t1));
 }
-
 
 /*! \brief Prepares ID list for option FOF_STOREIDS.
  *
@@ -232,9 +229,9 @@ void fof_subfind_prepare_ID_list(void)
 
           ID_list[nids].GrNr = PS[i].GrNr;
           ID_list[nids].Type = P[i].Type;
-          ID_list[nids].ID = P[i].ID;
+          ID_list[nids].ID   = P[i].ID;
 #ifdef SUBFIND
-          ID_list[nids].SubNr = PS[i].SubNr;
+          ID_list[nids].SubNr      = PS[i].SubNr;
           ID_list[nids].BindingEgy = PS[i].BindingEnergy;
 #endif /* #ifdef SUBFIND */
           nids++;
@@ -249,17 +246,16 @@ void fof_subfind_prepare_ID_list(void)
       terminate(buf);
     }
 
-  /* sort the particle IDs according to group-number, and optionally subhalo number and binding energy  */
+    /* sort the particle IDs according to group-number, and optionally subhalo number and binding energy  */
 #ifdef SUBFIND
   parallel_sort(ID_list, Nids, sizeof(struct id_list), subfind_compare_ID_list);
-#else /* #ifdef SUBFIND */
+#else  /* #ifdef SUBFIND */
   parallel_sort(ID_list, Nids, sizeof(struct id_list), fof_compare_ID_list_GrNrID);
 #endif /* #ifdef SUBFIND #else */
 
   t1 = second();
   mpi_printf("FOF/SUBFIND: Particle/cell IDs in groups globally sorted. took = %g sec\n", timediff(t0, t1));
 }
-
 
 /*! \brief Writes a file with name fname containing data from writeTask to
  *         lastTask.
@@ -291,7 +287,10 @@ void fof_subfind_write_file(char *fname, int writeTask, int lastTask)
   char buf[1000];
 #endif /* #ifdef HAVE_HDF5 */
 
-#define SKIP  {my_fwrite(&blksize,sizeof(int),1,fd);}
+#define SKIP                                 \
+  {                                          \
+    my_fwrite(&blksize, sizeof(int), 1, fd); \
+  }
 
   /* determine group/id numbers of each type in file */
   n_type[0] = Ngroups;
@@ -320,13 +319,13 @@ void fof_subfind_write_file(char *fname, int writeTask, int lastTask)
     }
 
   /* fill file header */
-  catalogue_header.Ngroups = ntot_type[0];
+  catalogue_header.Ngroups    = ntot_type[0];
   catalogue_header.Nsubgroups = ntot_type[1];
-  catalogue_header.Nids = ntot_type[2];
+  catalogue_header.Nids       = ntot_type[2];
 
-  catalogue_header.TotNgroups = TotNgroups;
+  catalogue_header.TotNgroups    = TotNgroups;
   catalogue_header.TotNsubgroups = TotNsubgroups;
-  catalogue_header.TotNids = TotNids;
+  catalogue_header.TotNids       = TotNids;
 
   catalogue_header.num_files = All.NumFilesPerSnapshot;
 
@@ -336,13 +335,13 @@ void fof_subfind_write_file(char *fname, int writeTask, int lastTask)
   else
     catalogue_header.redshift = 0;
   catalogue_header.HubbleParam = All.HubbleParam;
-  catalogue_header.BoxSize = All.BoxSize;
-  catalogue_header.Omega0 = All.Omega0;
+  catalogue_header.BoxSize     = All.BoxSize;
+  catalogue_header.Omega0      = All.Omega0;
   catalogue_header.OmegaLambda = All.OmegaLambda;
 
 #ifdef OUTPUT_IN_DOUBLEPRECISION
   catalogue_header.flag_doubleprecision = 1;
-#else /* #ifdef OUTPUT_IN_DOUBLEPRECISION */
+#else  /* #ifdef OUTPUT_IN_DOUBLEPRECISION */
   catalogue_header.flag_doubleprecision = 0;
 #endif /* #ifdef OUTPUT_IN_DOUBLEPRECISION #else */
 
@@ -386,7 +385,7 @@ void fof_subfind_write_file(char *fname, int writeTask, int lastTask)
             {
               blksize = sizeof(int) + 4 * sizeof(char);
               SKIP;
-              my_fwrite((void *) "HEAD", sizeof(char), 4, fd);
+              my_fwrite((void *)"HEAD", sizeof(char), 4, fd);
               nextblock = sizeof(catalogue_header) + 2 * sizeof(int);
               my_fwrite(&nextblock, sizeof(int), 1, fd);
               SKIP;
@@ -402,7 +401,7 @@ void fof_subfind_write_file(char *fname, int writeTask, int lastTask)
 
   for(bnr = 0; bnr < 1000; bnr++)
     {
-      blocknr = (enum fof_subfind_iofields) bnr;
+      blocknr = (enum fof_subfind_iofields)bnr;
 
       if(blocknr == IO_FOF_LASTENTRY)
         break;
@@ -411,9 +410,9 @@ void fof_subfind_write_file(char *fname, int writeTask, int lastTask)
         {
           bytes_per_blockelement = fof_subfind_get_bytes_per_blockelement(blocknr);
 
-          blockmaxlen = (int) (COMMBUFFERSIZE / bytes_per_blockelement);
+          blockmaxlen = (int)(COMMBUFFERSIZE / bytes_per_blockelement);
 
-          npart = fof_subfind_get_particles_in_block(blocknr);
+          npart   = fof_subfind_get_particles_in_block(blocknr);
           int grp = fof_subfind_get_dataset_group(blocknr);
 
           if(npart > 0)
@@ -443,26 +442,25 @@ void fof_subfind_write_file(char *fname, int writeTask, int lastTask)
 
                       blksize = npart * bytes_per_blockelement;
                       SKIP;
-
                     }
                   else if(All.SnapFormat == 3)
                     {
 #ifdef HAVE_HDF5
-                      switch (fof_subfind_get_datatype(blocknr))
+                      switch(fof_subfind_get_datatype(blocknr))
                         {
-                        case 0:
-                          hdf5_datatype = my_H5Tcopy(H5T_NATIVE_INT);
-                          break;
-                        case 1:
+                          case 0:
+                            hdf5_datatype = my_H5Tcopy(H5T_NATIVE_INT);
+                            break;
+                          case 1:
 #ifdef OUTPUT_IN_DOUBLEPRECISION
-                          hdf5_datatype = my_H5Tcopy(H5T_NATIVE_DOUBLE);
-#else /* #ifdef OUTPUT_IN_DOUBLEPRECISION */
-                          hdf5_datatype = my_H5Tcopy(H5T_NATIVE_FLOAT);
+                            hdf5_datatype = my_H5Tcopy(H5T_NATIVE_DOUBLE);
+#else  /* #ifdef OUTPUT_IN_DOUBLEPRECISION */
+                            hdf5_datatype = my_H5Tcopy(H5T_NATIVE_FLOAT);
 #endif /* #ifdef OUTPUT_IN_DOUBLEPRECISION #else */
-                          break;
-                        case 2:
-                          hdf5_datatype = my_H5Tcopy(H5T_NATIVE_UINT64);
-                          break;
+                            break;
+                          case 2:
+                            hdf5_datatype = my_H5Tcopy(H5T_NATIVE_UINT64);
+                            break;
                         }
 
                       dims[0] = ntot_type[grp];
@@ -526,13 +524,14 @@ void fof_subfind_write_file(char *fname, int writeTask, int lastTask)
 
                               my_H5Sselect_hyperslab(hdf5_dataspace_in_file, H5S_SELECT_SET, start, NULL, count, NULL);
 
-                              dims[0] = pc;
-                              dims[1] = fof_subfind_get_values_per_blockelement(blocknr);
+                              dims[0]               = pc;
+                              dims[1]               = fof_subfind_get_values_per_blockelement(blocknr);
                               hdf5_dataspace_memory = my_H5Screate_simple(rank, dims, NULL);
 
-                              hdf5_status = my_H5Dwrite(hdf5_dataset, hdf5_datatype, hdf5_dataspace_memory, hdf5_dataspace_in_file, H5P_DEFAULT, CommBuffer, buf);
+                              hdf5_status = my_H5Dwrite(hdf5_dataset, hdf5_datatype, hdf5_dataspace_memory, hdf5_dataspace_in_file,
+                                                        H5P_DEFAULT, CommBuffer, buf);
 
-                              (void) hdf5_status;
+                              (void)hdf5_status;
 
                               my_H5Sclose(hdf5_dataspace_memory, H5S_SIMPLE);
 #endif /* #ifdef HAVE_HDF5 */
@@ -545,7 +544,6 @@ void fof_subfind_write_file(char *fname, int writeTask, int lastTask)
 
                       n_for_this_task -= pc;
                     }
-
                 }
 
               if(ThisTask == writeTask)
@@ -585,7 +583,6 @@ void fof_subfind_write_file(char *fname, int writeTask, int lastTask)
     }
 }
 
-
 /*! \brief Copies data from global group array to appropriate output buffer.
  *
  *  \param[in] blocknr Number (identifier) of the field to be written.
@@ -600,697 +597,696 @@ void fof_subfind_fill_write_buffer(enum fof_subfind_iofields blocknr, int *start
   MyOutputFloat *fp;
   MyIDType *idp;
 
-  fp = (MyOutputFloat *) CommBuffer;
-  ip = (int *) CommBuffer;
-  idp = (MyIDType *) CommBuffer;
+  fp  = (MyOutputFloat *)CommBuffer;
+  ip  = (int *)CommBuffer;
+  idp = (MyIDType *)CommBuffer;
 
 #ifdef FOF_FUZZ_SORT_BY_NEAREST_GROUP
-  unsigned long long *llp = (unsigned long long *) CommBuffer;
+  unsigned long long *llp = (unsigned long long *)CommBuffer;
 #endif /* #ifdef FOF_FUZZ_SORT_BY_NEAREST_GROUP */
 
   pindex = *startindex;
 
   for(n = 0; n < pc; pindex++, n++)
     {
-      switch (blocknr)
+      switch(blocknr)
         {
-        case IO_FOF_LEN:
-          *ip++ = Group[pindex].Len;
-          break;
-        case IO_FOF_MTOT:
-          *fp++ = Group[pindex].Mass;
-          break;
-        case IO_FOF_POS:
-          for(k = 0; k < 3; k++)
+          case IO_FOF_LEN:
+            *ip++ = Group[pindex].Len;
+            break;
+          case IO_FOF_MTOT:
+            *fp++ = Group[pindex].Mass;
+            break;
+          case IO_FOF_POS:
+            for(k = 0; k < 3; k++)
 #ifdef SUBFIND
-            *fp++ = wrap_position( Group[pindex].Pos[k] - All.GlobalDisplacementVector[k], k );
-#else /* #ifdef SUBFIND */
-            *fp++ = wrap_position( Group[pindex].CM[k] - All.GlobalDisplacementVector[k], k );
+              *fp++ = wrap_position(Group[pindex].Pos[k] - All.GlobalDisplacementVector[k], k);
+#else  /* #ifdef SUBFIND */
+              *fp++ = wrap_position(Group[pindex].CM[k] - All.GlobalDisplacementVector[k], k);
 #endif /* #ifdef SUBFIND #else */
-          break;
-        case IO_FOF_CM:
-          for(k = 0; k < 3; k++)
-            *fp++ = wrap_position( Group[pindex].CM[k] - All.GlobalDisplacementVector[k], k );
-          break;
-        case IO_FOF_VEL:
-          for(k = 0; k < 3; k++)
-            *fp++ = Group[pindex].Vel[k];
-          break;
-        case IO_FOF_LENTYPE:
-          for(k = 0; k < NTYPES; k++)
-            *ip++ = Group[pindex].LenType[k];
-          break;
-        case IO_FOF_MASSTYPE:
-          for(k = 0; k < NTYPES; k++)
-            *fp++ = Group[pindex].MassType[k];
-          break;
-        case IO_FOF_SFR:
+            break;
+          case IO_FOF_CM:
+            for(k = 0; k < 3; k++)
+              *fp++ = wrap_position(Group[pindex].CM[k] - All.GlobalDisplacementVector[k], k);
+            break;
+          case IO_FOF_VEL:
+            for(k = 0; k < 3; k++)
+              *fp++ = Group[pindex].Vel[k];
+            break;
+          case IO_FOF_LENTYPE:
+            for(k = 0; k < NTYPES; k++)
+              *ip++ = Group[pindex].LenType[k];
+            break;
+          case IO_FOF_MASSTYPE:
+            for(k = 0; k < NTYPES; k++)
+              *fp++ = Group[pindex].MassType[k];
+            break;
+          case IO_FOF_SFR:
 #ifdef USE_SFR
-          *fp++ = Group[pindex].Sfr;
+            *fp++ = Group[pindex].Sfr;
 #endif /* #ifdef USE_SFR */
-          break;
-        case IO_FOF_M_MEAN200:
+            break;
+          case IO_FOF_M_MEAN200:
 #ifdef SUBFIND
-          *fp++ = Group[pindex].M_Mean200;
+            *fp++ = Group[pindex].M_Mean200;
 #endif /* #ifdef SUBFIND */
-          break;
-        case IO_FOF_R_MEAN200:
+            break;
+          case IO_FOF_R_MEAN200:
 #ifdef SUBFIND
-          *fp++ = Group[pindex].R_Mean200;
+            *fp++ = Group[pindex].R_Mean200;
 #endif /* #ifdef SUBFIND */
-          break;
+            break;
 
 #ifdef SUBFIND_EXTENDED_PROPERTIES
-        case IO_FOF_J_MEAN200:
+          case IO_FOF_J_MEAN200:
 #ifdef SUBFIND
-          for(k = 0; k < 3; k++)
-            *fp++ = Group[pindex].J_Mean200[k];
+            for(k = 0; k < 3; k++)
+              *fp++ = Group[pindex].J_Mean200[k];
 #endif /* #ifdef SUBFIND */
-          break;
-        case IO_FOF_JDM_MEAN200:
+            break;
+          case IO_FOF_JDM_MEAN200:
 #ifdef SUBFIND
-          for(k = 0; k < 3; k++)
-            *fp++ = Group[pindex].JDM_Mean200[k];
+            for(k = 0; k < 3; k++)
+              *fp++ = Group[pindex].JDM_Mean200[k];
 #endif /* #ifdef SUBFIND */
-          break;
-        case IO_FOF_JGAS_MEAN200:
+            break;
+          case IO_FOF_JGAS_MEAN200:
 #ifdef SUBFIND
-          for(k = 0; k < 3; k++)
-            *fp++ = Group[pindex].JGas_Mean200[k];
+            for(k = 0; k < 3; k++)
+              *fp++ = Group[pindex].JGas_Mean200[k];
 #endif /* #ifdef SUBFIND */
-          break;
-        case IO_FOF_JSTARS_MEAN200:
+            break;
+          case IO_FOF_JSTARS_MEAN200:
 #ifdef SUBFIND
-          for(k = 0; k < 3; k++)
-            *fp++ = Group[pindex].JStars_Mean200[k];
+            for(k = 0; k < 3; k++)
+              *fp++ = Group[pindex].JStars_Mean200[k];
 #endif /* #ifdef SUBFIND */
-          break;
-        case IO_FOF_MASSTYPE_MEAN200:
+            break;
+          case IO_FOF_MASSTYPE_MEAN200:
 #ifdef SUBFIND
-          for(k = 0; k < NTYPES; k++)
-            *fp++ = Group[pindex].MassType_Mean200[k];
+            for(k = 0; k < NTYPES; k++)
+              *fp++ = Group[pindex].MassType_Mean200[k];
 #endif /* #ifdef SUBFIND */
-          break;
-        case IO_FOF_LENTYPE_MEAN200:
+            break;
+          case IO_FOF_LENTYPE_MEAN200:
 #ifdef SUBFIND
-          for(k = 0; k < NTYPES; k++)
-            *ip++ = Group[pindex].LenType_Mean200[k];
+            for(k = 0; k < NTYPES; k++)
+              *ip++ = Group[pindex].LenType_Mean200[k];
 #endif /* #ifdef SUBFIND */
-          break;
-        case IO_FOF_CMFRAC_MEAN200:
+            break;
+          case IO_FOF_CMFRAC_MEAN200:
 #ifdef SUBFIND
-          *fp++ = Group[pindex].CMFrac_Mean200;
+            *fp++ = Group[pindex].CMFrac_Mean200;
 #endif /* #ifdef SUBFIND */
-          break;
-        case IO_FOF_CMFRACTYPE_MEAN200:
+            break;
+          case IO_FOF_CMFRACTYPE_MEAN200:
 #ifdef SUBFIND
-          for(k = 0; k < NTYPES; k++)
-            *fp++ = Group[pindex].CMFracType_Mean200[k];
+            for(k = 0; k < NTYPES; k++)
+              *fp++ = Group[pindex].CMFracType_Mean200[k];
 #endif /* #ifdef SUBFIND */
-          break;
-        case IO_FOF_J_CRIT200:
+            break;
+          case IO_FOF_J_CRIT200:
 #ifdef SUBFIND
-          for(k = 0; k < 3; k++)
-            *fp++ = Group[pindex].J_Crit200[k];
+            for(k = 0; k < 3; k++)
+              *fp++ = Group[pindex].J_Crit200[k];
 #endif /* #ifdef SUBFIND */
-          break;
-        case IO_FOF_JDM_CRIT200:
+            break;
+          case IO_FOF_JDM_CRIT200:
 #ifdef SUBFIND
-          for(k = 0; k < 3; k++)
-            *fp++ = Group[pindex].JDM_Crit200[k];
+            for(k = 0; k < 3; k++)
+              *fp++ = Group[pindex].JDM_Crit200[k];
 #endif /* #ifdef SUBFIND */
-          break;
-        case IO_FOF_JGAS_CRIT200:
+            break;
+          case IO_FOF_JGAS_CRIT200:
 #ifdef SUBFIND
-          for(k = 0; k < 3; k++)
-            *fp++ = Group[pindex].JGas_Crit200[k];
+            for(k = 0; k < 3; k++)
+              *fp++ = Group[pindex].JGas_Crit200[k];
 #endif /* #ifdef SUBFIND */
-          break;
-        case IO_FOF_JSTARS_CRIT200:
+            break;
+          case IO_FOF_JSTARS_CRIT200:
 #ifdef SUBFIND
-          for(k = 0; k < 3; k++)
-            *fp++ = Group[pindex].JStars_Crit200[k];
+            for(k = 0; k < 3; k++)
+              *fp++ = Group[pindex].JStars_Crit200[k];
 #endif /* #ifdef SUBFIND */
-          break;
-        case IO_FOF_MASSTYPE_CRIT200:
+            break;
+          case IO_FOF_MASSTYPE_CRIT200:
 #ifdef SUBFIND
-          for(k = 0; k < NTYPES; k++)
-            *fp++ = Group[pindex].MassType_Crit200[k];
+            for(k = 0; k < NTYPES; k++)
+              *fp++ = Group[pindex].MassType_Crit200[k];
 #endif /* #ifdef SUBFIND */
-          break;
-        case IO_FOF_LENTYPE_CRIT200:
+            break;
+          case IO_FOF_LENTYPE_CRIT200:
 #ifdef SUBFIND
-          for(k = 0; k < NTYPES; k++)
-            *ip++ = Group[pindex].LenType_Crit200[k];
+            for(k = 0; k < NTYPES; k++)
+              *ip++ = Group[pindex].LenType_Crit200[k];
 #endif /* #ifdef SUBFIND */
-          break;
-        case IO_FOF_CMFRAC_CRIT200:
+            break;
+          case IO_FOF_CMFRAC_CRIT200:
 #ifdef SUBFIND
-          *fp++ = Group[pindex].CMFrac_Crit200;
+            *fp++ = Group[pindex].CMFrac_Crit200;
 #endif /* #ifdef SUBFIND */
-          break;
-        case IO_FOF_CMFRACTYPE_CRIT200:
+            break;
+          case IO_FOF_CMFRACTYPE_CRIT200:
 #ifdef SUBFIND
-          for(k = 0; k < NTYPES; k++)
-            *fp++ = Group[pindex].CMFracType_Crit200[k];
+            for(k = 0; k < NTYPES; k++)
+              *fp++ = Group[pindex].CMFracType_Crit200[k];
 #endif /* #ifdef SUBFIND */
-          break;
-        case IO_FOF_J_CRIT500:
+            break;
+          case IO_FOF_J_CRIT500:
 #ifdef SUBFIND
-          for(k = 0; k < 3; k++)
-            *fp++ = Group[pindex].J_Crit500[k];
+            for(k = 0; k < 3; k++)
+              *fp++ = Group[pindex].J_Crit500[k];
 #endif /* #ifdef SUBFIND */
-          break;
-        case IO_FOF_JDM_CRIT500:
+            break;
+          case IO_FOF_JDM_CRIT500:
 #ifdef SUBFIND
-          for(k = 0; k < 3; k++)
-            *fp++ = Group[pindex].JDM_Crit500[k];
+            for(k = 0; k < 3; k++)
+              *fp++ = Group[pindex].JDM_Crit500[k];
 #endif /* #ifdef SUBFIND */
-          break;
-        case IO_FOF_JGAS_CRIT500:
+            break;
+          case IO_FOF_JGAS_CRIT500:
 #ifdef SUBFIND
-          for(k = 0; k < 3; k++)
-            *fp++ = Group[pindex].JGas_Crit500[k];
+            for(k = 0; k < 3; k++)
+              *fp++ = Group[pindex].JGas_Crit500[k];
 #endif /* #ifdef SUBFIND */
-          break;
-        case IO_FOF_JSTARS_CRIT500:
+            break;
+          case IO_FOF_JSTARS_CRIT500:
 #ifdef SUBFIND
-          for(k = 0; k < 3; k++)
-            *fp++ = Group[pindex].JStars_Crit500[k];
+            for(k = 0; k < 3; k++)
+              *fp++ = Group[pindex].JStars_Crit500[k];
 #endif /* #ifdef SUBFIND */
-          break;
-        case IO_FOF_MASSTYPE_CRIT500:
+            break;
+          case IO_FOF_MASSTYPE_CRIT500:
 #ifdef SUBFIND
-          for(k = 0; k < NTYPES; k++)
-            *fp++ = Group[pindex].MassType_Crit500[k];
+            for(k = 0; k < NTYPES; k++)
+              *fp++ = Group[pindex].MassType_Crit500[k];
 #endif /* #ifdef SUBFIND */
-          break;
-        case IO_FOF_LENTYPE_CRIT500:
+            break;
+          case IO_FOF_LENTYPE_CRIT500:
 #ifdef SUBFIND
-          for(k = 0; k < NTYPES; k++)
-            *ip++ = Group[pindex].LenType_Crit500[k];
+            for(k = 0; k < NTYPES; k++)
+              *ip++ = Group[pindex].LenType_Crit500[k];
 #endif /* #ifdef SUBFIND */
-          break;
-        case IO_FOF_CMFRAC_CRIT500:
+            break;
+          case IO_FOF_CMFRAC_CRIT500:
 #ifdef SUBFIND
-          *fp++ = Group[pindex].CMFrac_Crit500;
+            *fp++ = Group[pindex].CMFrac_Crit500;
 #endif /* #ifdef SUBFIND */
-          break;
-        case IO_FOF_CMFRACTYPE_CRIT500:
+            break;
+          case IO_FOF_CMFRACTYPE_CRIT500:
 #ifdef SUBFIND
-          for(k = 0; k < NTYPES; k++)
-            *fp++ = Group[pindex].CMFracType_Crit500[k];
+            for(k = 0; k < NTYPES; k++)
+              *fp++ = Group[pindex].CMFracType_Crit500[k];
 #endif /* #ifdef SUBFIND */
-          break;
-        case IO_FOF_J_TOPHAT200:
+            break;
+          case IO_FOF_J_TOPHAT200:
 #ifdef SUBFIND
-          for(k = 0; k < 3; k++)
-            *fp++ = Group[pindex].J_TopHat200[k];
+            for(k = 0; k < 3; k++)
+              *fp++ = Group[pindex].J_TopHat200[k];
 #endif /* #ifdef SUBFIND */
-          break;
-        case IO_FOF_JDM_TOPHAT200:
+            break;
+          case IO_FOF_JDM_TOPHAT200:
 #ifdef SUBFIND
-          for(k = 0; k < 3; k++)
-            *fp++ = Group[pindex].JDM_TopHat200[k];
+            for(k = 0; k < 3; k++)
+              *fp++ = Group[pindex].JDM_TopHat200[k];
 #endif /* #ifdef SUBFIND */
-          break;
-        case IO_FOF_JGAS_TOPHAT200:
+            break;
+          case IO_FOF_JGAS_TOPHAT200:
 #ifdef SUBFIND
-          for(k = 0; k < 3; k++)
-            *fp++ = Group[pindex].JGas_TopHat200[k];
+            for(k = 0; k < 3; k++)
+              *fp++ = Group[pindex].JGas_TopHat200[k];
 #endif /* #ifdef SUBFIND */
-          break;
-        case IO_FOF_JSTARS_TOPHAT200:
+            break;
+          case IO_FOF_JSTARS_TOPHAT200:
 #ifdef SUBFIND
-          for(k = 0; k < 3; k++)
-            *fp++ = Group[pindex].JStars_TopHat200[k];
+            for(k = 0; k < 3; k++)
+              *fp++ = Group[pindex].JStars_TopHat200[k];
 #endif /* #ifdef SUBFIND */
-          break;
-        case IO_FOF_MASSTYPE_TOPHAT200:
+            break;
+          case IO_FOF_MASSTYPE_TOPHAT200:
 #ifdef SUBFIND
-          for(k = 0; k < NTYPES; k++)
-            *fp++ = Group[pindex].MassType_TopHat200[k];
+            for(k = 0; k < NTYPES; k++)
+              *fp++ = Group[pindex].MassType_TopHat200[k];
 #endif /* #ifdef SUBFIND */
-          break;
-        case IO_FOF_LENTYPE_TOPHAT200:
+            break;
+          case IO_FOF_LENTYPE_TOPHAT200:
 #ifdef SUBFIND
-          for(k = 0; k < NTYPES; k++)
-            *ip++ = Group[pindex].LenType_TopHat200[k];
+            for(k = 0; k < NTYPES; k++)
+              *ip++ = Group[pindex].LenType_TopHat200[k];
 #endif /* #ifdef SUBFIND */
-          break;
-        case IO_FOF_CMFRAC_TOPHAT200:
+            break;
+          case IO_FOF_CMFRAC_TOPHAT200:
 #ifdef SUBFIND
-          *fp++ = Group[pindex].CMFrac_TopHat200;
+            *fp++ = Group[pindex].CMFrac_TopHat200;
 #endif /* #ifdef SUBFIND */
-          break;
-        case IO_FOF_CMFRACTYPE_TOPHAT200:
+            break;
+          case IO_FOF_CMFRACTYPE_TOPHAT200:
 #ifdef SUBFIND
-          for(k = 0; k < NTYPES; k++)
-            *fp++ = Group[pindex].CMFracType_TopHat200[k];
+            for(k = 0; k < NTYPES; k++)
+              *fp++ = Group[pindex].CMFracType_TopHat200[k];
 #endif /* #ifdef SUBFIND */
-          break;
-        case IO_FOF_EPOT_CRIT200:
+            break;
+          case IO_FOF_EPOT_CRIT200:
 #ifdef SUBFIND
-          *fp++ = Group[pindex].Epot_Crit200;
+            *fp++ = Group[pindex].Epot_Crit200;
 #endif /* #ifdef SUBFIND */
-          break;
-        case IO_FOF_EKIN_CRIT200:
+            break;
+          case IO_FOF_EKIN_CRIT200:
 #ifdef SUBFIND
-          *fp++ = Group[pindex].Ekin_Crit200;
+            *fp++ = Group[pindex].Ekin_Crit200;
 #endif /* #ifdef SUBFIND */
-          break;
-        case IO_FOF_ETHR_CRIT200:
+            break;
+          case IO_FOF_ETHR_CRIT200:
 #ifdef SUBFIND
-          *fp++ = Group[pindex].Ethr_Crit200;
+            *fp++ = Group[pindex].Ethr_Crit200;
 #endif /* #ifdef SUBFIND */
-          break;
-        case IO_FOF_EPOT_MEAN200:
+            break;
+          case IO_FOF_EPOT_MEAN200:
 #ifdef SUBFIND
-          *fp++ = Group[pindex].Epot_Mean200;
+            *fp++ = Group[pindex].Epot_Mean200;
 #endif /* #ifdef SUBFIND */
-          break;
-        case IO_FOF_EKIN_MEAN200:
+            break;
+          case IO_FOF_EKIN_MEAN200:
 #ifdef SUBFIND
-          *fp++ = Group[pindex].Ekin_Mean200;
+            *fp++ = Group[pindex].Ekin_Mean200;
 #endif /* #ifdef SUBFIND */
-          break;
-        case IO_FOF_ETHR_MEAN200:
+            break;
+          case IO_FOF_ETHR_MEAN200:
 #ifdef SUBFIND
-          *fp++ = Group[pindex].Ethr_Mean200;
+            *fp++ = Group[pindex].Ethr_Mean200;
 #endif /* #ifdef SUBFIND */
-          break;
-        case IO_FOF_EPOT_TOPHAT200:
+            break;
+          case IO_FOF_EPOT_TOPHAT200:
 #ifdef SUBFIND
-          *fp++ = Group[pindex].Epot_TopHat200;
+            *fp++ = Group[pindex].Epot_TopHat200;
 #endif /* #ifdef SUBFIND */
-          break;
-        case IO_FOF_EKIN_TOPHAT200:
+            break;
+          case IO_FOF_EKIN_TOPHAT200:
 #ifdef SUBFIND
-          *fp++ = Group[pindex].Ekin_TopHat200;
+            *fp++ = Group[pindex].Ekin_TopHat200;
 #endif /* #ifdef SUBFIND */
-          break;
-        case IO_FOF_ETHR_TOPHAT200:
+            break;
+          case IO_FOF_ETHR_TOPHAT200:
 #ifdef SUBFIND
-          *fp++ = Group[pindex].Ethr_TopHat200;
+            *fp++ = Group[pindex].Ethr_TopHat200;
 #endif /* #ifdef SUBFIND */
-          break;
-        case IO_FOF_EPOT_CRIT500:
+            break;
+          case IO_FOF_EPOT_CRIT500:
 #ifdef SUBFIND
-          *fp++ = Group[pindex].Epot_Crit500;
+            *fp++ = Group[pindex].Epot_Crit500;
 #endif /* #ifdef SUBFIND */
-          break;
-        case IO_FOF_EKIN_CRIT500:
+            break;
+          case IO_FOF_EKIN_CRIT500:
 #ifdef SUBFIND
-          *fp++ = Group[pindex].Ekin_Crit500;
+            *fp++ = Group[pindex].Ekin_Crit500;
 #endif /* #ifdef SUBFIND */
-          break;
-        case IO_FOF_ETHR_CRIT500:
+            break;
+          case IO_FOF_ETHR_CRIT500:
 #ifdef SUBFIND
-          *fp++ = Group[pindex].Ethr_Crit500;
+            *fp++ = Group[pindex].Ethr_Crit500;
 #endif /* #ifdef SUBFIND */
-          break;
-        case IO_FOF_J:
+            break;
+          case IO_FOF_J:
 #ifdef SUBFIND
-          for(k = 0; k < 3; k++)
-            *fp++ = Group[pindex].J[k];
+            for(k = 0; k < 3; k++)
+              *fp++ = Group[pindex].J[k];
 #endif /* #ifdef SUBFIND */
-          break;
-        case IO_FOF_JDM:
+            break;
+          case IO_FOF_JDM:
 #ifdef SUBFIND
-          for(k = 0; k < 3; k++)
-            *fp++ = Group[pindex].JDM[k];
+            for(k = 0; k < 3; k++)
+              *fp++ = Group[pindex].JDM[k];
 #endif /* #ifdef SUBFIND */
-          break;
-        case IO_FOF_JGAS:
+            break;
+          case IO_FOF_JGAS:
 #ifdef SUBFIND
-          for(k = 0; k < 3; k++)
-            *fp++ = Group[pindex].JGas[k];
+            for(k = 0; k < 3; k++)
+              *fp++ = Group[pindex].JGas[k];
 #endif /* #ifdef SUBFIND */
-          break;
-        case IO_FOF_JSTARS:
+            break;
+          case IO_FOF_JSTARS:
 #ifdef SUBFIND
-          for(k = 0; k < 3; k++)
-            *fp++ = Group[pindex].JStars[k];
+            for(k = 0; k < 3; k++)
+              *fp++ = Group[pindex].JStars[k];
 #endif /* #ifdef SUBFIND */
-          break;
-        case IO_FOF_CMFRAC:
+            break;
+          case IO_FOF_CMFRAC:
 #ifdef SUBFIND
-          *fp++ = Group[pindex].CMFrac;
+            *fp++ = Group[pindex].CMFrac;
 #endif /* #ifdef SUBFIND */
-          break;
-        case IO_FOF_CMFRACTYPE:
+            break;
+          case IO_FOF_CMFRACTYPE:
 #ifdef SUBFIND
-          for(k = 0; k < NTYPES; k++)
-            *fp++ = Group[pindex].CMFracType[k];
+            for(k = 0; k < NTYPES; k++)
+              *fp++ = Group[pindex].CMFracType[k];
 #endif /* #ifdef SUBFIND */
-          break;
-        case IO_FOF_EKIN:
+            break;
+          case IO_FOF_EKIN:
 #ifdef SUBFIND
-          *fp++ = Group[pindex].Ekin;
+            *fp++ = Group[pindex].Ekin;
 #endif /* #ifdef SUBFIND */
-          break;
-        case IO_FOF_ETHR:
+            break;
+          case IO_FOF_ETHR:
 #ifdef SUBFIND
-          *fp++ = Group[pindex].Ethr;
+            *fp++ = Group[pindex].Ethr;
 #endif /* #ifdef SUBFIND */
-          break;
-        case IO_FOF_EPOT:
+            break;
+          case IO_FOF_EPOT:
 #ifdef SUBFIND
-          *fp++ = Group[pindex].Epot;
+            *fp++ = Group[pindex].Epot;
 #endif /* #ifdef SUBFIND */
-          break;
-        case IO_SUB_EKIN:
+            break;
+          case IO_SUB_EKIN:
 #ifdef SUBFIND
-          *fp++ = SubGroup[pindex].Ekin;
+            *fp++ = SubGroup[pindex].Ekin;
 #endif /* #ifdef SUBFIND */
-          break;
-        case IO_SUB_ETHR:
+            break;
+          case IO_SUB_ETHR:
 #ifdef SUBFIND
-          *fp++ = SubGroup[pindex].Ethr;
+            *fp++ = SubGroup[pindex].Ethr;
 #endif /* #ifdef SUBFIND */
-          break;
-        case IO_SUB_EPOT:
+            break;
+          case IO_SUB_EPOT:
 #ifdef SUBFIND
-          *fp++ = SubGroup[pindex].Epot;
+            *fp++ = SubGroup[pindex].Epot;
 #endif /* #ifdef SUBFIND */
-          break;
-        case IO_SUB_J:
-          for(k = 0; k < 3; k++)
+            break;
+          case IO_SUB_J:
+            for(k = 0; k < 3; k++)
 #ifdef SUBFIND
-            *fp++ = SubGroup[pindex].J[k];
+              *fp++ = SubGroup[pindex].J[k];
 #endif /* #ifdef SUBFIND */
-          break;
-        case IO_SUB_JDM:
-          for(k = 0; k < 3; k++)
+            break;
+          case IO_SUB_JDM:
+            for(k = 0; k < 3; k++)
 #ifdef SUBFIND
-            *fp++ = SubGroup[pindex].Jdm[k];
+              *fp++ = SubGroup[pindex].Jdm[k];
 #endif /* #ifdef SUBFIND */
-          break;
-        case IO_SUB_JGAS:
-          for(k = 0; k < 3; k++)
+            break;
+          case IO_SUB_JGAS:
+            for(k = 0; k < 3; k++)
 #ifdef SUBFIND
-            *fp++ = SubGroup[pindex].Jgas[k];
+              *fp++ = SubGroup[pindex].Jgas[k];
 #endif /* #ifdef SUBFIND */
-          break;
-        case IO_SUB_JSTARS:
-          for(k = 0; k < 3; k++)
+            break;
+          case IO_SUB_JSTARS:
+            for(k = 0; k < 3; k++)
 #ifdef SUBFIND
-            *fp++ = SubGroup[pindex].Jstars[k];
+              *fp++ = SubGroup[pindex].Jstars[k];
 #endif /* #ifdef SUBFIND */
-          break;
-        case IO_SUB_JINHALFRAD:
-          for(k = 0; k < 3; k++)
+            break;
+          case IO_SUB_JINHALFRAD:
+            for(k = 0; k < 3; k++)
 #ifdef SUBFIND
-            *fp++ = SubGroup[pindex].J_inHalfRad[k];
+              *fp++ = SubGroup[pindex].J_inHalfRad[k];
 #endif /* #ifdef SUBFIND */
-          break;
-        case IO_SUB_JDMINHALFRAD:
-          for(k = 0; k < 3; k++)
+            break;
+          case IO_SUB_JDMINHALFRAD:
+            for(k = 0; k < 3; k++)
 #ifdef SUBFIND
-            *fp++ = SubGroup[pindex].Jdm_inHalfRad[k];
+              *fp++ = SubGroup[pindex].Jdm_inHalfRad[k];
 #endif /* #ifdef SUBFIND */
-          break;
-        case IO_SUB_JGASINHALFRAD:
-          for(k = 0; k < 3; k++)
+            break;
+          case IO_SUB_JGASINHALFRAD:
+            for(k = 0; k < 3; k++)
 #ifdef SUBFIND
-            *fp++ = SubGroup[pindex].Jgas_inHalfRad[k];
+              *fp++ = SubGroup[pindex].Jgas_inHalfRad[k];
 #endif /* #ifdef SUBFIND */
-          break;
-        case IO_SUB_JSTARSINHALFRAD:
-          for(k = 0; k < 3; k++)
+            break;
+          case IO_SUB_JSTARSINHALFRAD:
+            for(k = 0; k < 3; k++)
 #ifdef SUBFIND
-            *fp++ = SubGroup[pindex].Jstars_inHalfRad[k];
+              *fp++ = SubGroup[pindex].Jstars_inHalfRad[k];
 #endif /* #ifdef SUBFIND */
-          break;
-        case IO_SUB_JINRAD:
-          for(k = 0; k < 3; k++)
+            break;
+          case IO_SUB_JINRAD:
+            for(k = 0; k < 3; k++)
 #ifdef SUBFIND
-            *fp++ = SubGroup[pindex].J_inRad[k];
+              *fp++ = SubGroup[pindex].J_inRad[k];
 #endif /* #ifdef SUBFIND */
-          break;
-        case IO_SUB_JDMINRAD:
-          for(k = 0; k < 3; k++)
+            break;
+          case IO_SUB_JDMINRAD:
+            for(k = 0; k < 3; k++)
 #ifdef SUBFIND
-            *fp++ = SubGroup[pindex].Jdm_inRad[k];
+              *fp++ = SubGroup[pindex].Jdm_inRad[k];
 #endif /* #ifdef SUBFIND */
-          break;
-        case IO_SUB_JGASINRAD:
-          for(k = 0; k < 3; k++)
+            break;
+          case IO_SUB_JGASINRAD:
+            for(k = 0; k < 3; k++)
 #ifdef SUBFIND
-            *fp++ = SubGroup[pindex].Jgas_inRad[k];
+              *fp++ = SubGroup[pindex].Jgas_inRad[k];
 #endif /* #ifdef SUBFIND */
-          break;
-        case IO_SUB_JSTARSINRAD:
-          for(k = 0; k < 3; k++)
+            break;
+          case IO_SUB_JSTARSINRAD:
+            for(k = 0; k < 3; k++)
 #ifdef SUBFIND
-            *fp++ = SubGroup[pindex].Jstars_inRad[k];
+              *fp++ = SubGroup[pindex].Jstars_inRad[k];
 #endif /* #ifdef SUBFIND */
-          break;
-        case IO_SUB_CMFRAC:
+            break;
+          case IO_SUB_CMFRAC:
 #ifdef SUBFIND
-          *fp++ = SubGroup[pindex].CMFrac;
+            *fp++ = SubGroup[pindex].CMFrac;
 #endif /* #ifdef SUBFIND */
-          break;
-        case IO_SUB_CMFRACTYPE:
+            break;
+          case IO_SUB_CMFRACTYPE:
 #ifdef SUBFIND
-          for(k = 0; k < NTYPES; k++)
-            *fp++ = SubGroup[pindex].CMFracType[k];
+            for(k = 0; k < NTYPES; k++)
+              *fp++ = SubGroup[pindex].CMFracType[k];
 #endif /* #ifdef SUBFIND */
-          break;
-        case IO_SUB_CMFRACINHALFRAD:
+            break;
+          case IO_SUB_CMFRACINHALFRAD:
 #ifdef SUBFIND
-          *fp++ = SubGroup[pindex].CMFrac_inHalfRad;
+            *fp++ = SubGroup[pindex].CMFrac_inHalfRad;
 #endif /* #ifdef SUBFIND */
-          break;
-        case IO_SUB_CMFRACTYPEINHALFRAD:
+            break;
+          case IO_SUB_CMFRACTYPEINHALFRAD:
 #ifdef SUBFIND
-          for(k = 0; k < NTYPES; k++)
-            *fp++ = SubGroup[pindex].CMFracType_inHalfRad[k];
+            for(k = 0; k < NTYPES; k++)
+              *fp++ = SubGroup[pindex].CMFracType_inHalfRad[k];
 #endif /* #ifdef SUBFIND */
-          break;
-        case IO_SUB_CMFRACINRAD:
+            break;
+          case IO_SUB_CMFRACINRAD:
 #ifdef SUBFIND
-          *fp++ = SubGroup[pindex].CMFrac_inRad;
+            *fp++ = SubGroup[pindex].CMFrac_inRad;
 #endif /* #ifdef SUBFIND */
-          break;
-        case IO_SUB_CMFRACTYPEINRAD:
+            break;
+          case IO_SUB_CMFRACTYPEINRAD:
 #ifdef SUBFIND
-          for(k = 0; k < NTYPES; k++)
-            *fp++ = SubGroup[pindex].CMFracType_inRad[k];
+            for(k = 0; k < NTYPES; k++)
+              *fp++ = SubGroup[pindex].CMFracType_inRad[k];
 #endif /* #ifdef SUBFIND */
-          break;
+            break;
 #endif /* #ifdef SUBFIND_EXTENDED_PROPERTIES */
 
-          break;
-        case IO_FOF_M_CRIT200:
+            break;
+          case IO_FOF_M_CRIT200:
 #ifdef SUBFIND
-          *fp++ = Group[pindex].M_Crit200;
+            *fp++ = Group[pindex].M_Crit200;
 #endif /* #ifdef SUBFIND */
-          break;
-        case IO_FOF_R_CRIT200:
+            break;
+          case IO_FOF_R_CRIT200:
 #ifdef SUBFIND
-          *fp++ = Group[pindex].R_Crit200;
+            *fp++ = Group[pindex].R_Crit200;
 #endif /* #ifdef SUBFIND */
-          break;
-        case IO_FOF_M_CRIT500:
+            break;
+          case IO_FOF_M_CRIT500:
 #ifdef SUBFIND
-          *fp++ = Group[pindex].M_Crit500;
+            *fp++ = Group[pindex].M_Crit500;
 #endif /* #ifdef SUBFIND */
-          break;
-        case IO_FOF_R_CRIT500:
+            break;
+          case IO_FOF_R_CRIT500:
 #ifdef SUBFIND
-          *fp++ = Group[pindex].R_Crit500;
+            *fp++ = Group[pindex].R_Crit500;
 #endif /* #ifdef SUBFIND */
-          break;
-        case IO_FOF_M_TOPHAT200:
+            break;
+          case IO_FOF_M_TOPHAT200:
 #ifdef SUBFIND
-          *fp++ = Group[pindex].M_TopHat200;
+            *fp++ = Group[pindex].M_TopHat200;
 #endif /* #ifdef SUBFIND */
-          break;
-        case IO_FOF_R_TOPHAT200:
+            break;
+          case IO_FOF_R_TOPHAT200:
 #ifdef SUBFIND
-          *fp++ = Group[pindex].R_TopHat200;
+            *fp++ = Group[pindex].R_TopHat200;
 #endif /* #ifdef SUBFIND */
-          break;
-        case IO_FOF_NSUBS:
+            break;
+          case IO_FOF_NSUBS:
 #ifdef SUBFIND
-          *ip++ = Group[pindex].Nsubs;
+            *ip++ = Group[pindex].Nsubs;
 #endif /* #ifdef SUBFIND */
-          break;
-        case IO_FOF_FIRSTSUB:
+            break;
+          case IO_FOF_FIRSTSUB:
 #ifdef SUBFIND
-          *ip++ = Group[pindex].FirstSub;
+            *ip++ = Group[pindex].FirstSub;
 #endif /* #ifdef SUBFIND */
-          break;
-        case IO_FOF_FUZZOFFTYPE:
+            break;
+          case IO_FOF_FUZZOFFTYPE:
 #ifdef FOF_FUZZ_SORT_BY_NEAREST_GROUP
-          for(k = 0; k < NTYPES; k++)
-            *llp++ = Group[pindex].FuzzOffsetType[k];
+            for(k = 0; k < NTYPES; k++)
+              *llp++ = Group[pindex].FuzzOffsetType[k];
 #endif /* #ifdef FOF_FUZZ_SORT_BY_NEAREST_GROUP */
-          break;
-        case IO_SUB_LEN:
+            break;
+          case IO_SUB_LEN:
 #ifdef SUBFIND
-          *ip++ = SubGroup[pindex].Len;
+            *ip++ = SubGroup[pindex].Len;
 #endif /* #ifdef SUBFIND */
-          break;
-        case IO_SUB_MTOT:
+            break;
+          case IO_SUB_MTOT:
 #ifdef SUBFIND
-          *fp++ = SubGroup[pindex].Mass;
+            *fp++ = SubGroup[pindex].Mass;
 #endif /* #ifdef SUBFIND */
-          break;
-        case IO_SUB_POS:
+            break;
+          case IO_SUB_POS:
 #ifdef SUBFIND
-          for(k = 0; k < 3; k++)
-            *fp++ = wrap_position( SubGroup[pindex].Pos[k] - All.GlobalDisplacementVector[k], k );
+            for(k = 0; k < 3; k++)
+              *fp++ = wrap_position(SubGroup[pindex].Pos[k] - All.GlobalDisplacementVector[k], k);
 #endif /* #ifdef SUBFIND */
-          break;
-        case IO_SUB_VEL:
+            break;
+          case IO_SUB_VEL:
 #ifdef SUBFIND
-          for(k = 0; k < 3; k++)
-            *fp++ = SubGroup[pindex].Vel[k];
+            for(k = 0; k < 3; k++)
+              *fp++ = SubGroup[pindex].Vel[k];
 #endif /* #ifdef SUBFIND */
-          break;
-        case IO_SUB_LENTYPE:
+            break;
+          case IO_SUB_LENTYPE:
 #ifdef SUBFIND
-          for(k = 0; k < NTYPES; k++)
-            *ip++ = SubGroup[pindex].LenType[k];
+            for(k = 0; k < NTYPES; k++)
+              *ip++ = SubGroup[pindex].LenType[k];
 #endif /* #ifdef SUBFIND */
-          break;
-        case IO_SUB_MASSTYPE:
+            break;
+          case IO_SUB_MASSTYPE:
 #ifdef SUBFIND
-          for(k = 0; k < NTYPES; k++)
-            *fp++ = SubGroup[pindex].MassType[k];
+            for(k = 0; k < NTYPES; k++)
+              *fp++ = SubGroup[pindex].MassType[k];
 #endif /* #ifdef SUBFIND */
-          break;
-        case IO_SUB_CM:
+            break;
+          case IO_SUB_CM:
 #ifdef SUBFIND
-          for(k = 0; k < 3; k++)
-            *fp++ = wrap_position( SubGroup[pindex].CM[k] - All.GlobalDisplacementVector[k], k );
+            for(k = 0; k < 3; k++)
+              *fp++ = wrap_position(SubGroup[pindex].CM[k] - All.GlobalDisplacementVector[k], k);
 #endif /* #ifdef SUBFIND */
-          break;
-        case IO_SUB_SPIN:
-          for(k = 0; k < 3; k++)
+            break;
+          case IO_SUB_SPIN:
+            for(k = 0; k < 3; k++)
 #ifdef SUBFIND
-            *fp++ = SubGroup[pindex].Spin[k];
+              *fp++ = SubGroup[pindex].Spin[k];
 #endif /* #ifdef SUBFIND */
-          break;
-        case IO_SUB_VELDISP:
+            break;
+          case IO_SUB_VELDISP:
 #ifdef SUBFIND
-          *fp++ = SubGroup[pindex].SubVelDisp;
+            *fp++ = SubGroup[pindex].SubVelDisp;
 #endif /* #ifdef SUBFIND */
-          break;
-        case IO_SUB_VMAX:
+            break;
+          case IO_SUB_VMAX:
 #ifdef SUBFIND
-          *fp++ = SubGroup[pindex].SubVmax;
+            *fp++ = SubGroup[pindex].SubVmax;
 #endif /* #ifdef SUBFIND */
-          break;
-        case IO_SUB_VMAXRAD:
+            break;
+          case IO_SUB_VMAXRAD:
 #ifdef SUBFIND
-          *fp++ = SubGroup[pindex].SubVmaxRad;
+            *fp++ = SubGroup[pindex].SubVmaxRad;
 #endif /* #ifdef SUBFIND */
-          break;
-        case IO_SUB_HALFMASSRAD:
+            break;
+          case IO_SUB_HALFMASSRAD:
 #ifdef SUBFIND
-          *fp++ = SubGroup[pindex].SubHalfMassRad;
+            *fp++ = SubGroup[pindex].SubHalfMassRad;
 #endif /* #ifdef SUBFIND */
-          break;
-        case IO_SUB_HALFMASSRADTYPE:
+            break;
+          case IO_SUB_HALFMASSRADTYPE:
 #ifdef SUBFIND
-          for(k = 0; k < NTYPES; k++)
-            *fp++ = SubGroup[pindex].SubHalfMassRadType[k];
+            for(k = 0; k < NTYPES; k++)
+              *fp++ = SubGroup[pindex].SubHalfMassRadType[k];
 #endif /* #ifdef SUBFIND */
-          break;
-        case IO_SUB_MASSINRAD:
+            break;
+          case IO_SUB_MASSINRAD:
 #ifdef SUBFIND
-          *fp++ = SubGroup[pindex].SubMassInRad;
+            *fp++ = SubGroup[pindex].SubMassInRad;
 #endif /* #ifdef SUBFIND */
-          break;
-        case IO_SUB_MASSINRADTYPE:
+            break;
+          case IO_SUB_MASSINRADTYPE:
 #ifdef SUBFIND
-          for(k = 0; k < NTYPES; k++)
-            *fp++ = SubGroup[pindex].SubMassInRadType[k];
+            for(k = 0; k < NTYPES; k++)
+              *fp++ = SubGroup[pindex].SubMassInRadType[k];
 #endif /* #ifdef SUBFIND */
-          break;
-        case IO_SUB_MASSINHALFRAD:
+            break;
+          case IO_SUB_MASSINHALFRAD:
 #ifdef SUBFIND
-          *fp++ = SubGroup[pindex].SubMassInHalfRad;
+            *fp++ = SubGroup[pindex].SubMassInHalfRad;
 #endif /* #ifdef SUBFIND */
-          break;
-        case IO_SUB_MASSINHALFRADTYPE:
+            break;
+          case IO_SUB_MASSINHALFRADTYPE:
 #ifdef SUBFIND
-          for(k = 0; k < NTYPES; k++)
-            *fp++ = SubGroup[pindex].SubMassInHalfRadType[k];
+            for(k = 0; k < NTYPES; k++)
+              *fp++ = SubGroup[pindex].SubMassInHalfRadType[k];
 #endif /* #ifdef SUBFIND */
-          break;
-        case IO_SUB_MASSINMAXRAD:
+            break;
+          case IO_SUB_MASSINMAXRAD:
 #ifdef SUBFIND
-          *fp++ = SubGroup[pindex].SubMassInMaxRad;
+            *fp++ = SubGroup[pindex].SubMassInMaxRad;
 #endif /* #ifdef SUBFIND */
-          break;
-        case IO_SUB_MASSINMAXRADTYPE:
+            break;
+          case IO_SUB_MASSINMAXRADTYPE:
 #ifdef SUBFIND
-          for(k = 0; k < NTYPES; k++)
-            *fp++ = SubGroup[pindex].SubMassInMaxRadType[k];
+            for(k = 0; k < NTYPES; k++)
+              *fp++ = SubGroup[pindex].SubMassInMaxRadType[k];
 #endif /* #ifdef SUBFIND */
-          break;
-        case IO_SUB_IDMOSTBOUND:
+            break;
+          case IO_SUB_IDMOSTBOUND:
 #ifdef SUBFIND
-          *idp++ = SubGroup[pindex].SubMostBoundID;
+            *idp++ = SubGroup[pindex].SubMostBoundID;
 #endif /* #ifdef SUBFIND */
-          break;
-        case IO_SUB_GRNR:
+            break;
+          case IO_SUB_GRNR:
 #ifdef SUBFIND
-          *ip++ = SubGroup[pindex].GrNr;
+            *ip++ = SubGroup[pindex].GrNr;
 #endif /* #ifdef SUBFIND */
-          break;
-        case IO_SUB_PARENT:
+            break;
+          case IO_SUB_PARENT:
 #ifdef SUBFIND
-          *ip++ = SubGroup[pindex].SubParent;
+            *ip++ = SubGroup[pindex].SubParent;
 #endif /* #ifdef SUBFIND */
-          break;
-        case IO_SUB_BFLD_HALO:
+            break;
+          case IO_SUB_BFLD_HALO:
 #if defined(MHD) && defined(SUBFIND)
-          *fp++ = SubGroup[pindex].Bfld_Halo * sqrt(4. * M_PI);
+            *fp++ = SubGroup[pindex].Bfld_Halo * sqrt(4. * M_PI);
 #endif /* #if defined(MHD) && defined(SUBFIND) */
-          break;
-        case IO_SUB_BFLD_DISK:
+            break;
+          case IO_SUB_BFLD_DISK:
 #if defined(MHD) && defined(SUBFIND)
-          *fp++ = SubGroup[pindex].Bfld_Disk * sqrt(4. * M_PI);
+            *fp++ = SubGroup[pindex].Bfld_Disk * sqrt(4. * M_PI);
 #endif /* #if defined(MHD) && defined(SUBFIND) */
-          break;
-        case IO_SUB_SFR:
+            break;
+          case IO_SUB_SFR:
 #if defined(USE_SFR) && defined(SUBFIND)
-          *fp++ = SubGroup[pindex].Sfr;
+            *fp++ = SubGroup[pindex].Sfr;
 #endif /* #if defined(USE_SFR) && defined(SUBFIND) */
-          break;
-        case IO_SUB_SFRINRAD:
+            break;
+          case IO_SUB_SFRINRAD:
 #if defined(USE_SFR) && defined(SUBFIND)
-          *fp++ = SubGroup[pindex].SfrInRad;
+            *fp++ = SubGroup[pindex].SfrInRad;
 #endif /* #if defined(USE_SFR) && defined(SUBFIND) */
-          break;
-        case IO_SUB_SFRINHALFRAD:
+            break;
+          case IO_SUB_SFRINHALFRAD:
 #if defined(USE_SFR) && defined(SUBFIND)
-          *fp++ = SubGroup[pindex].SfrInHalfRad;
+            *fp++ = SubGroup[pindex].SfrInHalfRad;
 #endif /* #if defined(USE_SFR) && defined(SUBFIND) */
-          break;
-        case IO_SUB_SFRINMAXRAD:
+            break;
+          case IO_SUB_SFRINMAXRAD:
 #if defined(USE_SFR) && defined(SUBFIND)
-          *fp++ = SubGroup[pindex].SfrInMaxRad;
+            *fp++ = SubGroup[pindex].SfrInMaxRad;
 #endif /* #if defined(USE_SFR) && defined(SUBFIND) */
-          break;
-        case IO_FOFSUB_IDS:
+            break;
+          case IO_FOFSUB_IDS:
 #ifdef FOF_STOREIDS
-          *idp++ = ID_list[pindex].ID;
+            *idp++ = ID_list[pindex].ID;
 #endif /* #ifdef FOF_STOREIDS */
-          break;
+            break;
 
-        case IO_FOF_LASTENTRY:
-          terminate("should not be reached");
-          break;
+          case IO_FOF_LASTENTRY:
+            terminate("should not be reached");
+            break;
         }
     }
 }
-
 
 /*! \brief Associates the output variable blocknumber with its name.
  *
@@ -1301,385 +1297,384 @@ void fof_subfind_fill_write_buffer(enum fof_subfind_iofields blocknr, int *start
  */
 void fof_subfind_get_dataset_name(enum fof_subfind_iofields blocknr, char *label)
 {
-  switch (blocknr)
+  switch(blocknr)
     {
-    case IO_FOF_LEN:
-      strcpy(label, "GroupLen");
-      break;
-    case IO_FOF_MTOT:
-      strcpy(label, "GroupMass");
-      break;
-    case IO_FOF_POS:
-      strcpy(label, "GroupPos");
-      break;
-    case IO_FOF_CM:
-      strcpy(label, "GroupCM");
-      break;
-    case IO_FOF_VEL:
-      strcpy(label, "GroupVel");
-      break;
-    case IO_FOF_LENTYPE:
-      strcpy(label, "GroupLenType");
-      break;
-    case IO_FOF_MASSTYPE:
-      strcpy(label, "GroupMassType");
-      break;
-    case IO_FOF_SFR:
-      strcpy(label, "GroupSFR");
-      break;
-    case IO_FOF_M_MEAN200:
-      strcpy(label, "Group_M_Mean200");
-      break;
-    case IO_FOF_R_MEAN200:
-      strcpy(label, "Group_R_Mean200");
-      break;
+      case IO_FOF_LEN:
+        strcpy(label, "GroupLen");
+        break;
+      case IO_FOF_MTOT:
+        strcpy(label, "GroupMass");
+        break;
+      case IO_FOF_POS:
+        strcpy(label, "GroupPos");
+        break;
+      case IO_FOF_CM:
+        strcpy(label, "GroupCM");
+        break;
+      case IO_FOF_VEL:
+        strcpy(label, "GroupVel");
+        break;
+      case IO_FOF_LENTYPE:
+        strcpy(label, "GroupLenType");
+        break;
+      case IO_FOF_MASSTYPE:
+        strcpy(label, "GroupMassType");
+        break;
+      case IO_FOF_SFR:
+        strcpy(label, "GroupSFR");
+        break;
+      case IO_FOF_M_MEAN200:
+        strcpy(label, "Group_M_Mean200");
+        break;
+      case IO_FOF_R_MEAN200:
+        strcpy(label, "Group_R_Mean200");
+        break;
 
 #ifdef SUBFIND_EXTENDED_PROPERTIES
-    case IO_FOF_J_MEAN200:
-      strcpy(label, "Group_J_Mean200");
-      break;
-    case IO_FOF_JDM_MEAN200:
-      strcpy(label, "Group_Jdm_Mean200");
-      break;
-    case IO_FOF_JGAS_MEAN200:
-      strcpy(label, "Group_Jgas_Mean200");
-      break;
-    case IO_FOF_JSTARS_MEAN200:
-      strcpy(label, "Group_Jstars_Mean200");
-      break;
-    case IO_FOF_MASSTYPE_MEAN200:
-      strcpy(label, "Group_MassType_Mean200");
-      break;
-    case IO_FOF_LENTYPE_MEAN200:
-      strcpy(label, "Group_LenType_Mean200");
-      break;
-    case IO_FOF_CMFRAC_MEAN200:
-      strcpy(label, "Group_CMFrac_Mean200");
-      break;
-    case IO_FOF_CMFRACTYPE_MEAN200:
-      strcpy(label, "Group_CMFracType_Mean200");
-      break;
-    case IO_FOF_J_CRIT200:
-      strcpy(label, "Group_J_Crit200");
-      break;
-    case IO_FOF_JDM_CRIT200:
-      strcpy(label, "Group_Jdm_Crit200");
-      break;
-    case IO_FOF_JGAS_CRIT200:
-      strcpy(label, "Group_Jgas_Crit200");
-      break;
-    case IO_FOF_JSTARS_CRIT200:
-      strcpy(label, "Group_Jstars_Crit200");
-      break;
-    case IO_FOF_MASSTYPE_CRIT200:
-      strcpy(label, "Group_MassType_Crit200");
-      break;
-    case IO_FOF_LENTYPE_CRIT200:
-      strcpy(label, "Group_LenType_Crit200");
-      break;
-    case IO_FOF_CMFRAC_CRIT200:
-      strcpy(label, "Group_CMFrac_Crit200");
-      break;
-    case IO_FOF_CMFRACTYPE_CRIT200:
-      strcpy(label, "Group_CMFracType_Crit200");
-      break;
-    case IO_FOF_J_CRIT500:
-      strcpy(label, "Group_J_Crit500");
-      break;
-    case IO_FOF_JDM_CRIT500:
-      strcpy(label, "Group_Jdm_Crit500");
-      break;
-    case IO_FOF_JGAS_CRIT500:
-      strcpy(label, "Group_Jgas_Crit500");
-      break;
-    case IO_FOF_JSTARS_CRIT500:
-      strcpy(label, "Group_Jstars_Crit500");
-      break;
-    case IO_FOF_MASSTYPE_CRIT500:
-      strcpy(label, "Group_MassType_Crit500");
-      break;
-    case IO_FOF_LENTYPE_CRIT500:
-      strcpy(label, "Group_LenType_Crit500");
-      break;
-    case IO_FOF_CMFRAC_CRIT500:
-      strcpy(label, "Group_CMFrac_Crit500");
-      break;
-    case IO_FOF_CMFRACTYPE_CRIT500:
-      strcpy(label, "Group_CMFracType_Crit500");
-      break;
-    case IO_FOF_J_TOPHAT200:
-      strcpy(label, "Group_J_TopHat200");
-      break;
-    case IO_FOF_JDM_TOPHAT200:
-      strcpy(label, "Group_Jdm_TopHat200");
-      break;
-    case IO_FOF_JGAS_TOPHAT200:
-      strcpy(label, "Group_Jgas_TopHat200");
-      break;
-    case IO_FOF_JSTARS_TOPHAT200:
-      strcpy(label, "Group_Jstars_TopHat200");
-      break;
-    case IO_FOF_MASSTYPE_TOPHAT200:
-      strcpy(label, "Group_MassType_TopHat200");
-      break;
-    case IO_FOF_LENTYPE_TOPHAT200:
-      strcpy(label, "Group_LenType_TopHat200");
-      break;
-    case IO_FOF_CMFRAC_TOPHAT200:
-      strcpy(label, "Group_CMFrac_TopHat200");
-      break;
-    case IO_FOF_CMFRACTYPE_TOPHAT200:
-      strcpy(label, "Group_CMFracType_TopHat200");
-      break;
-    case IO_FOF_EPOT_CRIT200:
-      strcpy(label, "Group_Epot_Crit200");
-      break;
-    case IO_FOF_EKIN_CRIT200:
-      strcpy(label, "Group_Ekin_Crit200");
-      break;
-    case IO_FOF_ETHR_CRIT200:
-      strcpy(label, "Group_Ethr_Crit200");
-      break;
-    case IO_FOF_EPOT_MEAN200:
-      strcpy(label, "Group_Epot_Mean200");
-      break;
-    case IO_FOF_EKIN_MEAN200:
-      strcpy(label, "Group_Ekin_Mean200");
-      break;
-    case IO_FOF_ETHR_MEAN200:
-      strcpy(label, "Group_Ethr_Mean200");
-      break;
-    case IO_FOF_EPOT_TOPHAT200:
-      strcpy(label, "Group_Epot_TopHat200");
-      break;
-    case IO_FOF_EKIN_TOPHAT200:
-      strcpy(label, "Group_Ekin_TopHat200");
-      break;
-    case IO_FOF_ETHR_TOPHAT200:
-      strcpy(label, "Group_Ethr_TopHat200");
-      break;
-    case IO_FOF_EPOT_CRIT500:
-      strcpy(label, "Group_Epot_Crit500");
-      break;
-    case IO_FOF_EKIN_CRIT500:
-      strcpy(label, "Group_Ekin_Crit500");
-      break;
-    case IO_FOF_ETHR_CRIT500:
-      strcpy(label, "Group_Ethr_Crit500");
-      break;
-    case IO_FOF_J:
-      strcpy(label, "Group_J");
-      break;
-    case IO_FOF_JDM:
-      strcpy(label, "Group_Jdm");
-      break;
-    case IO_FOF_JGAS:
-      strcpy(label, "Group_Jgas");
-      break;
-    case IO_FOF_JSTARS:
-      strcpy(label, "Group_Jstars");
-      break;
-    case IO_FOF_CMFRAC:
-      strcpy(label, "Group_CMFrac");
-      break;
-    case IO_FOF_CMFRACTYPE:
-      strcpy(label, "Group_CMFracType");
-      break;
-    case IO_FOF_EKIN:
-      strcpy(label, "GroupEkin");
-      break;
-    case IO_FOF_ETHR:
-      strcpy(label, "GroupEthr");
-      break;
-    case IO_FOF_EPOT:
-      strcpy(label, "GroupEpot");
-      break;
-    case IO_SUB_EKIN:
-      strcpy(label, "SubhaloEkin");
-      break;
-    case IO_SUB_ETHR:
-      strcpy(label, "SubhaloEthr");
-      break;
-    case IO_SUB_EPOT:
-      strcpy(label, "SubhaloEpot");
-      break;
-    case IO_SUB_J:
-      strcpy(label, "Subhalo_J");
-      break;
-    case IO_SUB_JDM:
-      strcpy(label, "Subhalo_Jdm");
-      break;
-    case IO_SUB_JGAS:
-      strcpy(label, "Subhalo_Jgas");
-      break;
-    case IO_SUB_JSTARS:
-      strcpy(label, "Subhalo_Jstars");
-      break;
-    case IO_SUB_JINHALFRAD:
-      strcpy(label, "Subhalo_JInHalfRad");
-      break;
-    case IO_SUB_JDMINHALFRAD:
-      strcpy(label, "Subhalo_JdmInHalfRad");
-      break;
-    case IO_SUB_JGASINHALFRAD:
-      strcpy(label, "Subhalo_JgasInHalfRad");
-      break;
-    case IO_SUB_JSTARSINHALFRAD:
-      strcpy(label, "Subhalo_JstarsInHalfRad");
-      break;
-    case IO_SUB_JINRAD:
-      strcpy(label, "Subhalo_JInRad");
-      break;
-    case IO_SUB_JDMINRAD:
-      strcpy(label, "Subhalo_JdmInRad");
-      break;
-    case IO_SUB_JGASINRAD:
-      strcpy(label, "Subhalo_JgasInRad");
-      break;
-    case IO_SUB_JSTARSINRAD:
-      strcpy(label, "Subhalo_JstarsInRad");
-      break;
-    case IO_SUB_CMFRAC:
-      strcpy(label, "Subhalo_CMFrac");
-      break;
-    case IO_SUB_CMFRACTYPE:
-      strcpy(label, "Subhalo_CMFracType");
-      break;
-    case IO_SUB_CMFRACINHALFRAD:
-      strcpy(label, "Subhalo_CMFracInHalfRad");
-      break;
-    case IO_SUB_CMFRACTYPEINHALFRAD:
-      strcpy(label, "Subhalo_CMFracTypeInHalfRad");
-      break;
-    case IO_SUB_CMFRACINRAD:
-      strcpy(label, "Subhalo_CMFracInRad");
-      break;
-    case IO_SUB_CMFRACTYPEINRAD:
-      strcpy(label, "Subhalo_CMFracTypeInRad");
-      break;
+      case IO_FOF_J_MEAN200:
+        strcpy(label, "Group_J_Mean200");
+        break;
+      case IO_FOF_JDM_MEAN200:
+        strcpy(label, "Group_Jdm_Mean200");
+        break;
+      case IO_FOF_JGAS_MEAN200:
+        strcpy(label, "Group_Jgas_Mean200");
+        break;
+      case IO_FOF_JSTARS_MEAN200:
+        strcpy(label, "Group_Jstars_Mean200");
+        break;
+      case IO_FOF_MASSTYPE_MEAN200:
+        strcpy(label, "Group_MassType_Mean200");
+        break;
+      case IO_FOF_LENTYPE_MEAN200:
+        strcpy(label, "Group_LenType_Mean200");
+        break;
+      case IO_FOF_CMFRAC_MEAN200:
+        strcpy(label, "Group_CMFrac_Mean200");
+        break;
+      case IO_FOF_CMFRACTYPE_MEAN200:
+        strcpy(label, "Group_CMFracType_Mean200");
+        break;
+      case IO_FOF_J_CRIT200:
+        strcpy(label, "Group_J_Crit200");
+        break;
+      case IO_FOF_JDM_CRIT200:
+        strcpy(label, "Group_Jdm_Crit200");
+        break;
+      case IO_FOF_JGAS_CRIT200:
+        strcpy(label, "Group_Jgas_Crit200");
+        break;
+      case IO_FOF_JSTARS_CRIT200:
+        strcpy(label, "Group_Jstars_Crit200");
+        break;
+      case IO_FOF_MASSTYPE_CRIT200:
+        strcpy(label, "Group_MassType_Crit200");
+        break;
+      case IO_FOF_LENTYPE_CRIT200:
+        strcpy(label, "Group_LenType_Crit200");
+        break;
+      case IO_FOF_CMFRAC_CRIT200:
+        strcpy(label, "Group_CMFrac_Crit200");
+        break;
+      case IO_FOF_CMFRACTYPE_CRIT200:
+        strcpy(label, "Group_CMFracType_Crit200");
+        break;
+      case IO_FOF_J_CRIT500:
+        strcpy(label, "Group_J_Crit500");
+        break;
+      case IO_FOF_JDM_CRIT500:
+        strcpy(label, "Group_Jdm_Crit500");
+        break;
+      case IO_FOF_JGAS_CRIT500:
+        strcpy(label, "Group_Jgas_Crit500");
+        break;
+      case IO_FOF_JSTARS_CRIT500:
+        strcpy(label, "Group_Jstars_Crit500");
+        break;
+      case IO_FOF_MASSTYPE_CRIT500:
+        strcpy(label, "Group_MassType_Crit500");
+        break;
+      case IO_FOF_LENTYPE_CRIT500:
+        strcpy(label, "Group_LenType_Crit500");
+        break;
+      case IO_FOF_CMFRAC_CRIT500:
+        strcpy(label, "Group_CMFrac_Crit500");
+        break;
+      case IO_FOF_CMFRACTYPE_CRIT500:
+        strcpy(label, "Group_CMFracType_Crit500");
+        break;
+      case IO_FOF_J_TOPHAT200:
+        strcpy(label, "Group_J_TopHat200");
+        break;
+      case IO_FOF_JDM_TOPHAT200:
+        strcpy(label, "Group_Jdm_TopHat200");
+        break;
+      case IO_FOF_JGAS_TOPHAT200:
+        strcpy(label, "Group_Jgas_TopHat200");
+        break;
+      case IO_FOF_JSTARS_TOPHAT200:
+        strcpy(label, "Group_Jstars_TopHat200");
+        break;
+      case IO_FOF_MASSTYPE_TOPHAT200:
+        strcpy(label, "Group_MassType_TopHat200");
+        break;
+      case IO_FOF_LENTYPE_TOPHAT200:
+        strcpy(label, "Group_LenType_TopHat200");
+        break;
+      case IO_FOF_CMFRAC_TOPHAT200:
+        strcpy(label, "Group_CMFrac_TopHat200");
+        break;
+      case IO_FOF_CMFRACTYPE_TOPHAT200:
+        strcpy(label, "Group_CMFracType_TopHat200");
+        break;
+      case IO_FOF_EPOT_CRIT200:
+        strcpy(label, "Group_Epot_Crit200");
+        break;
+      case IO_FOF_EKIN_CRIT200:
+        strcpy(label, "Group_Ekin_Crit200");
+        break;
+      case IO_FOF_ETHR_CRIT200:
+        strcpy(label, "Group_Ethr_Crit200");
+        break;
+      case IO_FOF_EPOT_MEAN200:
+        strcpy(label, "Group_Epot_Mean200");
+        break;
+      case IO_FOF_EKIN_MEAN200:
+        strcpy(label, "Group_Ekin_Mean200");
+        break;
+      case IO_FOF_ETHR_MEAN200:
+        strcpy(label, "Group_Ethr_Mean200");
+        break;
+      case IO_FOF_EPOT_TOPHAT200:
+        strcpy(label, "Group_Epot_TopHat200");
+        break;
+      case IO_FOF_EKIN_TOPHAT200:
+        strcpy(label, "Group_Ekin_TopHat200");
+        break;
+      case IO_FOF_ETHR_TOPHAT200:
+        strcpy(label, "Group_Ethr_TopHat200");
+        break;
+      case IO_FOF_EPOT_CRIT500:
+        strcpy(label, "Group_Epot_Crit500");
+        break;
+      case IO_FOF_EKIN_CRIT500:
+        strcpy(label, "Group_Ekin_Crit500");
+        break;
+      case IO_FOF_ETHR_CRIT500:
+        strcpy(label, "Group_Ethr_Crit500");
+        break;
+      case IO_FOF_J:
+        strcpy(label, "Group_J");
+        break;
+      case IO_FOF_JDM:
+        strcpy(label, "Group_Jdm");
+        break;
+      case IO_FOF_JGAS:
+        strcpy(label, "Group_Jgas");
+        break;
+      case IO_FOF_JSTARS:
+        strcpy(label, "Group_Jstars");
+        break;
+      case IO_FOF_CMFRAC:
+        strcpy(label, "Group_CMFrac");
+        break;
+      case IO_FOF_CMFRACTYPE:
+        strcpy(label, "Group_CMFracType");
+        break;
+      case IO_FOF_EKIN:
+        strcpy(label, "GroupEkin");
+        break;
+      case IO_FOF_ETHR:
+        strcpy(label, "GroupEthr");
+        break;
+      case IO_FOF_EPOT:
+        strcpy(label, "GroupEpot");
+        break;
+      case IO_SUB_EKIN:
+        strcpy(label, "SubhaloEkin");
+        break;
+      case IO_SUB_ETHR:
+        strcpy(label, "SubhaloEthr");
+        break;
+      case IO_SUB_EPOT:
+        strcpy(label, "SubhaloEpot");
+        break;
+      case IO_SUB_J:
+        strcpy(label, "Subhalo_J");
+        break;
+      case IO_SUB_JDM:
+        strcpy(label, "Subhalo_Jdm");
+        break;
+      case IO_SUB_JGAS:
+        strcpy(label, "Subhalo_Jgas");
+        break;
+      case IO_SUB_JSTARS:
+        strcpy(label, "Subhalo_Jstars");
+        break;
+      case IO_SUB_JINHALFRAD:
+        strcpy(label, "Subhalo_JInHalfRad");
+        break;
+      case IO_SUB_JDMINHALFRAD:
+        strcpy(label, "Subhalo_JdmInHalfRad");
+        break;
+      case IO_SUB_JGASINHALFRAD:
+        strcpy(label, "Subhalo_JgasInHalfRad");
+        break;
+      case IO_SUB_JSTARSINHALFRAD:
+        strcpy(label, "Subhalo_JstarsInHalfRad");
+        break;
+      case IO_SUB_JINRAD:
+        strcpy(label, "Subhalo_JInRad");
+        break;
+      case IO_SUB_JDMINRAD:
+        strcpy(label, "Subhalo_JdmInRad");
+        break;
+      case IO_SUB_JGASINRAD:
+        strcpy(label, "Subhalo_JgasInRad");
+        break;
+      case IO_SUB_JSTARSINRAD:
+        strcpy(label, "Subhalo_JstarsInRad");
+        break;
+      case IO_SUB_CMFRAC:
+        strcpy(label, "Subhalo_CMFrac");
+        break;
+      case IO_SUB_CMFRACTYPE:
+        strcpy(label, "Subhalo_CMFracType");
+        break;
+      case IO_SUB_CMFRACINHALFRAD:
+        strcpy(label, "Subhalo_CMFracInHalfRad");
+        break;
+      case IO_SUB_CMFRACTYPEINHALFRAD:
+        strcpy(label, "Subhalo_CMFracTypeInHalfRad");
+        break;
+      case IO_SUB_CMFRACINRAD:
+        strcpy(label, "Subhalo_CMFracInRad");
+        break;
+      case IO_SUB_CMFRACTYPEINRAD:
+        strcpy(label, "Subhalo_CMFracTypeInRad");
+        break;
 #endif /* #ifdef SUBFIND_EXTENDED_PROPERTIES */
 
-    case IO_FOF_M_CRIT200:
-      strcpy(label, "Group_M_Crit200");
-      break;
-    case IO_FOF_R_CRIT200:
-      strcpy(label, "Group_R_Crit200");
-      break;
-    case IO_FOF_M_CRIT500:
-      strcpy(label, "Group_M_Crit500");
-      break;
-    case IO_FOF_R_CRIT500:
-      strcpy(label, "Group_R_Crit500");
-      break;
-    case IO_FOF_M_TOPHAT200:
-      strcpy(label, "Group_M_TopHat200");
-      break;
-    case IO_FOF_R_TOPHAT200:
-      strcpy(label, "Group_R_TopHat200");
-      break;
-    case IO_FOF_NSUBS:
-      strcpy(label, "GroupNsubs");
-      break;
-    case IO_FOF_FIRSTSUB:
-      strcpy(label, "GroupFirstSub");
-      break;
-    case IO_FOF_FUZZOFFTYPE:
-      strcpy(label, "GroupFuzzOffsetType");
-      break;
-    case IO_SUB_LEN:
-      strcpy(label, "SubhaloLen");
-      break;
-    case IO_SUB_MTOT:
-      strcpy(label, "SubhaloMass");
-      break;
-    case IO_SUB_POS:
-      strcpy(label, "SubhaloPos");
-      break;
-    case IO_SUB_VEL:
-      strcpy(label, "SubhaloVel");
-      break;
-    case IO_SUB_LENTYPE:
-      strcpy(label, "SubhaloLenType");
-      break;
-    case IO_SUB_MASSTYPE:
-      strcpy(label, "SubhaloMassType");
-      break;
-    case IO_SUB_CM:
-      strcpy(label, "SubhaloCM");
-      break;
-    case IO_SUB_SPIN:
-      strcpy(label, "SubhaloSpin");
-      break;
-    case IO_SUB_VELDISP:
-      strcpy(label, "SubhaloVelDisp");
-      break;
-    case IO_SUB_VMAX:
-      strcpy(label, "SubhaloVmax");
-      break;
-    case IO_SUB_VMAXRAD:
-      strcpy(label, "SubhaloVmaxRad");
-      break;
-    case IO_SUB_HALFMASSRAD:
-      strcpy(label, "SubhaloHalfmassRad");
-      break;
-    case IO_SUB_HALFMASSRADTYPE:
-      strcpy(label, "SubhaloHalfmassRadType");
-      break;
-    case IO_SUB_MASSINRAD:
-      strcpy(label, "SubhaloMassInRad");
-      break;
-    case IO_SUB_MASSINHALFRAD:
-      strcpy(label, "SubhaloMassInHalfRad");
-      break;
-    case IO_SUB_MASSINMAXRAD:
-      strcpy(label, "SubhaloMassInMaxRad");
-      break;
-    case IO_SUB_MASSINRADTYPE:
-      strcpy(label, "SubhaloMassInRadType");
-      break;
-    case IO_SUB_MASSINHALFRADTYPE:
-      strcpy(label, "SubhaloMassInHalfRadType");
-      break;
-    case IO_SUB_MASSINMAXRADTYPE:
-      strcpy(label, "SubhaloMassInMaxRadType");
-      break;
-    case IO_SUB_IDMOSTBOUND:
-      strcpy(label, "SubhaloIDMostbound");
-      break;
-    case IO_SUB_GRNR:
-      strcpy(label, "SubhaloGrNr");
-      break;
-    case IO_SUB_PARENT:
-      strcpy(label, "SubhaloParent");
-      break;
-    case IO_SUB_BFLD_HALO:
-      strcpy(label, "SubhaloBfldHalo");
-      break;
-    case IO_SUB_BFLD_DISK:
-      strcpy(label, "SubhaloBfldDisk");
-      break;
-    case IO_SUB_SFR:
-      strcpy(label, "SubhaloSFR");
-      break;
-    case IO_SUB_SFRINRAD:
-      strcpy(label, "SubhaloSFRinRad");
-      break;
-    case IO_SUB_SFRINHALFRAD:
-      strcpy(label, "SubhaloSFRinHalfRad");
-      break;
-    case IO_SUB_SFRINMAXRAD:
-      strcpy(label, "SubhaloSFRinMaxRad");
-      break;
-    case IO_FOFSUB_IDS:
-      strcpy(label, "ID");
-      break;
+      case IO_FOF_M_CRIT200:
+        strcpy(label, "Group_M_Crit200");
+        break;
+      case IO_FOF_R_CRIT200:
+        strcpy(label, "Group_R_Crit200");
+        break;
+      case IO_FOF_M_CRIT500:
+        strcpy(label, "Group_M_Crit500");
+        break;
+      case IO_FOF_R_CRIT500:
+        strcpy(label, "Group_R_Crit500");
+        break;
+      case IO_FOF_M_TOPHAT200:
+        strcpy(label, "Group_M_TopHat200");
+        break;
+      case IO_FOF_R_TOPHAT200:
+        strcpy(label, "Group_R_TopHat200");
+        break;
+      case IO_FOF_NSUBS:
+        strcpy(label, "GroupNsubs");
+        break;
+      case IO_FOF_FIRSTSUB:
+        strcpy(label, "GroupFirstSub");
+        break;
+      case IO_FOF_FUZZOFFTYPE:
+        strcpy(label, "GroupFuzzOffsetType");
+        break;
+      case IO_SUB_LEN:
+        strcpy(label, "SubhaloLen");
+        break;
+      case IO_SUB_MTOT:
+        strcpy(label, "SubhaloMass");
+        break;
+      case IO_SUB_POS:
+        strcpy(label, "SubhaloPos");
+        break;
+      case IO_SUB_VEL:
+        strcpy(label, "SubhaloVel");
+        break;
+      case IO_SUB_LENTYPE:
+        strcpy(label, "SubhaloLenType");
+        break;
+      case IO_SUB_MASSTYPE:
+        strcpy(label, "SubhaloMassType");
+        break;
+      case IO_SUB_CM:
+        strcpy(label, "SubhaloCM");
+        break;
+      case IO_SUB_SPIN:
+        strcpy(label, "SubhaloSpin");
+        break;
+      case IO_SUB_VELDISP:
+        strcpy(label, "SubhaloVelDisp");
+        break;
+      case IO_SUB_VMAX:
+        strcpy(label, "SubhaloVmax");
+        break;
+      case IO_SUB_VMAXRAD:
+        strcpy(label, "SubhaloVmaxRad");
+        break;
+      case IO_SUB_HALFMASSRAD:
+        strcpy(label, "SubhaloHalfmassRad");
+        break;
+      case IO_SUB_HALFMASSRADTYPE:
+        strcpy(label, "SubhaloHalfmassRadType");
+        break;
+      case IO_SUB_MASSINRAD:
+        strcpy(label, "SubhaloMassInRad");
+        break;
+      case IO_SUB_MASSINHALFRAD:
+        strcpy(label, "SubhaloMassInHalfRad");
+        break;
+      case IO_SUB_MASSINMAXRAD:
+        strcpy(label, "SubhaloMassInMaxRad");
+        break;
+      case IO_SUB_MASSINRADTYPE:
+        strcpy(label, "SubhaloMassInRadType");
+        break;
+      case IO_SUB_MASSINHALFRADTYPE:
+        strcpy(label, "SubhaloMassInHalfRadType");
+        break;
+      case IO_SUB_MASSINMAXRADTYPE:
+        strcpy(label, "SubhaloMassInMaxRadType");
+        break;
+      case IO_SUB_IDMOSTBOUND:
+        strcpy(label, "SubhaloIDMostbound");
+        break;
+      case IO_SUB_GRNR:
+        strcpy(label, "SubhaloGrNr");
+        break;
+      case IO_SUB_PARENT:
+        strcpy(label, "SubhaloParent");
+        break;
+      case IO_SUB_BFLD_HALO:
+        strcpy(label, "SubhaloBfldHalo");
+        break;
+      case IO_SUB_BFLD_DISK:
+        strcpy(label, "SubhaloBfldDisk");
+        break;
+      case IO_SUB_SFR:
+        strcpy(label, "SubhaloSFR");
+        break;
+      case IO_SUB_SFRINRAD:
+        strcpy(label, "SubhaloSFRinRad");
+        break;
+      case IO_SUB_SFRINHALFRAD:
+        strcpy(label, "SubhaloSFRinHalfRad");
+        break;
+      case IO_SUB_SFRINMAXRAD:
+        strcpy(label, "SubhaloSFRinMaxRad");
+        break;
+      case IO_FOFSUB_IDS:
+        strcpy(label, "ID");
+        break;
 
-    case IO_FOF_LASTENTRY:
-      terminate("should not be reached");
-      break;
+      case IO_FOF_LASTENTRY:
+        terminate("should not be reached");
+        break;
     }
 }
-
 
 /*! \brief Is this output field a group or subhalo property?
  *
@@ -1689,150 +1684,149 @@ void fof_subfind_get_dataset_name(enum fof_subfind_iofields blocknr, char *label
  */
 int fof_subfind_get_dataset_group(enum fof_subfind_iofields blocknr)
 {
-  switch (blocknr)
+  switch(blocknr)
     {
-    case IO_FOF_LEN:
-    case IO_FOF_MTOT:
-    case IO_FOF_POS:
-    case IO_FOF_CM:
-    case IO_FOF_VEL:
-    case IO_FOF_LENTYPE:
-    case IO_FOF_MASSTYPE:
-    case IO_FOF_SFR:
-    case IO_FOF_M_MEAN200:
-    case IO_FOF_R_MEAN200:
-    case IO_FOF_M_CRIT200:
-    case IO_FOF_R_CRIT200:
-    case IO_FOF_M_TOPHAT200:
-    case IO_FOF_R_TOPHAT200:
-    case IO_FOF_M_CRIT500:
-    case IO_FOF_R_CRIT500:
-    case IO_FOF_NSUBS:
-    case IO_FOF_FIRSTSUB:
-    case IO_FOF_FUZZOFFTYPE:
+      case IO_FOF_LEN:
+      case IO_FOF_MTOT:
+      case IO_FOF_POS:
+      case IO_FOF_CM:
+      case IO_FOF_VEL:
+      case IO_FOF_LENTYPE:
+      case IO_FOF_MASSTYPE:
+      case IO_FOF_SFR:
+      case IO_FOF_M_MEAN200:
+      case IO_FOF_R_MEAN200:
+      case IO_FOF_M_CRIT200:
+      case IO_FOF_R_CRIT200:
+      case IO_FOF_M_TOPHAT200:
+      case IO_FOF_R_TOPHAT200:
+      case IO_FOF_M_CRIT500:
+      case IO_FOF_R_CRIT500:
+      case IO_FOF_NSUBS:
+      case IO_FOF_FIRSTSUB:
+      case IO_FOF_FUZZOFFTYPE:
 #ifdef SUBFIND_EXTENDED_PROPERTIES
-    case IO_FOF_J_MEAN200:
-    case IO_FOF_JDM_MEAN200:
-    case IO_FOF_JGAS_MEAN200:
-    case IO_FOF_JSTARS_MEAN200:
-    case IO_FOF_MASSTYPE_MEAN200:
-    case IO_FOF_LENTYPE_MEAN200:
-    case IO_FOF_CMFRAC_MEAN200:
-    case IO_FOF_CMFRACTYPE_MEAN200:
-    case IO_FOF_J_CRIT200:
-    case IO_FOF_JDM_CRIT200:
-    case IO_FOF_JGAS_CRIT200:
-    case IO_FOF_JSTARS_CRIT200:
-    case IO_FOF_MASSTYPE_CRIT200:
-    case IO_FOF_LENTYPE_CRIT200:
-    case IO_FOF_CMFRAC_CRIT200:
-    case IO_FOF_CMFRACTYPE_CRIT200:
-    case IO_FOF_J_TOPHAT200:
-    case IO_FOF_JDM_TOPHAT200:
-    case IO_FOF_JGAS_TOPHAT200:
-    case IO_FOF_JSTARS_TOPHAT200:
-    case IO_FOF_MASSTYPE_TOPHAT200:
-    case IO_FOF_LENTYPE_TOPHAT200:
-    case IO_FOF_CMFRAC_TOPHAT200:
-    case IO_FOF_CMFRACTYPE_TOPHAT200:
-    case IO_FOF_J_CRIT500:
-    case IO_FOF_JDM_CRIT500:
-    case IO_FOF_JGAS_CRIT500:
-    case IO_FOF_JSTARS_CRIT500:
-    case IO_FOF_MASSTYPE_CRIT500:
-    case IO_FOF_LENTYPE_CRIT500:
-    case IO_FOF_CMFRAC_CRIT500:
-    case IO_FOF_CMFRACTYPE_CRIT500:
-    case IO_FOF_J:
-    case IO_FOF_JDM:
-    case IO_FOF_JGAS:
-    case IO_FOF_JSTARS:
-    case IO_FOF_CMFRAC:
-    case IO_FOF_CMFRACTYPE:
-    case IO_FOF_EKIN:
-    case IO_FOF_ETHR:
-    case IO_FOF_EPOT:
-    case IO_FOF_EPOT_CRIT200:
-    case IO_FOF_EKIN_CRIT200:
-    case IO_FOF_ETHR_CRIT200:
-    case IO_FOF_EPOT_MEAN200:
-    case IO_FOF_EKIN_MEAN200:
-    case IO_FOF_ETHR_MEAN200:
-    case IO_FOF_EPOT_TOPHAT200:
-    case IO_FOF_EKIN_TOPHAT200:
-    case IO_FOF_ETHR_TOPHAT200:
-    case IO_FOF_EPOT_CRIT500:
-    case IO_FOF_EKIN_CRIT500:
-    case IO_FOF_ETHR_CRIT500:
+      case IO_FOF_J_MEAN200:
+      case IO_FOF_JDM_MEAN200:
+      case IO_FOF_JGAS_MEAN200:
+      case IO_FOF_JSTARS_MEAN200:
+      case IO_FOF_MASSTYPE_MEAN200:
+      case IO_FOF_LENTYPE_MEAN200:
+      case IO_FOF_CMFRAC_MEAN200:
+      case IO_FOF_CMFRACTYPE_MEAN200:
+      case IO_FOF_J_CRIT200:
+      case IO_FOF_JDM_CRIT200:
+      case IO_FOF_JGAS_CRIT200:
+      case IO_FOF_JSTARS_CRIT200:
+      case IO_FOF_MASSTYPE_CRIT200:
+      case IO_FOF_LENTYPE_CRIT200:
+      case IO_FOF_CMFRAC_CRIT200:
+      case IO_FOF_CMFRACTYPE_CRIT200:
+      case IO_FOF_J_TOPHAT200:
+      case IO_FOF_JDM_TOPHAT200:
+      case IO_FOF_JGAS_TOPHAT200:
+      case IO_FOF_JSTARS_TOPHAT200:
+      case IO_FOF_MASSTYPE_TOPHAT200:
+      case IO_FOF_LENTYPE_TOPHAT200:
+      case IO_FOF_CMFRAC_TOPHAT200:
+      case IO_FOF_CMFRACTYPE_TOPHAT200:
+      case IO_FOF_J_CRIT500:
+      case IO_FOF_JDM_CRIT500:
+      case IO_FOF_JGAS_CRIT500:
+      case IO_FOF_JSTARS_CRIT500:
+      case IO_FOF_MASSTYPE_CRIT500:
+      case IO_FOF_LENTYPE_CRIT500:
+      case IO_FOF_CMFRAC_CRIT500:
+      case IO_FOF_CMFRACTYPE_CRIT500:
+      case IO_FOF_J:
+      case IO_FOF_JDM:
+      case IO_FOF_JGAS:
+      case IO_FOF_JSTARS:
+      case IO_FOF_CMFRAC:
+      case IO_FOF_CMFRACTYPE:
+      case IO_FOF_EKIN:
+      case IO_FOF_ETHR:
+      case IO_FOF_EPOT:
+      case IO_FOF_EPOT_CRIT200:
+      case IO_FOF_EKIN_CRIT200:
+      case IO_FOF_ETHR_CRIT200:
+      case IO_FOF_EPOT_MEAN200:
+      case IO_FOF_EKIN_MEAN200:
+      case IO_FOF_ETHR_MEAN200:
+      case IO_FOF_EPOT_TOPHAT200:
+      case IO_FOF_EKIN_TOPHAT200:
+      case IO_FOF_ETHR_TOPHAT200:
+      case IO_FOF_EPOT_CRIT500:
+      case IO_FOF_EKIN_CRIT500:
+      case IO_FOF_ETHR_CRIT500:
 #endif /* #ifdef SUBFIND_EXTENDED_PROPERTIES */
 
-      return 0;
+        return 0;
 
-    case IO_SUB_LEN:
-    case IO_SUB_MTOT:
-    case IO_SUB_POS:
-    case IO_SUB_VEL:
-    case IO_SUB_LENTYPE:
-    case IO_SUB_MASSTYPE:
-    case IO_SUB_CM:
-    case IO_SUB_SPIN:
-    case IO_SUB_VELDISP:
-    case IO_SUB_VMAX:
-    case IO_SUB_VMAXRAD:
-    case IO_SUB_HALFMASSRAD:
-    case IO_SUB_HALFMASSRADTYPE:
-    case IO_SUB_MASSINRAD:
-    case IO_SUB_MASSINHALFRAD:
-    case IO_SUB_MASSINMAXRAD:
-    case IO_SUB_MASSINRADTYPE:
-    case IO_SUB_MASSINHALFRADTYPE:
-    case IO_SUB_MASSINMAXRADTYPE:
-    case IO_SUB_IDMOSTBOUND:
-    case IO_SUB_GRNR:
-    case IO_SUB_PARENT:
-    case IO_SUB_BFLD_HALO:
-    case IO_SUB_BFLD_DISK:
-    case IO_SUB_SFR:
-    case IO_SUB_SFRINRAD:
-    case IO_SUB_SFRINHALFRAD:
-    case IO_SUB_SFRINMAXRAD:
+      case IO_SUB_LEN:
+      case IO_SUB_MTOT:
+      case IO_SUB_POS:
+      case IO_SUB_VEL:
+      case IO_SUB_LENTYPE:
+      case IO_SUB_MASSTYPE:
+      case IO_SUB_CM:
+      case IO_SUB_SPIN:
+      case IO_SUB_VELDISP:
+      case IO_SUB_VMAX:
+      case IO_SUB_VMAXRAD:
+      case IO_SUB_HALFMASSRAD:
+      case IO_SUB_HALFMASSRADTYPE:
+      case IO_SUB_MASSINRAD:
+      case IO_SUB_MASSINHALFRAD:
+      case IO_SUB_MASSINMAXRAD:
+      case IO_SUB_MASSINRADTYPE:
+      case IO_SUB_MASSINHALFRADTYPE:
+      case IO_SUB_MASSINMAXRADTYPE:
+      case IO_SUB_IDMOSTBOUND:
+      case IO_SUB_GRNR:
+      case IO_SUB_PARENT:
+      case IO_SUB_BFLD_HALO:
+      case IO_SUB_BFLD_DISK:
+      case IO_SUB_SFR:
+      case IO_SUB_SFRINRAD:
+      case IO_SUB_SFRINHALFRAD:
+      case IO_SUB_SFRINMAXRAD:
 #ifdef SUBFIND_EXTENDED_PROPERTIES
-    case IO_SUB_EKIN:
-    case IO_SUB_ETHR:
-    case IO_SUB_EPOT:
-    case IO_SUB_J:
-    case IO_SUB_JDM:
-    case IO_SUB_JGAS:
-    case IO_SUB_JSTARS:
-    case IO_SUB_JINHALFRAD:
-    case IO_SUB_JDMINHALFRAD:
-    case IO_SUB_JGASINHALFRAD:
-    case IO_SUB_JSTARSINHALFRAD:
-    case IO_SUB_JINRAD:
-    case IO_SUB_JDMINRAD:
-    case IO_SUB_JGASINRAD:
-    case IO_SUB_JSTARSINRAD:
-    case IO_SUB_CMFRAC:
-    case IO_SUB_CMFRACTYPE:
-    case IO_SUB_CMFRACINHALFRAD:
-    case IO_SUB_CMFRACTYPEINHALFRAD:
-    case IO_SUB_CMFRACINRAD:
-    case IO_SUB_CMFRACTYPEINRAD:
+      case IO_SUB_EKIN:
+      case IO_SUB_ETHR:
+      case IO_SUB_EPOT:
+      case IO_SUB_J:
+      case IO_SUB_JDM:
+      case IO_SUB_JGAS:
+      case IO_SUB_JSTARS:
+      case IO_SUB_JINHALFRAD:
+      case IO_SUB_JDMINHALFRAD:
+      case IO_SUB_JGASINHALFRAD:
+      case IO_SUB_JSTARSINHALFRAD:
+      case IO_SUB_JINRAD:
+      case IO_SUB_JDMINRAD:
+      case IO_SUB_JGASINRAD:
+      case IO_SUB_JSTARSINRAD:
+      case IO_SUB_CMFRAC:
+      case IO_SUB_CMFRACTYPE:
+      case IO_SUB_CMFRACINHALFRAD:
+      case IO_SUB_CMFRACTYPEINHALFRAD:
+      case IO_SUB_CMFRACINRAD:
+      case IO_SUB_CMFRACTYPEINRAD:
 #endif /* #ifdef SUBFIND_EXTENDED_PROPERTIES */
-      return 1;
+        return 1;
 
-    case IO_FOFSUB_IDS:
-      return 2;
+      case IO_FOFSUB_IDS:
+        return 2;
 
-    case IO_FOF_LASTENTRY:
-      terminate("reached last entry in switch - strange.");
-      break;
+      case IO_FOF_LASTENTRY:
+        terminate("reached last entry in switch - strange.");
+        break;
     }
 
   terminate("reached end of function - this should not happen");
   return 0;
 }
-
 
 /*! \brief Returns number of particles of specific field.
  *
@@ -1842,162 +1836,161 @@ int fof_subfind_get_dataset_group(enum fof_subfind_iofields blocknr)
  */
 int fof_subfind_get_particles_in_block(enum fof_subfind_iofields blocknr)
 {
-  switch (blocknr)
+  switch(blocknr)
     {
-    case IO_FOF_LEN:
-    case IO_FOF_MTOT:
-    case IO_FOF_POS:
-    case IO_FOF_CM:
-    case IO_FOF_VEL:
-    case IO_FOF_LENTYPE:
-    case IO_FOF_MASSTYPE:
-    case IO_FOF_SFR:
-    case IO_FOF_FUZZOFFTYPE:
-      return catalogue_header.Ngroups;
+      case IO_FOF_LEN:
+      case IO_FOF_MTOT:
+      case IO_FOF_POS:
+      case IO_FOF_CM:
+      case IO_FOF_VEL:
+      case IO_FOF_LENTYPE:
+      case IO_FOF_MASSTYPE:
+      case IO_FOF_SFR:
+      case IO_FOF_FUZZOFFTYPE:
+        return catalogue_header.Ngroups;
 
-    case IO_FOF_M_MEAN200:
-    case IO_FOF_R_MEAN200:
-    case IO_FOF_M_CRIT200:
-    case IO_FOF_R_CRIT200:
-    case IO_FOF_M_TOPHAT200:
-    case IO_FOF_R_TOPHAT200:
-    case IO_FOF_M_CRIT500:
-    case IO_FOF_R_CRIT500:
-    case IO_FOF_NSUBS:
-    case IO_FOF_FIRSTSUB:
+      case IO_FOF_M_MEAN200:
+      case IO_FOF_R_MEAN200:
+      case IO_FOF_M_CRIT200:
+      case IO_FOF_R_CRIT200:
+      case IO_FOF_M_TOPHAT200:
+      case IO_FOF_R_TOPHAT200:
+      case IO_FOF_M_CRIT500:
+      case IO_FOF_R_CRIT500:
+      case IO_FOF_NSUBS:
+      case IO_FOF_FIRSTSUB:
 
 #ifdef SUBFIND_EXTENDED_PROPERTIES
-    case IO_FOF_J_MEAN200:
-    case IO_FOF_JDM_MEAN200:
-    case IO_FOF_JGAS_MEAN200:
-    case IO_FOF_JSTARS_MEAN200:
-    case IO_FOF_MASSTYPE_MEAN200:
-    case IO_FOF_LENTYPE_MEAN200:
-    case IO_FOF_CMFRAC_MEAN200:
-    case IO_FOF_CMFRACTYPE_MEAN200:
-    case IO_FOF_J_CRIT200:
-    case IO_FOF_JDM_CRIT200:
-    case IO_FOF_JGAS_CRIT200:
-    case IO_FOF_JSTARS_CRIT200:
-    case IO_FOF_MASSTYPE_CRIT200:
-    case IO_FOF_LENTYPE_CRIT200:
-    case IO_FOF_CMFRAC_CRIT200:
-    case IO_FOF_CMFRACTYPE_CRIT200:
-    case IO_FOF_J_TOPHAT200:
-    case IO_FOF_JDM_TOPHAT200:
-    case IO_FOF_JGAS_TOPHAT200:
-    case IO_FOF_JSTARS_TOPHAT200:
-    case IO_FOF_MASSTYPE_TOPHAT200:
-    case IO_FOF_LENTYPE_TOPHAT200:
-    case IO_FOF_CMFRAC_TOPHAT200:
-    case IO_FOF_CMFRACTYPE_TOPHAT200:
-    case IO_FOF_J_CRIT500:
-    case IO_FOF_JDM_CRIT500:
-    case IO_FOF_JGAS_CRIT500:
-    case IO_FOF_JSTARS_CRIT500:
-    case IO_FOF_MASSTYPE_CRIT500:
-    case IO_FOF_LENTYPE_CRIT500:
-    case IO_FOF_CMFRAC_CRIT500:
-    case IO_FOF_CMFRACTYPE_CRIT500:
-    case IO_FOF_J:
-    case IO_FOF_JDM:
-    case IO_FOF_JGAS:
-    case IO_FOF_JSTARS:
-    case IO_FOF_CMFRAC:
-    case IO_FOF_CMFRACTYPE:
-    case IO_FOF_EKIN:
-    case IO_FOF_ETHR:
-    case IO_FOF_EPOT:
-    case IO_FOF_EPOT_CRIT200:
-    case IO_FOF_EKIN_CRIT200:
-    case IO_FOF_ETHR_CRIT200:
-    case IO_FOF_EPOT_MEAN200:
-    case IO_FOF_EKIN_MEAN200:
-    case IO_FOF_ETHR_MEAN200:
-    case IO_FOF_EPOT_TOPHAT200:
-    case IO_FOF_EKIN_TOPHAT200:
-    case IO_FOF_ETHR_TOPHAT200:
-    case IO_FOF_EPOT_CRIT500:
-    case IO_FOF_EKIN_CRIT500:
-    case IO_FOF_ETHR_CRIT500:
+      case IO_FOF_J_MEAN200:
+      case IO_FOF_JDM_MEAN200:
+      case IO_FOF_JGAS_MEAN200:
+      case IO_FOF_JSTARS_MEAN200:
+      case IO_FOF_MASSTYPE_MEAN200:
+      case IO_FOF_LENTYPE_MEAN200:
+      case IO_FOF_CMFRAC_MEAN200:
+      case IO_FOF_CMFRACTYPE_MEAN200:
+      case IO_FOF_J_CRIT200:
+      case IO_FOF_JDM_CRIT200:
+      case IO_FOF_JGAS_CRIT200:
+      case IO_FOF_JSTARS_CRIT200:
+      case IO_FOF_MASSTYPE_CRIT200:
+      case IO_FOF_LENTYPE_CRIT200:
+      case IO_FOF_CMFRAC_CRIT200:
+      case IO_FOF_CMFRACTYPE_CRIT200:
+      case IO_FOF_J_TOPHAT200:
+      case IO_FOF_JDM_TOPHAT200:
+      case IO_FOF_JGAS_TOPHAT200:
+      case IO_FOF_JSTARS_TOPHAT200:
+      case IO_FOF_MASSTYPE_TOPHAT200:
+      case IO_FOF_LENTYPE_TOPHAT200:
+      case IO_FOF_CMFRAC_TOPHAT200:
+      case IO_FOF_CMFRACTYPE_TOPHAT200:
+      case IO_FOF_J_CRIT500:
+      case IO_FOF_JDM_CRIT500:
+      case IO_FOF_JGAS_CRIT500:
+      case IO_FOF_JSTARS_CRIT500:
+      case IO_FOF_MASSTYPE_CRIT500:
+      case IO_FOF_LENTYPE_CRIT500:
+      case IO_FOF_CMFRAC_CRIT500:
+      case IO_FOF_CMFRACTYPE_CRIT500:
+      case IO_FOF_J:
+      case IO_FOF_JDM:
+      case IO_FOF_JGAS:
+      case IO_FOF_JSTARS:
+      case IO_FOF_CMFRAC:
+      case IO_FOF_CMFRACTYPE:
+      case IO_FOF_EKIN:
+      case IO_FOF_ETHR:
+      case IO_FOF_EPOT:
+      case IO_FOF_EPOT_CRIT200:
+      case IO_FOF_EKIN_CRIT200:
+      case IO_FOF_ETHR_CRIT200:
+      case IO_FOF_EPOT_MEAN200:
+      case IO_FOF_EKIN_MEAN200:
+      case IO_FOF_ETHR_MEAN200:
+      case IO_FOF_EPOT_TOPHAT200:
+      case IO_FOF_EKIN_TOPHAT200:
+      case IO_FOF_ETHR_TOPHAT200:
+      case IO_FOF_EPOT_CRIT500:
+      case IO_FOF_EKIN_CRIT500:
+      case IO_FOF_ETHR_CRIT500:
 #endif /* #ifdef SUBFIND_EXTENDED_PROPERTIES */
 
 #ifdef SUBFIND
-      return catalogue_header.Ngroups;
-#else /* #ifdef SUBFIND */
-      return 0;
+        return catalogue_header.Ngroups;
+#else  /* #ifdef SUBFIND */
+        return 0;
 #endif /* #ifdef SUBFIND #else */
 
-    case IO_SUB_LEN:
-    case IO_SUB_MTOT:
-    case IO_SUB_POS:
-    case IO_SUB_VEL:
-    case IO_SUB_LENTYPE:
-    case IO_SUB_MASSTYPE:
-    case IO_SUB_CM:
-    case IO_SUB_SPIN:
-    case IO_SUB_VELDISP:
-    case IO_SUB_VMAX:
-    case IO_SUB_VMAXRAD:
-    case IO_SUB_HALFMASSRAD:
-    case IO_SUB_HALFMASSRADTYPE:
-    case IO_SUB_MASSINRAD:
-    case IO_SUB_MASSINHALFRAD:
-    case IO_SUB_MASSINMAXRAD:
-    case IO_SUB_MASSINRADTYPE:
-    case IO_SUB_MASSINHALFRADTYPE:
-    case IO_SUB_MASSINMAXRADTYPE:
-    case IO_SUB_IDMOSTBOUND:
-    case IO_SUB_GRNR:
-    case IO_SUB_PARENT:
-    case IO_SUB_BFLD_HALO:
-    case IO_SUB_BFLD_DISK:
-    case IO_SUB_SFR:
-    case IO_SUB_SFRINRAD:
-    case IO_SUB_SFRINHALFRAD:
-    case IO_SUB_SFRINMAXRAD:
+      case IO_SUB_LEN:
+      case IO_SUB_MTOT:
+      case IO_SUB_POS:
+      case IO_SUB_VEL:
+      case IO_SUB_LENTYPE:
+      case IO_SUB_MASSTYPE:
+      case IO_SUB_CM:
+      case IO_SUB_SPIN:
+      case IO_SUB_VELDISP:
+      case IO_SUB_VMAX:
+      case IO_SUB_VMAXRAD:
+      case IO_SUB_HALFMASSRAD:
+      case IO_SUB_HALFMASSRADTYPE:
+      case IO_SUB_MASSINRAD:
+      case IO_SUB_MASSINHALFRAD:
+      case IO_SUB_MASSINMAXRAD:
+      case IO_SUB_MASSINRADTYPE:
+      case IO_SUB_MASSINHALFRADTYPE:
+      case IO_SUB_MASSINMAXRADTYPE:
+      case IO_SUB_IDMOSTBOUND:
+      case IO_SUB_GRNR:
+      case IO_SUB_PARENT:
+      case IO_SUB_BFLD_HALO:
+      case IO_SUB_BFLD_DISK:
+      case IO_SUB_SFR:
+      case IO_SUB_SFRINRAD:
+      case IO_SUB_SFRINHALFRAD:
+      case IO_SUB_SFRINMAXRAD:
 #ifdef SUBFIND_EXTENDED_PROPERTIES
-    case IO_SUB_EKIN:
-    case IO_SUB_ETHR:
-    case IO_SUB_EPOT:
-    case IO_SUB_J:
-    case IO_SUB_JDM:
-    case IO_SUB_JGAS:
-    case IO_SUB_JSTARS:
-    case IO_SUB_JINHALFRAD:
-    case IO_SUB_JDMINHALFRAD:
-    case IO_SUB_JGASINHALFRAD:
-    case IO_SUB_JSTARSINHALFRAD:
-    case IO_SUB_JINRAD:
-    case IO_SUB_JDMINRAD:
-    case IO_SUB_JGASINRAD:
-    case IO_SUB_JSTARSINRAD:
-    case IO_SUB_CMFRAC:
-    case IO_SUB_CMFRACTYPE:
-    case IO_SUB_CMFRACINHALFRAD:
-    case IO_SUB_CMFRACTYPEINHALFRAD:
-    case IO_SUB_CMFRACINRAD:
-    case IO_SUB_CMFRACTYPEINRAD:
+      case IO_SUB_EKIN:
+      case IO_SUB_ETHR:
+      case IO_SUB_EPOT:
+      case IO_SUB_J:
+      case IO_SUB_JDM:
+      case IO_SUB_JGAS:
+      case IO_SUB_JSTARS:
+      case IO_SUB_JINHALFRAD:
+      case IO_SUB_JDMINHALFRAD:
+      case IO_SUB_JGASINHALFRAD:
+      case IO_SUB_JSTARSINHALFRAD:
+      case IO_SUB_JINRAD:
+      case IO_SUB_JDMINRAD:
+      case IO_SUB_JGASINRAD:
+      case IO_SUB_JSTARSINRAD:
+      case IO_SUB_CMFRAC:
+      case IO_SUB_CMFRACTYPE:
+      case IO_SUB_CMFRACINHALFRAD:
+      case IO_SUB_CMFRACTYPEINHALFRAD:
+      case IO_SUB_CMFRACINRAD:
+      case IO_SUB_CMFRACTYPEINRAD:
 #endif /* #ifdef SUBFIND_EXTENDED_PROPERTIES */
 
 #ifdef SUBFIND
-      return catalogue_header.Nsubgroups;
-#else /* #ifdef SUBFIND */
-      return 0;
+        return catalogue_header.Nsubgroups;
+#else  /* #ifdef SUBFIND */
+        return 0;
 #endif /* #ifdef SUBFIND #else */
 
-    case IO_FOFSUB_IDS:
-      return catalogue_header.Nids;
+      case IO_FOFSUB_IDS:
+        return catalogue_header.Nids;
 
-    case IO_FOF_LASTENTRY:
-      terminate("reached last entry in switch - strange.");
-      break;
+      case IO_FOF_LASTENTRY:
+        terminate("reached last entry in switch - strange.");
+        break;
     }
 
   terminate("reached end of function - this should not happen");
   return 0;
 }
-
 
 /*! \brief Returns the number of elements per entry of a given property.
  *
@@ -2009,152 +2002,151 @@ int fof_subfind_get_values_per_blockelement(enum fof_subfind_iofields blocknr)
 {
   int values = 0;
 
-  switch (blocknr)
+  switch(blocknr)
     {
-    case IO_FOF_LEN:
-    case IO_FOF_NSUBS:
-    case IO_FOF_FIRSTSUB:
-    case IO_SUB_LEN:
-    case IO_SUB_GRNR:
-    case IO_SUB_PARENT:
-    case IO_FOF_MTOT:
-    case IO_FOF_SFR:
-    case IO_FOF_M_MEAN200:
-    case IO_FOF_R_MEAN200:
-    case IO_FOF_M_CRIT200:
-    case IO_FOF_R_CRIT200:
-    case IO_FOF_M_TOPHAT200:
-    case IO_FOF_R_TOPHAT200:
-    case IO_FOF_M_CRIT500:
-    case IO_FOF_R_CRIT500:
-    case IO_SUB_MTOT:
-    case IO_SUB_VELDISP:
-    case IO_SUB_VMAX:
-    case IO_SUB_VMAXRAD:
-    case IO_SUB_HALFMASSRAD:
-    case IO_SUB_MASSINRAD:
-    case IO_SUB_MASSINHALFRAD:
-    case IO_SUB_MASSINMAXRAD:
-    case IO_SUB_IDMOSTBOUND:
-    case IO_SUB_BFLD_HALO:
-    case IO_SUB_BFLD_DISK:
-    case IO_SUB_SFR:
-    case IO_SUB_SFRINRAD:
-    case IO_SUB_SFRINHALFRAD:
-    case IO_SUB_SFRINMAXRAD:
-    case IO_FOFSUB_IDS:
+      case IO_FOF_LEN:
+      case IO_FOF_NSUBS:
+      case IO_FOF_FIRSTSUB:
+      case IO_SUB_LEN:
+      case IO_SUB_GRNR:
+      case IO_SUB_PARENT:
+      case IO_FOF_MTOT:
+      case IO_FOF_SFR:
+      case IO_FOF_M_MEAN200:
+      case IO_FOF_R_MEAN200:
+      case IO_FOF_M_CRIT200:
+      case IO_FOF_R_CRIT200:
+      case IO_FOF_M_TOPHAT200:
+      case IO_FOF_R_TOPHAT200:
+      case IO_FOF_M_CRIT500:
+      case IO_FOF_R_CRIT500:
+      case IO_SUB_MTOT:
+      case IO_SUB_VELDISP:
+      case IO_SUB_VMAX:
+      case IO_SUB_VMAXRAD:
+      case IO_SUB_HALFMASSRAD:
+      case IO_SUB_MASSINRAD:
+      case IO_SUB_MASSINHALFRAD:
+      case IO_SUB_MASSINMAXRAD:
+      case IO_SUB_IDMOSTBOUND:
+      case IO_SUB_BFLD_HALO:
+      case IO_SUB_BFLD_DISK:
+      case IO_SUB_SFR:
+      case IO_SUB_SFRINRAD:
+      case IO_SUB_SFRINHALFRAD:
+      case IO_SUB_SFRINMAXRAD:
+      case IO_FOFSUB_IDS:
 #ifdef SUBFIND_EXTENDED_PROPERTIES
-    case IO_FOF_CMFRAC_MEAN200:
-    case IO_FOF_CMFRAC_CRIT200:
-    case IO_FOF_CMFRAC_TOPHAT200:
-    case IO_FOF_CMFRAC_CRIT500:
-    case IO_FOF_EPOT_CRIT200:
-    case IO_FOF_EKIN_CRIT200:
-    case IO_FOF_ETHR_CRIT200:
-    case IO_FOF_EPOT_MEAN200:
-    case IO_FOF_EKIN_MEAN200:
-    case IO_FOF_ETHR_MEAN200:
-    case IO_FOF_EPOT_TOPHAT200:
-    case IO_FOF_EKIN_TOPHAT200:
-    case IO_FOF_ETHR_TOPHAT200:
-    case IO_FOF_EPOT_CRIT500:
-    case IO_FOF_EKIN_CRIT500:
-    case IO_FOF_ETHR_CRIT500:
-    case IO_FOF_EKIN:
-    case IO_FOF_ETHR:
-    case IO_FOF_EPOT:
-    case IO_SUB_EKIN:
-    case IO_SUB_ETHR:
-    case IO_SUB_EPOT:
-    case IO_SUB_CMFRAC:
-    case IO_SUB_CMFRACINHALFRAD:
-    case IO_SUB_CMFRACINRAD:
-    case IO_FOF_CMFRAC:
+      case IO_FOF_CMFRAC_MEAN200:
+      case IO_FOF_CMFRAC_CRIT200:
+      case IO_FOF_CMFRAC_TOPHAT200:
+      case IO_FOF_CMFRAC_CRIT500:
+      case IO_FOF_EPOT_CRIT200:
+      case IO_FOF_EKIN_CRIT200:
+      case IO_FOF_ETHR_CRIT200:
+      case IO_FOF_EPOT_MEAN200:
+      case IO_FOF_EKIN_MEAN200:
+      case IO_FOF_ETHR_MEAN200:
+      case IO_FOF_EPOT_TOPHAT200:
+      case IO_FOF_EKIN_TOPHAT200:
+      case IO_FOF_ETHR_TOPHAT200:
+      case IO_FOF_EPOT_CRIT500:
+      case IO_FOF_EKIN_CRIT500:
+      case IO_FOF_ETHR_CRIT500:
+      case IO_FOF_EKIN:
+      case IO_FOF_ETHR:
+      case IO_FOF_EPOT:
+      case IO_SUB_EKIN:
+      case IO_SUB_ETHR:
+      case IO_SUB_EPOT:
+      case IO_SUB_CMFRAC:
+      case IO_SUB_CMFRACINHALFRAD:
+      case IO_SUB_CMFRACINRAD:
+      case IO_FOF_CMFRAC:
 #endif /* #ifdef SUBFIND_EXTENDED_PROPERTIES */
-      values = 1;
-      break;
+        values = 1;
+        break;
 
-    case IO_FOF_LENTYPE:
-    case IO_SUB_LENTYPE:
-    case IO_FOF_MASSTYPE:
-    case IO_SUB_MASSTYPE:
-    case IO_SUB_HALFMASSRADTYPE:
-    case IO_SUB_MASSINRADTYPE:
-    case IO_SUB_MASSINHALFRADTYPE:
-    case IO_SUB_MASSINMAXRADTYPE:
-    case IO_FOF_FUZZOFFTYPE:
+      case IO_FOF_LENTYPE:
+      case IO_SUB_LENTYPE:
+      case IO_FOF_MASSTYPE:
+      case IO_SUB_MASSTYPE:
+      case IO_SUB_HALFMASSRADTYPE:
+      case IO_SUB_MASSINRADTYPE:
+      case IO_SUB_MASSINHALFRADTYPE:
+      case IO_SUB_MASSINMAXRADTYPE:
+      case IO_FOF_FUZZOFFTYPE:
 #ifdef SUBFIND_EXTENDED_PROPERTIES
-    case IO_FOF_CMFRACTYPE:
-    case IO_SUB_CMFRACTYPE:
-    case IO_SUB_CMFRACTYPEINHALFRAD:
-    case IO_SUB_CMFRACTYPEINRAD:
-    case IO_FOF_LENTYPE_MEAN200:
-    case IO_FOF_LENTYPE_CRIT200:
-    case IO_FOF_LENTYPE_CRIT500:
-    case IO_FOF_LENTYPE_TOPHAT200:
-    case IO_FOF_MASSTYPE_MEAN200:
-    case IO_FOF_MASSTYPE_CRIT200:
-    case IO_FOF_MASSTYPE_CRIT500:
-    case IO_FOF_MASSTYPE_TOPHAT200:
-    case IO_FOF_CMFRACTYPE_MEAN200:
-    case IO_FOF_CMFRACTYPE_CRIT200:
-    case IO_FOF_CMFRACTYPE_CRIT500:
-    case IO_FOF_CMFRACTYPE_TOPHAT200:
+      case IO_FOF_CMFRACTYPE:
+      case IO_SUB_CMFRACTYPE:
+      case IO_SUB_CMFRACTYPEINHALFRAD:
+      case IO_SUB_CMFRACTYPEINRAD:
+      case IO_FOF_LENTYPE_MEAN200:
+      case IO_FOF_LENTYPE_CRIT200:
+      case IO_FOF_LENTYPE_CRIT500:
+      case IO_FOF_LENTYPE_TOPHAT200:
+      case IO_FOF_MASSTYPE_MEAN200:
+      case IO_FOF_MASSTYPE_CRIT200:
+      case IO_FOF_MASSTYPE_CRIT500:
+      case IO_FOF_MASSTYPE_TOPHAT200:
+      case IO_FOF_CMFRACTYPE_MEAN200:
+      case IO_FOF_CMFRACTYPE_CRIT200:
+      case IO_FOF_CMFRACTYPE_CRIT500:
+      case IO_FOF_CMFRACTYPE_TOPHAT200:
 #endif /* #ifdef SUBFIND_EXTENDED_PROPERTIES */
-      values = NTYPES;
-      break;
+        values = NTYPES;
+        break;
 
-    case IO_FOF_POS:
-    case IO_FOF_CM:
-    case IO_FOF_VEL:
-    case IO_SUB_POS:
-    case IO_SUB_VEL:
-    case IO_SUB_CM:
-    case IO_SUB_SPIN:
+      case IO_FOF_POS:
+      case IO_FOF_CM:
+      case IO_FOF_VEL:
+      case IO_SUB_POS:
+      case IO_SUB_VEL:
+      case IO_SUB_CM:
+      case IO_SUB_SPIN:
 #ifdef SUBFIND_EXTENDED_PROPERTIES
-    case IO_SUB_J:
-    case IO_SUB_JDM:
-    case IO_SUB_JGAS:
-    case IO_SUB_JSTARS:
-    case IO_SUB_JINHALFRAD:
-    case IO_SUB_JDMINHALFRAD:
-    case IO_SUB_JGASINHALFRAD:
-    case IO_SUB_JSTARSINHALFRAD:
-    case IO_SUB_JINRAD:
-    case IO_SUB_JDMINRAD:
-    case IO_SUB_JGASINRAD:
-    case IO_SUB_JSTARSINRAD:
-    case IO_FOF_J_MEAN200:
-    case IO_FOF_JDM_MEAN200:
-    case IO_FOF_JGAS_MEAN200:
-    case IO_FOF_JSTARS_MEAN200:
-    case IO_FOF_J_CRIT200:
-    case IO_FOF_JDM_CRIT200:
-    case IO_FOF_JGAS_CRIT200:
-    case IO_FOF_JSTARS_CRIT200:
-    case IO_FOF_J_TOPHAT200:
-    case IO_FOF_JDM_TOPHAT200:
-    case IO_FOF_JGAS_TOPHAT200:
-    case IO_FOF_JSTARS_TOPHAT200:
-    case IO_FOF_J_CRIT500:
-    case IO_FOF_JDM_CRIT500:
-    case IO_FOF_JGAS_CRIT500:
-    case IO_FOF_JSTARS_CRIT500:
-    case IO_FOF_J:
-    case IO_FOF_JDM:
-    case IO_FOF_JGAS:
-    case IO_FOF_JSTARS:
+      case IO_SUB_J:
+      case IO_SUB_JDM:
+      case IO_SUB_JGAS:
+      case IO_SUB_JSTARS:
+      case IO_SUB_JINHALFRAD:
+      case IO_SUB_JDMINHALFRAD:
+      case IO_SUB_JGASINHALFRAD:
+      case IO_SUB_JSTARSINHALFRAD:
+      case IO_SUB_JINRAD:
+      case IO_SUB_JDMINRAD:
+      case IO_SUB_JGASINRAD:
+      case IO_SUB_JSTARSINRAD:
+      case IO_FOF_J_MEAN200:
+      case IO_FOF_JDM_MEAN200:
+      case IO_FOF_JGAS_MEAN200:
+      case IO_FOF_JSTARS_MEAN200:
+      case IO_FOF_J_CRIT200:
+      case IO_FOF_JDM_CRIT200:
+      case IO_FOF_JGAS_CRIT200:
+      case IO_FOF_JSTARS_CRIT200:
+      case IO_FOF_J_TOPHAT200:
+      case IO_FOF_JDM_TOPHAT200:
+      case IO_FOF_JGAS_TOPHAT200:
+      case IO_FOF_JSTARS_TOPHAT200:
+      case IO_FOF_J_CRIT500:
+      case IO_FOF_JDM_CRIT500:
+      case IO_FOF_JGAS_CRIT500:
+      case IO_FOF_JSTARS_CRIT500:
+      case IO_FOF_J:
+      case IO_FOF_JDM:
+      case IO_FOF_JGAS:
+      case IO_FOF_JSTARS:
 #endif /* #ifdef SUBFIND_EXTENDED_PROPERTIES */
-      values = 3;
-      break;
+        values = 3;
+        break;
 
-    case IO_FOF_LASTENTRY:
-      terminate("reached last entry in switch - should not get here");
-      break;
+      case IO_FOF_LASTENTRY:
+        terminate("reached last entry in switch - should not get here");
+        break;
     }
   return values;
 }
-
 
 /*! \brief Returns the number of bytes per element of a given property.
  *
@@ -2166,166 +2158,165 @@ int fof_subfind_get_bytes_per_blockelement(enum fof_subfind_iofields blocknr)
 {
   int bytes_per_blockelement = 0;
 
-  switch (blocknr)
+  switch(blocknr)
     {
-    case IO_FOF_LEN:
-    case IO_FOF_NSUBS:
-    case IO_FOF_FIRSTSUB:
-    case IO_SUB_LEN:
-    case IO_SUB_GRNR:
-    case IO_SUB_PARENT:
-      bytes_per_blockelement = sizeof(int);
-      break;
+      case IO_FOF_LEN:
+      case IO_FOF_NSUBS:
+      case IO_FOF_FIRSTSUB:
+      case IO_SUB_LEN:
+      case IO_SUB_GRNR:
+      case IO_SUB_PARENT:
+        bytes_per_blockelement = sizeof(int);
+        break;
 
-    case IO_FOF_LENTYPE:
-    case IO_SUB_LENTYPE:
+      case IO_FOF_LENTYPE:
+      case IO_SUB_LENTYPE:
 #ifdef SUBFIND_EXTENDED_PROPERTIES
-    case IO_FOF_LENTYPE_MEAN200:
-    case IO_FOF_LENTYPE_CRIT200:
-    case IO_FOF_LENTYPE_CRIT500:
-    case IO_FOF_LENTYPE_TOPHAT200:
+      case IO_FOF_LENTYPE_MEAN200:
+      case IO_FOF_LENTYPE_CRIT200:
+      case IO_FOF_LENTYPE_CRIT500:
+      case IO_FOF_LENTYPE_TOPHAT200:
 #endif /* #ifdef SUBFIND_EXTENDED_PROPERTIES */
-      bytes_per_blockelement = NTYPES * sizeof(int);
-      break;
+        bytes_per_blockelement = NTYPES * sizeof(int);
+        break;
 
-    case IO_FOF_MTOT:
-    case IO_FOF_SFR:
-    case IO_FOF_M_MEAN200:
-    case IO_FOF_R_MEAN200:
-    case IO_FOF_M_CRIT200:
-    case IO_FOF_R_CRIT200:
-    case IO_FOF_M_TOPHAT200:
-    case IO_FOF_R_TOPHAT200:
-    case IO_FOF_M_CRIT500:
-    case IO_FOF_R_CRIT500:
-    case IO_SUB_MTOT:
-    case IO_SUB_VELDISP:
-    case IO_SUB_VMAX:
-    case IO_SUB_VMAXRAD:
-    case IO_SUB_HALFMASSRAD:
-    case IO_SUB_MASSINRAD:
-    case IO_SUB_MASSINHALFRAD:
-    case IO_SUB_MASSINMAXRAD:
-    case IO_SUB_BFLD_HALO:
-    case IO_SUB_BFLD_DISK:
-    case IO_SUB_SFR:
-    case IO_SUB_SFRINRAD:
-    case IO_SUB_SFRINHALFRAD:
-    case IO_SUB_SFRINMAXRAD:
+      case IO_FOF_MTOT:
+      case IO_FOF_SFR:
+      case IO_FOF_M_MEAN200:
+      case IO_FOF_R_MEAN200:
+      case IO_FOF_M_CRIT200:
+      case IO_FOF_R_CRIT200:
+      case IO_FOF_M_TOPHAT200:
+      case IO_FOF_R_TOPHAT200:
+      case IO_FOF_M_CRIT500:
+      case IO_FOF_R_CRIT500:
+      case IO_SUB_MTOT:
+      case IO_SUB_VELDISP:
+      case IO_SUB_VMAX:
+      case IO_SUB_VMAXRAD:
+      case IO_SUB_HALFMASSRAD:
+      case IO_SUB_MASSINRAD:
+      case IO_SUB_MASSINHALFRAD:
+      case IO_SUB_MASSINMAXRAD:
+      case IO_SUB_BFLD_HALO:
+      case IO_SUB_BFLD_DISK:
+      case IO_SUB_SFR:
+      case IO_SUB_SFRINRAD:
+      case IO_SUB_SFRINHALFRAD:
+      case IO_SUB_SFRINMAXRAD:
 #ifdef SUBFIND_EXTENDED_PROPERTIES
-    case IO_FOF_CMFRAC_MEAN200:
-    case IO_FOF_CMFRAC_CRIT200:
-    case IO_FOF_CMFRAC_TOPHAT200:
-    case IO_FOF_CMFRAC_CRIT500:
-    case IO_FOF_CMFRAC:
-    case IO_FOF_EKIN:
-    case IO_FOF_ETHR:
-    case IO_FOF_EPOT:
-    case IO_SUB_EKIN:
-    case IO_SUB_ETHR:
-    case IO_SUB_EPOT:
-    case IO_SUB_CMFRAC:
-    case IO_SUB_CMFRACINHALFRAD:
-    case IO_SUB_CMFRACINRAD:
-    case IO_FOF_EPOT_CRIT200:
-    case IO_FOF_EKIN_CRIT200:
-    case IO_FOF_ETHR_CRIT200:
-    case IO_FOF_EPOT_MEAN200:
-    case IO_FOF_EKIN_MEAN200:
-    case IO_FOF_ETHR_MEAN200:
-    case IO_FOF_EPOT_TOPHAT200:
-    case IO_FOF_EKIN_TOPHAT200:
-    case IO_FOF_ETHR_TOPHAT200:
-    case IO_FOF_EPOT_CRIT500:
-    case IO_FOF_EKIN_CRIT500:
-    case IO_FOF_ETHR_CRIT500:
+      case IO_FOF_CMFRAC_MEAN200:
+      case IO_FOF_CMFRAC_CRIT200:
+      case IO_FOF_CMFRAC_TOPHAT200:
+      case IO_FOF_CMFRAC_CRIT500:
+      case IO_FOF_CMFRAC:
+      case IO_FOF_EKIN:
+      case IO_FOF_ETHR:
+      case IO_FOF_EPOT:
+      case IO_SUB_EKIN:
+      case IO_SUB_ETHR:
+      case IO_SUB_EPOT:
+      case IO_SUB_CMFRAC:
+      case IO_SUB_CMFRACINHALFRAD:
+      case IO_SUB_CMFRACINRAD:
+      case IO_FOF_EPOT_CRIT200:
+      case IO_FOF_EKIN_CRIT200:
+      case IO_FOF_ETHR_CRIT200:
+      case IO_FOF_EPOT_MEAN200:
+      case IO_FOF_EKIN_MEAN200:
+      case IO_FOF_ETHR_MEAN200:
+      case IO_FOF_EPOT_TOPHAT200:
+      case IO_FOF_EKIN_TOPHAT200:
+      case IO_FOF_ETHR_TOPHAT200:
+      case IO_FOF_EPOT_CRIT500:
+      case IO_FOF_EKIN_CRIT500:
+      case IO_FOF_ETHR_CRIT500:
 #endif /* #ifdef SUBFIND_EXTENDED_PROPERTIES */
-      bytes_per_blockelement = sizeof(MyOutputFloat);
-      break;
+        bytes_per_blockelement = sizeof(MyOutputFloat);
+        break;
 
-    case IO_FOF_POS:
-    case IO_FOF_CM:
-    case IO_FOF_VEL:
-    case IO_SUB_POS:
-    case IO_SUB_VEL:
-    case IO_SUB_CM:
-    case IO_SUB_SPIN:
+      case IO_FOF_POS:
+      case IO_FOF_CM:
+      case IO_FOF_VEL:
+      case IO_SUB_POS:
+      case IO_SUB_VEL:
+      case IO_SUB_CM:
+      case IO_SUB_SPIN:
 #ifdef SUBFIND_EXTENDED_PROPERTIES
-    case IO_SUB_J:
-    case IO_SUB_JDM:
-    case IO_SUB_JGAS:
-    case IO_SUB_JSTARS:
-    case IO_SUB_JINHALFRAD:
-    case IO_SUB_JDMINHALFRAD:
-    case IO_SUB_JGASINHALFRAD:
-    case IO_SUB_JSTARSINHALFRAD:
-    case IO_SUB_JINRAD:
-    case IO_SUB_JDMINRAD:
-    case IO_SUB_JGASINRAD:
-    case IO_SUB_JSTARSINRAD:
-    case IO_FOF_J_MEAN200:
-    case IO_FOF_JDM_MEAN200:
-    case IO_FOF_JGAS_MEAN200:
-    case IO_FOF_JSTARS_MEAN200:
-    case IO_FOF_J_CRIT200:
-    case IO_FOF_JDM_CRIT200:
-    case IO_FOF_JGAS_CRIT200:
-    case IO_FOF_JSTARS_CRIT200:
-    case IO_FOF_J_TOPHAT200:
-    case IO_FOF_JDM_TOPHAT200:
-    case IO_FOF_JGAS_TOPHAT200:
-    case IO_FOF_JSTARS_TOPHAT200:
-    case IO_FOF_J_CRIT500:
-    case IO_FOF_JDM_CRIT500:
-    case IO_FOF_JGAS_CRIT500:
-    case IO_FOF_JSTARS_CRIT500:
-    case IO_FOF_J:
-    case IO_FOF_JDM:
-    case IO_FOF_JGAS:
-    case IO_FOF_JSTARS:
+      case IO_SUB_J:
+      case IO_SUB_JDM:
+      case IO_SUB_JGAS:
+      case IO_SUB_JSTARS:
+      case IO_SUB_JINHALFRAD:
+      case IO_SUB_JDMINHALFRAD:
+      case IO_SUB_JGASINHALFRAD:
+      case IO_SUB_JSTARSINHALFRAD:
+      case IO_SUB_JINRAD:
+      case IO_SUB_JDMINRAD:
+      case IO_SUB_JGASINRAD:
+      case IO_SUB_JSTARSINRAD:
+      case IO_FOF_J_MEAN200:
+      case IO_FOF_JDM_MEAN200:
+      case IO_FOF_JGAS_MEAN200:
+      case IO_FOF_JSTARS_MEAN200:
+      case IO_FOF_J_CRIT200:
+      case IO_FOF_JDM_CRIT200:
+      case IO_FOF_JGAS_CRIT200:
+      case IO_FOF_JSTARS_CRIT200:
+      case IO_FOF_J_TOPHAT200:
+      case IO_FOF_JDM_TOPHAT200:
+      case IO_FOF_JGAS_TOPHAT200:
+      case IO_FOF_JSTARS_TOPHAT200:
+      case IO_FOF_J_CRIT500:
+      case IO_FOF_JDM_CRIT500:
+      case IO_FOF_JGAS_CRIT500:
+      case IO_FOF_JSTARS_CRIT500:
+      case IO_FOF_J:
+      case IO_FOF_JDM:
+      case IO_FOF_JGAS:
+      case IO_FOF_JSTARS:
 #endif /* #ifdef SUBFIND_EXTENDED_PROPERTIES */
-      bytes_per_blockelement = 3 * sizeof(MyOutputFloat);
-      break;
+        bytes_per_blockelement = 3 * sizeof(MyOutputFloat);
+        break;
 
-    case IO_FOF_MASSTYPE:
-    case IO_SUB_MASSTYPE:
-    case IO_SUB_HALFMASSRADTYPE:
-    case IO_SUB_MASSINRADTYPE:
-    case IO_SUB_MASSINHALFRADTYPE:
-    case IO_SUB_MASSINMAXRADTYPE:
+      case IO_FOF_MASSTYPE:
+      case IO_SUB_MASSTYPE:
+      case IO_SUB_HALFMASSRADTYPE:
+      case IO_SUB_MASSINRADTYPE:
+      case IO_SUB_MASSINHALFRADTYPE:
+      case IO_SUB_MASSINMAXRADTYPE:
 #ifdef SUBFIND_EXTENDED_PROPERTIES
-    case IO_FOF_MASSTYPE_MEAN200:
-    case IO_FOF_MASSTYPE_CRIT200:
-    case IO_FOF_MASSTYPE_CRIT500:
-    case IO_FOF_MASSTYPE_TOPHAT200:
-    case IO_FOF_CMFRACTYPE_MEAN200:
-    case IO_FOF_CMFRACTYPE_CRIT200:
-    case IO_FOF_CMFRACTYPE_CRIT500:
-    case IO_FOF_CMFRACTYPE_TOPHAT200:
-    case IO_FOF_CMFRACTYPE:
-    case IO_SUB_CMFRACTYPE:
-    case IO_SUB_CMFRACTYPEINHALFRAD:
-    case IO_SUB_CMFRACTYPEINRAD:
+      case IO_FOF_MASSTYPE_MEAN200:
+      case IO_FOF_MASSTYPE_CRIT200:
+      case IO_FOF_MASSTYPE_CRIT500:
+      case IO_FOF_MASSTYPE_TOPHAT200:
+      case IO_FOF_CMFRACTYPE_MEAN200:
+      case IO_FOF_CMFRACTYPE_CRIT200:
+      case IO_FOF_CMFRACTYPE_CRIT500:
+      case IO_FOF_CMFRACTYPE_TOPHAT200:
+      case IO_FOF_CMFRACTYPE:
+      case IO_SUB_CMFRACTYPE:
+      case IO_SUB_CMFRACTYPEINHALFRAD:
+      case IO_SUB_CMFRACTYPEINRAD:
 #endif /* #ifdef SUBFIND_EXTENDED_PROPERTIES */
-      bytes_per_blockelement = NTYPES * sizeof(MyOutputFloat);
-      break;
+        bytes_per_blockelement = NTYPES * sizeof(MyOutputFloat);
+        break;
 
-    case IO_SUB_IDMOSTBOUND:
-    case IO_FOFSUB_IDS:
-      bytes_per_blockelement = sizeof(MyIDType);
-      break;
+      case IO_SUB_IDMOSTBOUND:
+      case IO_FOFSUB_IDS:
+        bytes_per_blockelement = sizeof(MyIDType);
+        break;
 
-    case IO_FOF_FUZZOFFTYPE:
-      bytes_per_blockelement = NTYPES * sizeof(long long);
-      break;
+      case IO_FOF_FUZZOFFTYPE:
+        bytes_per_blockelement = NTYPES * sizeof(long long);
+        break;
 
-    case IO_FOF_LASTENTRY:
-      terminate("reached last entry in switch - should not get here");
-      break;
+      case IO_FOF_LASTENTRY:
+        terminate("reached last entry in switch - should not get here");
+        break;
     }
   return bytes_per_blockelement;
 }
-
 
 /*! \brief Returns key for datatype of element of a given property.
  *
@@ -2337,158 +2328,157 @@ int fof_subfind_get_datatype(enum fof_subfind_iofields blocknr)
 {
   int typekey = 0;
 
-  switch (blocknr)
+  switch(blocknr)
     {
-    case IO_FOF_LEN:
-    case IO_FOF_LENTYPE:
-    case IO_FOF_NSUBS:
-    case IO_FOF_FIRSTSUB:
-    case IO_SUB_LEN:
-    case IO_SUB_LENTYPE:
-    case IO_SUB_GRNR:
-    case IO_SUB_PARENT:
+      case IO_FOF_LEN:
+      case IO_FOF_LENTYPE:
+      case IO_FOF_NSUBS:
+      case IO_FOF_FIRSTSUB:
+      case IO_SUB_LEN:
+      case IO_SUB_LENTYPE:
+      case IO_SUB_GRNR:
+      case IO_SUB_PARENT:
 #ifdef SUBFIND_EXTENDED_PROPERTIES
-    case IO_FOF_LENTYPE_MEAN200:
-    case IO_FOF_LENTYPE_CRIT200:
-    case IO_FOF_LENTYPE_CRIT500:
-    case IO_FOF_LENTYPE_TOPHAT200:
-#endif /* #ifdef SUBFIND_EXTENDED_PROPERTIES */
-      typekey = 0;              /* native int */
-      break;
+      case IO_FOF_LENTYPE_MEAN200:
+      case IO_FOF_LENTYPE_CRIT200:
+      case IO_FOF_LENTYPE_CRIT500:
+      case IO_FOF_LENTYPE_TOPHAT200:
+#endif               /* #ifdef SUBFIND_EXTENDED_PROPERTIES */
+        typekey = 0; /* native int */
+        break;
 
-    case IO_FOF_MTOT:
-    case IO_FOF_POS:
-    case IO_FOF_CM:
-    case IO_FOF_VEL:
-    case IO_FOF_MASSTYPE:
-    case IO_FOF_SFR:
-    case IO_FOF_M_MEAN200:
-    case IO_FOF_R_MEAN200:
-    case IO_FOF_M_CRIT200:
-    case IO_FOF_R_CRIT200:
-    case IO_FOF_M_TOPHAT200:
-    case IO_FOF_R_TOPHAT200:
-    case IO_FOF_M_CRIT500:
-    case IO_FOF_R_CRIT500:
-    case IO_SUB_MTOT:
-    case IO_SUB_POS:
-    case IO_SUB_VEL:
-    case IO_SUB_MASSTYPE:
-    case IO_SUB_CM:
-    case IO_SUB_SPIN:
-    case IO_SUB_VELDISP:
-    case IO_SUB_VMAX:
-    case IO_SUB_VMAXRAD:
-    case IO_SUB_HALFMASSRAD:
-    case IO_SUB_HALFMASSRADTYPE:
-    case IO_SUB_MASSINRAD:
-    case IO_SUB_MASSINHALFRAD:
-    case IO_SUB_MASSINMAXRAD:
-    case IO_SUB_MASSINRADTYPE:
-    case IO_SUB_MASSINHALFRADTYPE:
-    case IO_SUB_MASSINMAXRADTYPE:
-    case IO_SUB_BFLD_HALO:
-    case IO_SUB_BFLD_DISK:
-    case IO_SUB_SFR:
-    case IO_SUB_SFRINRAD:
-    case IO_SUB_SFRINHALFRAD:
-    case IO_SUB_SFRINMAXRAD:
+      case IO_FOF_MTOT:
+      case IO_FOF_POS:
+      case IO_FOF_CM:
+      case IO_FOF_VEL:
+      case IO_FOF_MASSTYPE:
+      case IO_FOF_SFR:
+      case IO_FOF_M_MEAN200:
+      case IO_FOF_R_MEAN200:
+      case IO_FOF_M_CRIT200:
+      case IO_FOF_R_CRIT200:
+      case IO_FOF_M_TOPHAT200:
+      case IO_FOF_R_TOPHAT200:
+      case IO_FOF_M_CRIT500:
+      case IO_FOF_R_CRIT500:
+      case IO_SUB_MTOT:
+      case IO_SUB_POS:
+      case IO_SUB_VEL:
+      case IO_SUB_MASSTYPE:
+      case IO_SUB_CM:
+      case IO_SUB_SPIN:
+      case IO_SUB_VELDISP:
+      case IO_SUB_VMAX:
+      case IO_SUB_VMAXRAD:
+      case IO_SUB_HALFMASSRAD:
+      case IO_SUB_HALFMASSRADTYPE:
+      case IO_SUB_MASSINRAD:
+      case IO_SUB_MASSINHALFRAD:
+      case IO_SUB_MASSINMAXRAD:
+      case IO_SUB_MASSINRADTYPE:
+      case IO_SUB_MASSINHALFRADTYPE:
+      case IO_SUB_MASSINMAXRADTYPE:
+      case IO_SUB_BFLD_HALO:
+      case IO_SUB_BFLD_DISK:
+      case IO_SUB_SFR:
+      case IO_SUB_SFRINRAD:
+      case IO_SUB_SFRINHALFRAD:
+      case IO_SUB_SFRINMAXRAD:
 #ifdef SUBFIND_EXTENDED_PROPERTIES
-    case IO_FOF_MASSTYPE_MEAN200:
-    case IO_FOF_MASSTYPE_CRIT200:
-    case IO_FOF_MASSTYPE_CRIT500:
-    case IO_FOF_MASSTYPE_TOPHAT200:
-    case IO_FOF_J_MEAN200:
-    case IO_FOF_JDM_MEAN200:
-    case IO_FOF_JGAS_MEAN200:
-    case IO_FOF_JSTARS_MEAN200:
-    case IO_FOF_CMFRAC_MEAN200:
-    case IO_FOF_CMFRACTYPE_MEAN200:
-    case IO_FOF_J_CRIT200:
-    case IO_FOF_JDM_CRIT200:
-    case IO_FOF_JGAS_CRIT200:
-    case IO_FOF_JSTARS_CRIT200:
-    case IO_FOF_CMFRAC_CRIT200:
-    case IO_FOF_CMFRACTYPE_CRIT200:
-    case IO_FOF_J_TOPHAT200:
-    case IO_FOF_JDM_TOPHAT200:
-    case IO_FOF_JGAS_TOPHAT200:
-    case IO_FOF_JSTARS_TOPHAT200:
-    case IO_FOF_CMFRAC_TOPHAT200:
-    case IO_FOF_CMFRACTYPE_TOPHAT200:
-    case IO_FOF_J_CRIT500:
-    case IO_FOF_JDM_CRIT500:
-    case IO_FOF_JGAS_CRIT500:
-    case IO_FOF_JSTARS_CRIT500:
-    case IO_FOF_CMFRAC_CRIT500:
-    case IO_FOF_CMFRACTYPE_CRIT500:
-    case IO_FOF_J:
-    case IO_FOF_JDM:
-    case IO_FOF_JGAS:
-    case IO_FOF_JSTARS:
-    case IO_FOF_CMFRAC:
-    case IO_FOF_CMFRACTYPE:
-    case IO_FOF_EKIN:
-    case IO_FOF_ETHR:
-    case IO_FOF_EPOT:
-    case IO_FOF_EPOT_CRIT200:
-    case IO_FOF_EKIN_CRIT200:
-    case IO_FOF_ETHR_CRIT200:
-    case IO_FOF_EPOT_MEAN200:
-    case IO_FOF_EKIN_MEAN200:
-    case IO_FOF_ETHR_MEAN200:
-    case IO_FOF_EPOT_TOPHAT200:
-    case IO_FOF_EKIN_TOPHAT200:
-    case IO_FOF_ETHR_TOPHAT200:
-    case IO_FOF_EPOT_CRIT500:
-    case IO_FOF_EKIN_CRIT500:
-    case IO_FOF_ETHR_CRIT500:
-    case IO_SUB_EKIN:
-    case IO_SUB_ETHR:
-    case IO_SUB_EPOT:
-    case IO_SUB_J:
-    case IO_SUB_JDM:
-    case IO_SUB_JGAS:
-    case IO_SUB_JSTARS:
-    case IO_SUB_JINHALFRAD:
-    case IO_SUB_JDMINHALFRAD:
-    case IO_SUB_JGASINHALFRAD:
-    case IO_SUB_JSTARSINHALFRAD:
-    case IO_SUB_JINRAD:
-    case IO_SUB_JDMINRAD:
-    case IO_SUB_JGASINRAD:
-    case IO_SUB_JSTARSINRAD:
-    case IO_SUB_CMFRAC:
-    case IO_SUB_CMFRACTYPE:
-    case IO_SUB_CMFRACINHALFRAD:
-    case IO_SUB_CMFRACTYPEINHALFRAD:
-    case IO_SUB_CMFRACINRAD:
-    case IO_SUB_CMFRACTYPEINRAD:
-#endif /* #ifdef SUBFIND_EXTENDED_PROPERTIES */
-      typekey = 1;              /* native MyOutputFloat */
-      break;
+      case IO_FOF_MASSTYPE_MEAN200:
+      case IO_FOF_MASSTYPE_CRIT200:
+      case IO_FOF_MASSTYPE_CRIT500:
+      case IO_FOF_MASSTYPE_TOPHAT200:
+      case IO_FOF_J_MEAN200:
+      case IO_FOF_JDM_MEAN200:
+      case IO_FOF_JGAS_MEAN200:
+      case IO_FOF_JSTARS_MEAN200:
+      case IO_FOF_CMFRAC_MEAN200:
+      case IO_FOF_CMFRACTYPE_MEAN200:
+      case IO_FOF_J_CRIT200:
+      case IO_FOF_JDM_CRIT200:
+      case IO_FOF_JGAS_CRIT200:
+      case IO_FOF_JSTARS_CRIT200:
+      case IO_FOF_CMFRAC_CRIT200:
+      case IO_FOF_CMFRACTYPE_CRIT200:
+      case IO_FOF_J_TOPHAT200:
+      case IO_FOF_JDM_TOPHAT200:
+      case IO_FOF_JGAS_TOPHAT200:
+      case IO_FOF_JSTARS_TOPHAT200:
+      case IO_FOF_CMFRAC_TOPHAT200:
+      case IO_FOF_CMFRACTYPE_TOPHAT200:
+      case IO_FOF_J_CRIT500:
+      case IO_FOF_JDM_CRIT500:
+      case IO_FOF_JGAS_CRIT500:
+      case IO_FOF_JSTARS_CRIT500:
+      case IO_FOF_CMFRAC_CRIT500:
+      case IO_FOF_CMFRACTYPE_CRIT500:
+      case IO_FOF_J:
+      case IO_FOF_JDM:
+      case IO_FOF_JGAS:
+      case IO_FOF_JSTARS:
+      case IO_FOF_CMFRAC:
+      case IO_FOF_CMFRACTYPE:
+      case IO_FOF_EKIN:
+      case IO_FOF_ETHR:
+      case IO_FOF_EPOT:
+      case IO_FOF_EPOT_CRIT200:
+      case IO_FOF_EKIN_CRIT200:
+      case IO_FOF_ETHR_CRIT200:
+      case IO_FOF_EPOT_MEAN200:
+      case IO_FOF_EKIN_MEAN200:
+      case IO_FOF_ETHR_MEAN200:
+      case IO_FOF_EPOT_TOPHAT200:
+      case IO_FOF_EKIN_TOPHAT200:
+      case IO_FOF_ETHR_TOPHAT200:
+      case IO_FOF_EPOT_CRIT500:
+      case IO_FOF_EKIN_CRIT500:
+      case IO_FOF_ETHR_CRIT500:
+      case IO_SUB_EKIN:
+      case IO_SUB_ETHR:
+      case IO_SUB_EPOT:
+      case IO_SUB_J:
+      case IO_SUB_JDM:
+      case IO_SUB_JGAS:
+      case IO_SUB_JSTARS:
+      case IO_SUB_JINHALFRAD:
+      case IO_SUB_JDMINHALFRAD:
+      case IO_SUB_JGASINHALFRAD:
+      case IO_SUB_JSTARSINHALFRAD:
+      case IO_SUB_JINRAD:
+      case IO_SUB_JDMINRAD:
+      case IO_SUB_JGASINRAD:
+      case IO_SUB_JSTARSINRAD:
+      case IO_SUB_CMFRAC:
+      case IO_SUB_CMFRACTYPE:
+      case IO_SUB_CMFRACINHALFRAD:
+      case IO_SUB_CMFRACTYPEINHALFRAD:
+      case IO_SUB_CMFRACINRAD:
+      case IO_SUB_CMFRACTYPEINRAD:
+#endif               /* #ifdef SUBFIND_EXTENDED_PROPERTIES */
+        typekey = 1; /* native MyOutputFloat */
+        break;
 
-    case IO_SUB_IDMOSTBOUND:
-    case IO_FOFSUB_IDS:
+      case IO_SUB_IDMOSTBOUND:
+      case IO_FOFSUB_IDS:
 #ifdef LONGIDS
-      typekey = 2;              /* native long long */
-#else /* #ifdef LONGIDS */
-      typekey = 0;              /* native int */
-#endif /* #ifdef LONGIDS #else */
-      break;
+        typekey = 2; /* native long long */
+#else                /* #ifdef LONGIDS */
+        typekey = 0; /* native int */
+#endif               /* #ifdef LONGIDS #else */
+        break;
 
-    case IO_FOF_FUZZOFFTYPE:
-      typekey = 2;              /* native long long */
-      break;
+      case IO_FOF_FUZZOFFTYPE:
+        typekey = 2; /* native long long */
+        break;
 
-    case IO_FOF_LASTENTRY:
-      terminate("should not be reached");
-      break;
+      case IO_FOF_LASTENTRY:
+        terminate("should not be reached");
+        break;
     }
 
   return typekey;
 }
-
 
 /*! \brief Determines if block is present in the current code configuration.
  *
@@ -2500,171 +2490,170 @@ int fof_subfind_blockpresent(enum fof_subfind_iofields blocknr)
 {
   int present = 0;
 
-  switch (blocknr)
+  switch(blocknr)
     {
-    case IO_FOF_LEN:
-    case IO_FOF_LENTYPE:
-    case IO_FOF_MTOT:
-    case IO_FOF_POS:
-    case IO_FOF_CM:
-    case IO_FOF_VEL:
-    case IO_FOF_MASSTYPE:
-      present = 1;
-      break;
+      case IO_FOF_LEN:
+      case IO_FOF_LENTYPE:
+      case IO_FOF_MTOT:
+      case IO_FOF_POS:
+      case IO_FOF_CM:
+      case IO_FOF_VEL:
+      case IO_FOF_MASSTYPE:
+        present = 1;
+        break;
 
-    case IO_FOF_SFR:
-    case IO_SUB_SFR:
-    case IO_SUB_SFRINRAD:
-    case IO_SUB_SFRINHALFRAD:
-    case IO_SUB_SFRINMAXRAD:
+      case IO_FOF_SFR:
+      case IO_SUB_SFR:
+      case IO_SUB_SFRINRAD:
+      case IO_SUB_SFRINHALFRAD:
+      case IO_SUB_SFRINMAXRAD:
 #ifdef USE_SFR
-      present = 1;
+        present = 1;
 #endif /* #ifdef USE_SFR */
-      break;
+        break;
 
-    case IO_SUB_BFLD_HALO:
-    case IO_SUB_BFLD_DISK:
+      case IO_SUB_BFLD_HALO:
+      case IO_SUB_BFLD_DISK:
 #ifdef MHD
-      present = 1;
+        present = 1;
 #endif /* #ifdef MHD */
-      break;
+        break;
 
-    case IO_FOF_FUZZOFFTYPE:
+      case IO_FOF_FUZZOFFTYPE:
 #ifdef FOF_FUZZ_SORT_BY_NEAREST_GROUP
-      present = 1;
+        present = 1;
 #endif /* #ifdef FOF_FUZZ_SORT_BY_NEAREST_GROUP */
-      break;
+        break;
 
-    case IO_FOF_M_MEAN200:
-    case IO_FOF_R_MEAN200:
-    case IO_FOF_M_CRIT200:
-    case IO_FOF_R_CRIT200:
-    case IO_FOF_M_TOPHAT200:
-    case IO_FOF_R_TOPHAT200:
-    case IO_FOF_M_CRIT500:
-    case IO_FOF_R_CRIT500:
-    case IO_FOF_NSUBS:
-    case IO_FOF_FIRSTSUB:
-    case IO_SUB_LEN:
-    case IO_SUB_LENTYPE:
-    case IO_SUB_MTOT:
-    case IO_SUB_POS:
-    case IO_SUB_VEL:
-    case IO_SUB_MASSTYPE:
-    case IO_SUB_CM:
-    case IO_SUB_SPIN:
-    case IO_SUB_VELDISP:
-    case IO_SUB_VMAX:
-    case IO_SUB_VMAXRAD:
-    case IO_SUB_HALFMASSRAD:
-    case IO_SUB_HALFMASSRADTYPE:
-    case IO_SUB_MASSINRAD:
-    case IO_SUB_MASSINHALFRAD:
-    case IO_SUB_MASSINMAXRAD:
-    case IO_SUB_MASSINRADTYPE:
-    case IO_SUB_MASSINHALFRADTYPE:
-    case IO_SUB_MASSINMAXRADTYPE:
-    case IO_SUB_IDMOSTBOUND:
-    case IO_SUB_GRNR:
-    case IO_SUB_PARENT:
+      case IO_FOF_M_MEAN200:
+      case IO_FOF_R_MEAN200:
+      case IO_FOF_M_CRIT200:
+      case IO_FOF_R_CRIT200:
+      case IO_FOF_M_TOPHAT200:
+      case IO_FOF_R_TOPHAT200:
+      case IO_FOF_M_CRIT500:
+      case IO_FOF_R_CRIT500:
+      case IO_FOF_NSUBS:
+      case IO_FOF_FIRSTSUB:
+      case IO_SUB_LEN:
+      case IO_SUB_LENTYPE:
+      case IO_SUB_MTOT:
+      case IO_SUB_POS:
+      case IO_SUB_VEL:
+      case IO_SUB_MASSTYPE:
+      case IO_SUB_CM:
+      case IO_SUB_SPIN:
+      case IO_SUB_VELDISP:
+      case IO_SUB_VMAX:
+      case IO_SUB_VMAXRAD:
+      case IO_SUB_HALFMASSRAD:
+      case IO_SUB_HALFMASSRADTYPE:
+      case IO_SUB_MASSINRAD:
+      case IO_SUB_MASSINHALFRAD:
+      case IO_SUB_MASSINMAXRAD:
+      case IO_SUB_MASSINRADTYPE:
+      case IO_SUB_MASSINHALFRADTYPE:
+      case IO_SUB_MASSINMAXRADTYPE:
+      case IO_SUB_IDMOSTBOUND:
+      case IO_SUB_GRNR:
+      case IO_SUB_PARENT:
 #ifdef SUBFIND_EXTENDED_PROPERTIES
-    case IO_FOF_J_MEAN200:
-    case IO_FOF_JDM_MEAN200:
-    case IO_FOF_JGAS_MEAN200:
-    case IO_FOF_JSTARS_MEAN200:
-    case IO_FOF_CMFRAC_MEAN200:
-    case IO_FOF_CMFRACTYPE_MEAN200:
-    case IO_FOF_J_CRIT200:
-    case IO_FOF_JDM_CRIT200:
-    case IO_FOF_JGAS_CRIT200:
-    case IO_FOF_JSTARS_CRIT200:
-    case IO_FOF_CMFRAC_CRIT200:
-    case IO_FOF_CMFRACTYPE_CRIT200:
-    case IO_FOF_J_TOPHAT200:
-    case IO_FOF_JDM_TOPHAT200:
-    case IO_FOF_JGAS_TOPHAT200:
-    case IO_FOF_JSTARS_TOPHAT200:
-    case IO_FOF_CMFRAC_TOPHAT200:
-    case IO_FOF_CMFRACTYPE_TOPHAT200:
-    case IO_FOF_J_CRIT500:
-    case IO_FOF_JDM_CRIT500:
-    case IO_FOF_JGAS_CRIT500:
-    case IO_FOF_JSTARS_CRIT500:
-    case IO_FOF_CMFRAC_CRIT500:
-    case IO_FOF_CMFRACTYPE_CRIT500:
-    case IO_FOF_J:
-    case IO_FOF_JDM:
-    case IO_FOF_JGAS:
-    case IO_FOF_JSTARS:
-    case IO_FOF_CMFRAC:
-    case IO_FOF_CMFRACTYPE:
-    case IO_FOF_EKIN:
-    case IO_FOF_ETHR:
-    case IO_FOF_EPOT:
-    case IO_FOF_MASSTYPE_MEAN200:
-    case IO_FOF_MASSTYPE_CRIT200:
-    case IO_FOF_MASSTYPE_CRIT500:
-    case IO_FOF_MASSTYPE_TOPHAT200:
-    case IO_FOF_LENTYPE_MEAN200:
-    case IO_FOF_LENTYPE_CRIT200:
-    case IO_FOF_LENTYPE_CRIT500:
-    case IO_FOF_LENTYPE_TOPHAT200:
-    case IO_FOF_EPOT_CRIT200:
-    case IO_FOF_EKIN_CRIT200:
-    case IO_FOF_ETHR_CRIT200:
-    case IO_FOF_EPOT_MEAN200:
-    case IO_FOF_EKIN_MEAN200:
-    case IO_FOF_ETHR_MEAN200:
-    case IO_FOF_EPOT_TOPHAT200:
-    case IO_FOF_EKIN_TOPHAT200:
-    case IO_FOF_ETHR_TOPHAT200:
-    case IO_FOF_EPOT_CRIT500:
-    case IO_FOF_EKIN_CRIT500:
-    case IO_FOF_ETHR_CRIT500:
-    case IO_SUB_EKIN:
-    case IO_SUB_ETHR:
-    case IO_SUB_EPOT:
-    case IO_SUB_J:
-    case IO_SUB_JDM:
-    case IO_SUB_JGAS:
-    case IO_SUB_JSTARS:
-    case IO_SUB_JINHALFRAD:
-    case IO_SUB_JDMINHALFRAD:
-    case IO_SUB_JGASINHALFRAD:
-    case IO_SUB_JSTARSINHALFRAD:
-    case IO_SUB_JINRAD:
-    case IO_SUB_JDMINRAD:
-    case IO_SUB_JGASINRAD:
-    case IO_SUB_JSTARSINRAD:
-    case IO_SUB_CMFRAC:
-    case IO_SUB_CMFRACTYPE:
-    case IO_SUB_CMFRACINHALFRAD:
-    case IO_SUB_CMFRACTYPEINHALFRAD:
-    case IO_SUB_CMFRACINRAD:
-    case IO_SUB_CMFRACTYPEINRAD:
+      case IO_FOF_J_MEAN200:
+      case IO_FOF_JDM_MEAN200:
+      case IO_FOF_JGAS_MEAN200:
+      case IO_FOF_JSTARS_MEAN200:
+      case IO_FOF_CMFRAC_MEAN200:
+      case IO_FOF_CMFRACTYPE_MEAN200:
+      case IO_FOF_J_CRIT200:
+      case IO_FOF_JDM_CRIT200:
+      case IO_FOF_JGAS_CRIT200:
+      case IO_FOF_JSTARS_CRIT200:
+      case IO_FOF_CMFRAC_CRIT200:
+      case IO_FOF_CMFRACTYPE_CRIT200:
+      case IO_FOF_J_TOPHAT200:
+      case IO_FOF_JDM_TOPHAT200:
+      case IO_FOF_JGAS_TOPHAT200:
+      case IO_FOF_JSTARS_TOPHAT200:
+      case IO_FOF_CMFRAC_TOPHAT200:
+      case IO_FOF_CMFRACTYPE_TOPHAT200:
+      case IO_FOF_J_CRIT500:
+      case IO_FOF_JDM_CRIT500:
+      case IO_FOF_JGAS_CRIT500:
+      case IO_FOF_JSTARS_CRIT500:
+      case IO_FOF_CMFRAC_CRIT500:
+      case IO_FOF_CMFRACTYPE_CRIT500:
+      case IO_FOF_J:
+      case IO_FOF_JDM:
+      case IO_FOF_JGAS:
+      case IO_FOF_JSTARS:
+      case IO_FOF_CMFRAC:
+      case IO_FOF_CMFRACTYPE:
+      case IO_FOF_EKIN:
+      case IO_FOF_ETHR:
+      case IO_FOF_EPOT:
+      case IO_FOF_MASSTYPE_MEAN200:
+      case IO_FOF_MASSTYPE_CRIT200:
+      case IO_FOF_MASSTYPE_CRIT500:
+      case IO_FOF_MASSTYPE_TOPHAT200:
+      case IO_FOF_LENTYPE_MEAN200:
+      case IO_FOF_LENTYPE_CRIT200:
+      case IO_FOF_LENTYPE_CRIT500:
+      case IO_FOF_LENTYPE_TOPHAT200:
+      case IO_FOF_EPOT_CRIT200:
+      case IO_FOF_EKIN_CRIT200:
+      case IO_FOF_ETHR_CRIT200:
+      case IO_FOF_EPOT_MEAN200:
+      case IO_FOF_EKIN_MEAN200:
+      case IO_FOF_ETHR_MEAN200:
+      case IO_FOF_EPOT_TOPHAT200:
+      case IO_FOF_EKIN_TOPHAT200:
+      case IO_FOF_ETHR_TOPHAT200:
+      case IO_FOF_EPOT_CRIT500:
+      case IO_FOF_EKIN_CRIT500:
+      case IO_FOF_ETHR_CRIT500:
+      case IO_SUB_EKIN:
+      case IO_SUB_ETHR:
+      case IO_SUB_EPOT:
+      case IO_SUB_J:
+      case IO_SUB_JDM:
+      case IO_SUB_JGAS:
+      case IO_SUB_JSTARS:
+      case IO_SUB_JINHALFRAD:
+      case IO_SUB_JDMINHALFRAD:
+      case IO_SUB_JGASINHALFRAD:
+      case IO_SUB_JSTARSINHALFRAD:
+      case IO_SUB_JINRAD:
+      case IO_SUB_JDMINRAD:
+      case IO_SUB_JGASINRAD:
+      case IO_SUB_JSTARSINRAD:
+      case IO_SUB_CMFRAC:
+      case IO_SUB_CMFRACTYPE:
+      case IO_SUB_CMFRACINHALFRAD:
+      case IO_SUB_CMFRACTYPEINHALFRAD:
+      case IO_SUB_CMFRACINRAD:
+      case IO_SUB_CMFRACTYPEINRAD:
 #endif /* #ifdef SUBFIND_EXTENDED_PROPERTIES */
 #ifdef SUBFIND
-      present = 1;
-#else /* #ifdef SUBFIND */
-      present = 0;
+        present = 1;
+#else  /* #ifdef SUBFIND */
+        present = 0;
 #endif /* #ifdef SUBFIND #else */
-      break;
+        break;
 
-    case IO_FOFSUB_IDS:
+      case IO_FOFSUB_IDS:
 #ifdef FOF_STOREIDS
-      present = 1;
-#else /* #ifdef FOF_STOREIDS */
-      present = 0;
+        present = 1;
+#else  /* #ifdef FOF_STOREIDS */
+        present = 0;
 #endif /* #ifdef FOF_STOREIDS #else */
-      break;
+        break;
 
-    case IO_FOF_LASTENTRY:
-      terminate("should not be reached");
-      break;
+      case IO_FOF_LASTENTRY:
+        terminate("should not be reached");
+        break;
     }
   return present;
 }
-
 
 /*! \brief Get the 4 letter IO label for a given output field.
  *
@@ -2675,388 +2664,386 @@ int fof_subfind_blockpresent(enum fof_subfind_iofields blocknr)
  */
 void fof_subfind_get_Tab_IO_Label(enum fof_subfind_iofields blocknr, char *label)
 {
-  switch (blocknr)
+  switch(blocknr)
     {
-    case IO_FOF_LEN:
-      strncpy(label, "FLEN", 4);
-      break;
-    case IO_FOF_MTOT:
-      strncpy(label, "FMAS", 4);
-      break;
-    case IO_FOF_POS:
-      strncpy(label, "FPOS", 4);
-      break;
-    case IO_FOF_CM:
-      strncpy(label, "FGCM", 4);
-      break;
-    case IO_FOF_VEL:
-      strncpy(label, "FVEL", 4);
-      break;
-    case IO_FOF_LENTYPE:
-      strncpy(label, "FLTY", 4);
-      break;
-    case IO_FOF_MASSTYPE:
-      strncpy(label, "FMTY", 4);
-      break;
-    case IO_FOF_SFR:
-      strncpy(label, "FSFR", 4);
-      break;
-    case IO_FOF_M_MEAN200:
-      strncpy(label, "FMM2", 4);
-      break;
-    case IO_FOF_R_MEAN200:
-      strncpy(label, "FRM2", 4);
-      break;
-    case IO_FOF_M_CRIT200:
-      strncpy(label, "FMC2", 4);
-      break;
-    case IO_FOF_R_CRIT200:
-      strncpy(label, "FRC2", 4);
-      break;
-    case IO_FOF_M_TOPHAT200:
-      strncpy(label, "FMT2", 4);
-      break;
-    case IO_FOF_R_TOPHAT200:
-      strncpy(label, "FRT2", 4);
-      break;
-    case IO_FOF_M_CRIT500:
-      strncpy(label, "FMC5", 4);
-      break;
-    case IO_FOF_R_CRIT500:
-      strncpy(label, "FRC5", 4);
-      break;
-    case IO_FOF_NSUBS:
-      strncpy(label, "FNSH", 4);
-      break;
-    case IO_FOF_FIRSTSUB:
-      strncpy(label, "FFSH", 4);
-      break;
-    case IO_FOF_FUZZOFFTYPE:
-      strncpy(label, "FUOF", 4);
-      break;
+      case IO_FOF_LEN:
+        strncpy(label, "FLEN", 4);
+        break;
+      case IO_FOF_MTOT:
+        strncpy(label, "FMAS", 4);
+        break;
+      case IO_FOF_POS:
+        strncpy(label, "FPOS", 4);
+        break;
+      case IO_FOF_CM:
+        strncpy(label, "FGCM", 4);
+        break;
+      case IO_FOF_VEL:
+        strncpy(label, "FVEL", 4);
+        break;
+      case IO_FOF_LENTYPE:
+        strncpy(label, "FLTY", 4);
+        break;
+      case IO_FOF_MASSTYPE:
+        strncpy(label, "FMTY", 4);
+        break;
+      case IO_FOF_SFR:
+        strncpy(label, "FSFR", 4);
+        break;
+      case IO_FOF_M_MEAN200:
+        strncpy(label, "FMM2", 4);
+        break;
+      case IO_FOF_R_MEAN200:
+        strncpy(label, "FRM2", 4);
+        break;
+      case IO_FOF_M_CRIT200:
+        strncpy(label, "FMC2", 4);
+        break;
+      case IO_FOF_R_CRIT200:
+        strncpy(label, "FRC2", 4);
+        break;
+      case IO_FOF_M_TOPHAT200:
+        strncpy(label, "FMT2", 4);
+        break;
+      case IO_FOF_R_TOPHAT200:
+        strncpy(label, "FRT2", 4);
+        break;
+      case IO_FOF_M_CRIT500:
+        strncpy(label, "FMC5", 4);
+        break;
+      case IO_FOF_R_CRIT500:
+        strncpy(label, "FRC5", 4);
+        break;
+      case IO_FOF_NSUBS:
+        strncpy(label, "FNSH", 4);
+        break;
+      case IO_FOF_FIRSTSUB:
+        strncpy(label, "FFSH", 4);
+        break;
+      case IO_FOF_FUZZOFFTYPE:
+        strncpy(label, "FUOF", 4);
+        break;
 
-    case IO_SUB_LEN:
-      strncpy(label, "SLEN", 4);
-      break;
-    case IO_SUB_MTOT:
-      strncpy(label, "SMAS", 4);
-      break;
-    case IO_SUB_POS:
-      strncpy(label, "SPOS", 4);
-      break;
-    case IO_SUB_VEL:
-      strncpy(label, "SVEL", 4);
-      break;
-    case IO_SUB_LENTYPE:
-      strncpy(label, "SLTY", 4);
-      break;
-    case IO_SUB_MASSTYPE:
-      strncpy(label, "SMTY", 4);
-      break;
-    case IO_SUB_CM:
-      strncpy(label, "SCMP", 4);
-      break;
-    case IO_SUB_SPIN:
-      strncpy(label, "SSPI", 4);
-      break;
-    case IO_SUB_VELDISP:
-      strncpy(label, "SVDI", 4);
-      break;
-    case IO_SUB_VMAX:
-      strncpy(label, "SVMX", 4);
-      break;
-    case IO_SUB_VMAXRAD:
-      strncpy(label, "SVRX", 4);
-      break;
-    case IO_SUB_HALFMASSRAD:
-      strncpy(label, "SHMR", 4);
-      break;
-    case IO_SUB_HALFMASSRADTYPE:
-      strncpy(label, "SHMT", 4);
-      break;
-    case IO_SUB_MASSINRAD:
-      strncpy(label, "SMIR", 4);
-      break;
-    case IO_SUB_MASSINHALFRAD:
-      strncpy(label, "SMIH", 4);
-      break;
-    case IO_SUB_MASSINMAXRAD:
-      strncpy(label, "SMIM", 4);
-      break;
-    case IO_SUB_MASSINRADTYPE:
-      strncpy(label, "SMIT", 4);
-      break;
-    case IO_SUB_MASSINHALFRADTYPE:
-      strncpy(label, "SMHT", 4);
-      break;
-    case IO_SUB_MASSINMAXRADTYPE:
-      strncpy(label, "SMMT", 4);
-      break;
-    case IO_SUB_IDMOSTBOUND:
-      strncpy(label, "SIDM", 4);
-      break;
-    case IO_SUB_GRNR:
-      strncpy(label, "SGNR", 4);
-      break;
-    case IO_SUB_PARENT:
-      strncpy(label, "SPRT", 4);
-      break;
-    case IO_SUB_BFLD_HALO:
-      strncpy(label, "BFDH", 4);
-      break;
-    case IO_SUB_BFLD_DISK:
-      strncpy(label, "BFDD", 4);
-      break;
-    case IO_SUB_SFR:
-      strncpy(label, "SSFR", 4);
-      break;
-    case IO_SUB_SFRINRAD:
-      strncpy(label, "SSFI", 4);
-      break;
-    case IO_SUB_SFRINHALFRAD:
-      strncpy(label, "SSFH", 4);
-      break;
-    case IO_SUB_SFRINMAXRAD:
-      strncpy(label, "SSFM", 4);
-      break;
-    case IO_FOFSUB_IDS:
-      strncpy(label, "PIDS", 4);
-      break;
+      case IO_SUB_LEN:
+        strncpy(label, "SLEN", 4);
+        break;
+      case IO_SUB_MTOT:
+        strncpy(label, "SMAS", 4);
+        break;
+      case IO_SUB_POS:
+        strncpy(label, "SPOS", 4);
+        break;
+      case IO_SUB_VEL:
+        strncpy(label, "SVEL", 4);
+        break;
+      case IO_SUB_LENTYPE:
+        strncpy(label, "SLTY", 4);
+        break;
+      case IO_SUB_MASSTYPE:
+        strncpy(label, "SMTY", 4);
+        break;
+      case IO_SUB_CM:
+        strncpy(label, "SCMP", 4);
+        break;
+      case IO_SUB_SPIN:
+        strncpy(label, "SSPI", 4);
+        break;
+      case IO_SUB_VELDISP:
+        strncpy(label, "SVDI", 4);
+        break;
+      case IO_SUB_VMAX:
+        strncpy(label, "SVMX", 4);
+        break;
+      case IO_SUB_VMAXRAD:
+        strncpy(label, "SVRX", 4);
+        break;
+      case IO_SUB_HALFMASSRAD:
+        strncpy(label, "SHMR", 4);
+        break;
+      case IO_SUB_HALFMASSRADTYPE:
+        strncpy(label, "SHMT", 4);
+        break;
+      case IO_SUB_MASSINRAD:
+        strncpy(label, "SMIR", 4);
+        break;
+      case IO_SUB_MASSINHALFRAD:
+        strncpy(label, "SMIH", 4);
+        break;
+      case IO_SUB_MASSINMAXRAD:
+        strncpy(label, "SMIM", 4);
+        break;
+      case IO_SUB_MASSINRADTYPE:
+        strncpy(label, "SMIT", 4);
+        break;
+      case IO_SUB_MASSINHALFRADTYPE:
+        strncpy(label, "SMHT", 4);
+        break;
+      case IO_SUB_MASSINMAXRADTYPE:
+        strncpy(label, "SMMT", 4);
+        break;
+      case IO_SUB_IDMOSTBOUND:
+        strncpy(label, "SIDM", 4);
+        break;
+      case IO_SUB_GRNR:
+        strncpy(label, "SGNR", 4);
+        break;
+      case IO_SUB_PARENT:
+        strncpy(label, "SPRT", 4);
+        break;
+      case IO_SUB_BFLD_HALO:
+        strncpy(label, "BFDH", 4);
+        break;
+      case IO_SUB_BFLD_DISK:
+        strncpy(label, "BFDD", 4);
+        break;
+      case IO_SUB_SFR:
+        strncpy(label, "SSFR", 4);
+        break;
+      case IO_SUB_SFRINRAD:
+        strncpy(label, "SSFI", 4);
+        break;
+      case IO_SUB_SFRINHALFRAD:
+        strncpy(label, "SSFH", 4);
+        break;
+      case IO_SUB_SFRINMAXRAD:
+        strncpy(label, "SSFM", 4);
+        break;
+      case IO_FOFSUB_IDS:
+        strncpy(label, "PIDS", 4);
+        break;
 
 #ifdef SUBFIND_EXTENDED_PROPERTIES
-    case IO_FOF_J_MEAN200:
-      strncpy(label, "FJM2", 4);
-      break;
-    case IO_FOF_JDM_MEAN200:
-      strncpy(label, "JDM2", 4);
-      break;
-    case IO_FOF_JGAS_MEAN200:
-      strncpy(label, "JGM2", 4);
-      break;
-    case IO_FOF_JSTARS_MEAN200:
-      strncpy(label, "JSM2", 4);
-      break;
-    case IO_FOF_MASSTYPE_MEAN200:
-      strncpy(label, "MTM2", 4);
-      break;
-    case IO_FOF_LENTYPE_MEAN200:
-      strncpy(label, "LTM2", 4);
-      break;
-    case IO_FOF_CMFRAC_MEAN200:
-      strncpy(label, "CFM2", 4);
-      break;
-    case IO_FOF_CMFRACTYPE_MEAN200:
-      strncpy(label, "FTM2", 4);
-      break;
-    case IO_FOF_J_CRIT200:
-      strncpy(label, "FJC2", 4);
-      break;
-    case IO_FOF_JDM_CRIT200:
-      strncpy(label, "JDC2", 4);
-      break;
-    case IO_FOF_JGAS_CRIT200:
-      strncpy(label, "JGC2", 4);
-      break;
-    case IO_FOF_JSTARS_CRIT200:
-      strncpy(label, "JSC2", 4);
-      break;
-    case IO_FOF_MASSTYPE_CRIT200:
-      strncpy(label, "MTC2", 4);
-      break;
-    case IO_FOF_LENTYPE_CRIT200:
-      strncpy(label, "LTC2", 4);
-      break;
-    case IO_FOF_CMFRAC_CRIT200:
-      strncpy(label, "CFC2", 4);
-      break;
-    case IO_FOF_CMFRACTYPE_CRIT200:
-      strncpy(label, "FTC2", 4);
-      break;
-    case IO_FOF_J_TOPHAT200:
-      strncpy(label, "FJT2", 4);
-      break;
-    case IO_FOF_JDM_TOPHAT200:
-      strncpy(label, "JDT2", 4);
-      break;
-    case IO_FOF_JGAS_TOPHAT200:
-      strncpy(label, "JGT2", 4);
-      break;
-    case IO_FOF_JSTARS_TOPHAT200:
-      strncpy(label, "JST2", 4);
-      break;
-    case IO_FOF_MASSTYPE_TOPHAT200:
-      strncpy(label, "MTT2", 4);
-      break;
-    case IO_FOF_LENTYPE_TOPHAT200:
-      strncpy(label, "LTT2", 4);
-      break;
-    case IO_FOF_CMFRAC_TOPHAT200:
-      strncpy(label, "CFT2", 4);
-      break;
-    case IO_FOF_CMFRACTYPE_TOPHAT200:
-      strncpy(label, "FTT2", 4);
-      break;
-    case IO_FOF_J_CRIT500:
-      strncpy(label, "FJC5", 4);
-      break;
-    case IO_FOF_JDM_CRIT500:
-      strncpy(label, "JDC5", 4);
-      break;
-    case IO_FOF_JGAS_CRIT500:
-      strncpy(label, "JGC5", 4);
-      break;
-    case IO_FOF_JSTARS_CRIT500:
-      strncpy(label, "JSC5", 4);
-      break;
-    case IO_FOF_MASSTYPE_CRIT500:
-      strncpy(label, "MTC5", 4);
-      break;
-    case IO_FOF_LENTYPE_CRIT500:
-      strncpy(label, "LTC5", 4);
-      break;
-    case IO_FOF_CMFRAC_CRIT500:
-      strncpy(label, "CFC5", 4);
-      break;
-    case IO_FOF_CMFRACTYPE_CRIT500:
-      strncpy(label, "FTC5", 4);
-      break;
-    case IO_FOF_J:
-      strncpy(label, "FOFJ", 4);
-      break;
-    case IO_FOF_JDM:
-      strncpy(label, "FOJD", 4);
-      break;
-    case IO_FOF_JGAS:
-      strncpy(label, "FOJG", 4);
-      break;
-    case IO_FOF_JSTARS:
-      strncpy(label, "FOJS", 4);
-      break;
-    case IO_FOF_CMFRAC:
-      strncpy(label, "FOCF", 4);
-      break;
-    case IO_FOF_CMFRACTYPE:
-      strncpy(label, "FOFT", 4);
-      break;
-    case IO_FOF_EKIN:
-      strncpy(label, "EKIN", 4);
-      break;
-    case IO_FOF_ETHR:
-      strncpy(label, "ETHR", 4);
-      break;
-    case IO_FOF_EPOT:
-      strncpy(label, "EPOT", 4);
-      break;
+      case IO_FOF_J_MEAN200:
+        strncpy(label, "FJM2", 4);
+        break;
+      case IO_FOF_JDM_MEAN200:
+        strncpy(label, "JDM2", 4);
+        break;
+      case IO_FOF_JGAS_MEAN200:
+        strncpy(label, "JGM2", 4);
+        break;
+      case IO_FOF_JSTARS_MEAN200:
+        strncpy(label, "JSM2", 4);
+        break;
+      case IO_FOF_MASSTYPE_MEAN200:
+        strncpy(label, "MTM2", 4);
+        break;
+      case IO_FOF_LENTYPE_MEAN200:
+        strncpy(label, "LTM2", 4);
+        break;
+      case IO_FOF_CMFRAC_MEAN200:
+        strncpy(label, "CFM2", 4);
+        break;
+      case IO_FOF_CMFRACTYPE_MEAN200:
+        strncpy(label, "FTM2", 4);
+        break;
+      case IO_FOF_J_CRIT200:
+        strncpy(label, "FJC2", 4);
+        break;
+      case IO_FOF_JDM_CRIT200:
+        strncpy(label, "JDC2", 4);
+        break;
+      case IO_FOF_JGAS_CRIT200:
+        strncpy(label, "JGC2", 4);
+        break;
+      case IO_FOF_JSTARS_CRIT200:
+        strncpy(label, "JSC2", 4);
+        break;
+      case IO_FOF_MASSTYPE_CRIT200:
+        strncpy(label, "MTC2", 4);
+        break;
+      case IO_FOF_LENTYPE_CRIT200:
+        strncpy(label, "LTC2", 4);
+        break;
+      case IO_FOF_CMFRAC_CRIT200:
+        strncpy(label, "CFC2", 4);
+        break;
+      case IO_FOF_CMFRACTYPE_CRIT200:
+        strncpy(label, "FTC2", 4);
+        break;
+      case IO_FOF_J_TOPHAT200:
+        strncpy(label, "FJT2", 4);
+        break;
+      case IO_FOF_JDM_TOPHAT200:
+        strncpy(label, "JDT2", 4);
+        break;
+      case IO_FOF_JGAS_TOPHAT200:
+        strncpy(label, "JGT2", 4);
+        break;
+      case IO_FOF_JSTARS_TOPHAT200:
+        strncpy(label, "JST2", 4);
+        break;
+      case IO_FOF_MASSTYPE_TOPHAT200:
+        strncpy(label, "MTT2", 4);
+        break;
+      case IO_FOF_LENTYPE_TOPHAT200:
+        strncpy(label, "LTT2", 4);
+        break;
+      case IO_FOF_CMFRAC_TOPHAT200:
+        strncpy(label, "CFT2", 4);
+        break;
+      case IO_FOF_CMFRACTYPE_TOPHAT200:
+        strncpy(label, "FTT2", 4);
+        break;
+      case IO_FOF_J_CRIT500:
+        strncpy(label, "FJC5", 4);
+        break;
+      case IO_FOF_JDM_CRIT500:
+        strncpy(label, "JDC5", 4);
+        break;
+      case IO_FOF_JGAS_CRIT500:
+        strncpy(label, "JGC5", 4);
+        break;
+      case IO_FOF_JSTARS_CRIT500:
+        strncpy(label, "JSC5", 4);
+        break;
+      case IO_FOF_MASSTYPE_CRIT500:
+        strncpy(label, "MTC5", 4);
+        break;
+      case IO_FOF_LENTYPE_CRIT500:
+        strncpy(label, "LTC5", 4);
+        break;
+      case IO_FOF_CMFRAC_CRIT500:
+        strncpy(label, "CFC5", 4);
+        break;
+      case IO_FOF_CMFRACTYPE_CRIT500:
+        strncpy(label, "FTC5", 4);
+        break;
+      case IO_FOF_J:
+        strncpy(label, "FOFJ", 4);
+        break;
+      case IO_FOF_JDM:
+        strncpy(label, "FOJD", 4);
+        break;
+      case IO_FOF_JGAS:
+        strncpy(label, "FOJG", 4);
+        break;
+      case IO_FOF_JSTARS:
+        strncpy(label, "FOJS", 4);
+        break;
+      case IO_FOF_CMFRAC:
+        strncpy(label, "FOCF", 4);
+        break;
+      case IO_FOF_CMFRACTYPE:
+        strncpy(label, "FOFT", 4);
+        break;
+      case IO_FOF_EKIN:
+        strncpy(label, "EKIN", 4);
+        break;
+      case IO_FOF_ETHR:
+        strncpy(label, "ETHR", 4);
+        break;
+      case IO_FOF_EPOT:
+        strncpy(label, "EPOT", 4);
+        break;
 
-    case IO_FOF_EPOT_CRIT200:
-      strncpy(label, "EPO1", 4);
-      break;
-    case IO_FOF_EKIN_CRIT200:
-      strncpy(label, "EKI1", 4);
-      break;
-    case IO_FOF_ETHR_CRIT200:
-      strncpy(label, "ETH1", 4);
-      break;
-    case IO_FOF_EPOT_MEAN200:
-      strncpy(label, "EPO2", 4);
-      break;
-    case IO_FOF_EKIN_MEAN200:
-      strncpy(label, "EKI2", 4);
-      break;
-    case IO_FOF_ETHR_MEAN200:
-      strncpy(label, "ETH2", 4);
-      break;
-    case IO_FOF_EPOT_TOPHAT200:
-      strncpy(label, "EPO3", 4);
-      break;
-    case IO_FOF_EKIN_TOPHAT200:
-      strncpy(label, "EKI3", 4);
-      break;
-    case IO_FOF_ETHR_TOPHAT200:
-      strncpy(label, "ETH3", 4);
-      break;
-    case IO_FOF_EPOT_CRIT500:
-      strncpy(label, "EPO4", 4);
-      break;
-    case IO_FOF_EKIN_CRIT500:
-      strncpy(label, "EKI4", 4);
-      break;
-    case IO_FOF_ETHR_CRIT500:
-      strncpy(label, "ETH4", 4);
-      break;
+      case IO_FOF_EPOT_CRIT200:
+        strncpy(label, "EPO1", 4);
+        break;
+      case IO_FOF_EKIN_CRIT200:
+        strncpy(label, "EKI1", 4);
+        break;
+      case IO_FOF_ETHR_CRIT200:
+        strncpy(label, "ETH1", 4);
+        break;
+      case IO_FOF_EPOT_MEAN200:
+        strncpy(label, "EPO2", 4);
+        break;
+      case IO_FOF_EKIN_MEAN200:
+        strncpy(label, "EKI2", 4);
+        break;
+      case IO_FOF_ETHR_MEAN200:
+        strncpy(label, "ETH2", 4);
+        break;
+      case IO_FOF_EPOT_TOPHAT200:
+        strncpy(label, "EPO3", 4);
+        break;
+      case IO_FOF_EKIN_TOPHAT200:
+        strncpy(label, "EKI3", 4);
+        break;
+      case IO_FOF_ETHR_TOPHAT200:
+        strncpy(label, "ETH3", 4);
+        break;
+      case IO_FOF_EPOT_CRIT500:
+        strncpy(label, "EPO4", 4);
+        break;
+      case IO_FOF_EKIN_CRIT500:
+        strncpy(label, "EKI4", 4);
+        break;
+      case IO_FOF_ETHR_CRIT500:
+        strncpy(label, "ETH4", 4);
+        break;
 
-    case IO_SUB_EKIN:
-      strncpy(label, "SEKN", 4);
-      break;
-    case IO_SUB_ETHR:
-      strncpy(label, "SETH", 4);
-      break;
-    case IO_SUB_EPOT:
-      strncpy(label, "SEPT", 4);
-      break;
-    case IO_SUB_J:
-      strncpy(label, "SUBJ", 4);
-      break;
-    case IO_SUB_JDM:
-      strncpy(label, "SJDM", 4);
-      break;
-    case IO_SUB_JGAS:
-      strncpy(label, "SJGS", 4);
-      break;
-    case IO_SUB_JSTARS:
-      strncpy(label, "SJST", 4);
-      break;
-    case IO_SUB_JINHALFRAD:
-      strncpy(label, "SJHR", 4);
-      break;
-    case IO_SUB_JDMINHALFRAD:
-      strncpy(label, "SJDH", 4);
-      break;
-    case IO_SUB_JGASINHALFRAD:
-      strncpy(label, "SJGH", 4);
-      break;
-    case IO_SUB_JSTARSINHALFRAD:
-      strncpy(label, "SJSH", 4);
-      break;
-    case IO_SUB_JINRAD:
-      strncpy(label, "SJMR", 4);
-      break;
-    case IO_SUB_JDMINRAD:
-      strncpy(label, "SJDR", 4);
-      break;
-    case IO_SUB_JGASINRAD:
-      strncpy(label, "SJGR", 4);
-      break;
-    case IO_SUB_JSTARSINRAD:
-      strncpy(label, "SJSR", 4);
-      break;
-    case IO_SUB_CMFRAC:
-      strncpy(label, "SCMF", 4);
-      break;
-    case IO_SUB_CMFRACTYPE:
-      strncpy(label, "SCMT", 4);
-      break;
-    case IO_SUB_CMFRACINHALFRAD:
-      strncpy(label, "SCMH", 4);
-      break;
-    case IO_SUB_CMFRACTYPEINHALFRAD:
-      strncpy(label, "SCTH", 4);
-      break;
-    case IO_SUB_CMFRACINRAD:
-      strncpy(label, "SCMR", 4);
-      break;
-    case IO_SUB_CMFRACTYPEINRAD:
-      strncpy(label, "SCTR", 4);
-      break;
+      case IO_SUB_EKIN:
+        strncpy(label, "SEKN", 4);
+        break;
+      case IO_SUB_ETHR:
+        strncpy(label, "SETH", 4);
+        break;
+      case IO_SUB_EPOT:
+        strncpy(label, "SEPT", 4);
+        break;
+      case IO_SUB_J:
+        strncpy(label, "SUBJ", 4);
+        break;
+      case IO_SUB_JDM:
+        strncpy(label, "SJDM", 4);
+        break;
+      case IO_SUB_JGAS:
+        strncpy(label, "SJGS", 4);
+        break;
+      case IO_SUB_JSTARS:
+        strncpy(label, "SJST", 4);
+        break;
+      case IO_SUB_JINHALFRAD:
+        strncpy(label, "SJHR", 4);
+        break;
+      case IO_SUB_JDMINHALFRAD:
+        strncpy(label, "SJDH", 4);
+        break;
+      case IO_SUB_JGASINHALFRAD:
+        strncpy(label, "SJGH", 4);
+        break;
+      case IO_SUB_JSTARSINHALFRAD:
+        strncpy(label, "SJSH", 4);
+        break;
+      case IO_SUB_JINRAD:
+        strncpy(label, "SJMR", 4);
+        break;
+      case IO_SUB_JDMINRAD:
+        strncpy(label, "SJDR", 4);
+        break;
+      case IO_SUB_JGASINRAD:
+        strncpy(label, "SJGR", 4);
+        break;
+      case IO_SUB_JSTARSINRAD:
+        strncpy(label, "SJSR", 4);
+        break;
+      case IO_SUB_CMFRAC:
+        strncpy(label, "SCMF", 4);
+        break;
+      case IO_SUB_CMFRACTYPE:
+        strncpy(label, "SCMT", 4);
+        break;
+      case IO_SUB_CMFRACINHALFRAD:
+        strncpy(label, "SCMH", 4);
+        break;
+      case IO_SUB_CMFRACTYPEINHALFRAD:
+        strncpy(label, "SCTH", 4);
+        break;
+      case IO_SUB_CMFRACINRAD:
+        strncpy(label, "SCMR", 4);
+        break;
+      case IO_SUB_CMFRACTYPEINRAD:
+        strncpy(label, "SCTR", 4);
+        break;
 #endif /* #ifdef SUBFIND_EXTENDED_PROPERTIES */
 
-    case IO_FOF_LASTENTRY:
-      terminate("should not be reached");
-      break;
+      case IO_FOF_LASTENTRY:
+        terminate("should not be reached");
+        break;
     }
 }
-
-
 
 #ifdef HAVE_HDF5
 /*! \brief Function that handles writing hdf5 header.
@@ -3168,9 +3155,7 @@ void fof_subfind_write_header_attributes_in_hdf5(hid_t handle)
   my_H5Awrite(hdf5_attribute, atype, GIT_DATE, "Git_date");
   my_H5Aclose(hdf5_attribute, "Git_date");
   my_H5Sclose(hdf5_dataspace, H5S_SCALAR);
-
 }
 #endif /* #ifdef HAVE_HDF5 */
-
 
 #endif /* #ifdef FOF */

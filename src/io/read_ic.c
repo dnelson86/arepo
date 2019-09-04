@@ -46,18 +46,14 @@
  * - 08.05.2018 Prepared file for public release -- Rainer Weinberger
  */
 
-
+#include <math.h>
 #include <mpi.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <math.h>
-#include <string.h>
-
 
 #include "../main/allvars.h"
 #include "../main/proto.h"
-
 
 #ifndef IDS_OFFSET
 #ifdef LONGIDS
@@ -67,25 +63,25 @@
 #endif /* #ifdef LONGIDS #else */
 #endif /* #ifndef IDS_OFFSET */
 
+#define SKIP                                 \
+  {                                          \
+    my_fread(&blksize1, sizeof(int), 1, fd); \
+  }
+#define SKIP2                                \
+  {                                          \
+    my_fread(&blksize2, sizeof(int), 1, fd); \
+  }
 
-#define SKIP  {my_fread(&blksize1,sizeof(int),1,fd);}
-#define SKIP2 {my_fread(&blksize2,sizeof(int),1,fd);}
-
-
-void read_header_attributes(FILE * fd);
-
+void read_header_attributes(FILE *fd);
 
 #ifdef HAVE_HDF5
 #include <hdf5.h>
 void read_header_attributes_in_hdf5(const char *fname);
 #endif /* #ifdef HAVE_HDF5 */
 
-
 int num_files;
 
-
 int swap_file = 8;
-
 
 #if defined(RECOMPUTE_POTENTIAL_IN_SNAPSHOT)
 /*! \brief Struct containing information about the number of particles per
@@ -94,9 +90,8 @@ int swap_file = 8;
 static struct ntypes_data
 {
   int npart[NTYPES];
-} *ntype_in_files;
+} * ntype_in_files;
 #endif /* #if defined(RECOMPUTE_POTENTIAL_IN_SNAPSHOT) */
-
 
 /*! \brief Reads initial conditions that are in one of the supported file
  *         formats.
@@ -151,7 +146,7 @@ void read_ic(const char *fname, int readTypes)
   for(rep = 0; rep < 2; rep++)
     {
       NumPart = 0;
-      NumGas = 0;
+      NumGas  = 0;
 
 #if defined(RECOMPUTE_POTENTIAL_IN_SNAPSHOT)
       if(rep == 1)
@@ -172,7 +167,7 @@ void read_ic(const char *fname, int readTypes)
 
           for(gr = 0; gr < ngroups; gr++)
             {
-              if(ThisTask == (groupMaster + gr))        /* ok, it's this processor's turn */
+              if(ThisTask == (groupMaster + gr)) /* ok, it's this processor's turn */
                 {
                   if(rep == 0)
                     share_particle_number_in_file(buf, ThisTask + (rest_files - NTask), ThisTask, ThisTask, readTypes);
@@ -208,7 +203,7 @@ void read_ic(const char *fname, int readTypes)
 
           for(gr = 0; gr < ngroups; gr++)
             {
-              if((filenr / All.NumFilesWrittenInParallel) == gr)        /* ok, it's this processor's turn */
+              if((filenr / All.NumFilesWrittenInParallel) == gr) /* ok, it's this processor's turn */
                 {
                   if(rep == 0)
                     share_particle_number_in_file(buf, filenr, masterTask, lastTask, readTypes);
@@ -231,12 +226,12 @@ void read_ic(const char *fname, int readTypes)
             max_sphload = max_load;
 #endif /* #ifdef GENERATE_GAS_IN_ICS */
 
-          All.MaxPart = max_load / (1.0 - 2 * ALLOC_TOLERANCE);
+          All.MaxPart    = max_load / (1.0 - 2 * ALLOC_TOLERANCE);
           All.MaxPartSph = max_sphload / (1.0 - 2 * ALLOC_TOLERANCE);
 
 #ifdef EXACT_GRAVITY_FOR_PARTICLE_TYPE
           if(All.TotPartSpecial != 0)
-            All.MaxPartSpecial = (int) (All.TotPartSpecial);
+            All.MaxPartSpecial = (int)(All.TotPartSpecial);
           else
             terminate("Code compiled with option EXACT_GRAVITY_FOR_PARTICLE_TYPE but no particles of specified type found in ICs.");
 #endif /* #ifdef EXACT_GRAVITY_FOR_PARTICLE_TYPE */
@@ -260,8 +255,8 @@ void read_ic(const char *fname, int readTypes)
         P[i].Mass = All.MassTable[P[i].Type];
     }
 
-  /* If we are reading in Gadget2 ICs, we need to compute the material
-     number from the ID  */
+    /* If we are reading in Gadget2 ICs, we need to compute the material
+       number from the ID  */
 #ifdef READ_LEGACY_ICS
   if(header.flag_entropy_instead_u)
     {
@@ -275,16 +270,16 @@ void read_ic(const char *fname, int readTypes)
 
       double mat;
 
-      modf(((double) (P[i].ID - EOS_ID_START)) / EOS_ID_SKIP, &mat);    /* This stores the int part in variable mat and
-                                                                           discards the remainder */
+      modf(((double)(P[i].ID - EOS_ID_START)) / EOS_ID_SKIP, &mat); /* This stores the int part in variable mat and
+                                                                       discards the remainder */
       int imat = mat;
 
       SphP[i].Composition[imat] = 1.0;
     }
 #endif /* #ifdef READ_LEGACY_ICS */
 
-#if defined (REFINEMENT) && defined (REFINEMENT_HIGH_RES_GAS)
-  if(RestartFlag == 0)          /* All gas that is already present in the ICs is allowed to be (de-)refined */
+#if defined(REFINEMENT) && defined(REFINEMENT_HIGH_RES_GAS)
+  if(RestartFlag == 0) /* All gas that is already present in the ICs is allowed to be (de-)refined */
     {
       for(i = 0; i < NumGas; i++)
         {
@@ -310,7 +305,7 @@ void read_ic(const char *fname, int readTypes)
       for(i = 0, count = 0; i < NumPart; i++)
 #ifdef SPLIT_PARTICLE_TYPE
         if((1 << P[i].Type) & (SPLIT_PARTICLE_TYPE))
-#else /* #ifdef SPLIT_PARTICLE_TYPE */
+#else  /* #ifdef SPLIT_PARTICLE_TYPE */
         if(P[i].Type == 1)
 #endif /* #ifdef SPLIT_PARTICLE_TYPE #else */
           count++;
@@ -328,9 +323,9 @@ void read_ic(const char *fname, int readTypes)
             terminate("Task=%d ends up getting more SPH particles (%d) than allowed (%d)\n", ThisTask, NumGas, All.MaxPartSph);
 
 #ifdef REFINEMENT_HIGH_RES_GAS
-          for(i = 0; i < NumGas - count; i++)   /* make sure that AllowRefinement is shifted with the particles */
+          for(i = 0; i < NumGas - count; i++) /* make sure that AllowRefinement is shifted with the particles */
             SphP[i + count].AllowRefinement = SphP[i].AllowRefinement;
-          for(i = 0; i < count; i++)    /* by default, new cells are not allowed to be refined */
+          for(i = 0; i < count; i++) /* by default, new cells are not allowed to be refined */
             SphP[i].AllowRefinement = 0;
 #endif /* #ifdef REFINEMENT_HIGH_RES_GAS */
 
@@ -342,7 +337,7 @@ void read_ic(const char *fname, int readTypes)
           for(i = count, j = 0; i < NumPart; i++)
 #ifdef SPLIT_PARTICLE_TYPE
             if((1 << P[i].Type) & (SPLIT_PARTICLE_TYPE))
-#else /* #ifdef SPLIT_PARTICLE_TYPE */
+#else  /* #ifdef SPLIT_PARTICLE_TYPE */
             if(P[i].Type == 1)
 #endif /* #ifdef SPLIT_PARTICLE_TYPE #else */
               {
@@ -364,7 +359,7 @@ void read_ic(const char *fname, int readTypes)
                 P[j].Pos[2] -= b;
 
 #ifdef REFINEMENT_HIGH_RES_GAS
-                if(P[i].Type == 1)      /* also allow gas which is produced by splitting a high res DM particle to be (de-) refined */
+                if(P[i].Type == 1) /* also allow gas which is produced by splitting a high res DM particle to be (de-) refined */
                   SphP[j].AllowRefinement = 2;
 #endif /* #ifdef REFINEMENT_HIGH_RES_GAS */
 
@@ -377,7 +372,7 @@ void read_ic(const char *fname, int readTypes)
           for(i = 1; i < NTYPES; i++)
             if((1 << i) & (SPLIT_PARTICLE_TYPE))
               All.MassTable[i] *= (1 - fac);
-#else /* #ifdef SPLIT_PARTICLE_TYPE */
+#else  /* #ifdef SPLIT_PARTICLE_TYPE */
           All.MassTable[1] *= (1 - fac);
 #endif /* #ifdef SPLIT_PARTICLE_TYPE #else */
         }
@@ -393,21 +388,22 @@ void read_ic(const char *fname, int readTypes)
 
     for(i = 0; i < NumPart; i++)
       {
-        P[i].Type = 0;
+        P[i].Type      = 0;
         SphP[i].Utherm = 1.0;
       }
 
     All.MassTable[0] = 0;
 
-    header.npartTotal[0] = header.npartTotal[1];
+    header.npartTotal[0]         = header.npartTotal[1];
     header.npartTotalHighWord[0] = header.npartTotalHighWord[1];
-    header.npart[0] = header.npart[1];
-    header.npartTotal[1] = 0;
+    header.npart[0]              = header.npart[1];
+    header.npartTotal[1]         = 0;
     header.npartTotalHighWord[1] = 0;
-    header.npart[1] = 0;
-    NumGas = NumPart;
-    All.TotNumGas = All.TotNumPart;
-    mpi_printf("READ_DM_AS_GAS: generated %lld gas particles from type %d\n", header.npartTotal[0] + (((long long) header.npartTotalHighWord[0]) << 32), 0);
+    header.npart[1]              = 0;
+    NumGas                       = NumPart;
+    All.TotNumGas                = All.TotNumPart;
+    mpi_printf("READ_DM_AS_GAS: generated %lld gas particles from type %d\n",
+               header.npartTotal[0] + (((long long)header.npartTotalHighWord[0]) << 32), 0);
   }
 #endif /* #ifdef READ_DM_AS_GAS */
 
@@ -423,18 +419,18 @@ void read_ic(const char *fname, int readTypes)
 #endif
 
   u_init = (1.0 / GAMMA_MINUS1) * (BOLTZMANN / PROTONMASS) * All.InitGasTemp;
-  u_init *= All.UnitMass_in_g / All.UnitEnergy_in_cgs;  /* unit conversion */
+  u_init *= All.UnitMass_in_g / All.UnitEnergy_in_cgs; /* unit conversion */
 
-  if(All.InitGasTemp > 1.0e4)   /* assuming FULL ionization */
+  if(All.InitGasTemp > 1.0e4) /* assuming FULL ionization */
     molecular_weight = 4 / (8 - 5 * (1 - HYDROGEN_MASSFRAC));
-  else                          /* assuming NEUTRAL GAS */
+  else /* assuming NEUTRAL GAS */
     molecular_weight = 4 / (1 + 3 * HYDROGEN_MASSFRAC);
 
   u_init /= molecular_weight;
 
   All.InitGasU = u_init;
 
-  header.mass[0] = 0;           /* to make sure that the variable masses are stored in output file */
+  header.mass[0]   = 0; /* to make sure that the variable masses are stored in output file */
   All.MassTable[0] = 0;
 
   if(RestartFlag == 0)
@@ -488,7 +484,6 @@ void read_ic(const char *fname, int readTypes)
   CPU_Step[CPU_SNAPSHOT] += measure_time();
 }
 
-
 /*! \brief This function computes a suitable offset for the particle IDs in
  *         case gas should be generated in the ICs.
  *
@@ -502,11 +497,11 @@ MyIDType determine_ids_offset(void)
 #ifndef OFFSET_FOR_NON_CONTIGUOUS_IDS
   MyIDType ids_offset = IDS_OFFSET;
 #else /* #ifndef OFFSET_FOR_NON_CONTIGUOUS_IDS */
-  if(All.MaxID == 0)            /* MaxID not calculated yet */
+  if(All.MaxID == 0) /* MaxID not calculated yet */
     calculate_maxid();
 
-  int bits_used = 1;
-  int bits_available = CHAR_BIT * sizeof(MyIDType);
+  int bits_used       = 1;
+  int bits_available  = CHAR_BIT * sizeof(MyIDType);
   MyIDType ids_offset = 1;
 
   while(ids_offset <= All.MaxID && ids_offset > 0)
@@ -515,21 +510,20 @@ MyIDType determine_ids_offset(void)
       bits_used++;
     }
 
-  All.MaxID = 0;                /* reset to allow recomputing */
+  All.MaxID = 0; /* reset to allow recomputing */
 
   if(ids_offset <= 0)
     terminate("not enough memory to generate id offsets. Used %d bits out of %d\n", bits_used, bits_available);
 
 #ifdef LONGIDS
   mpi_printf("GENERATE_GAS_IN_ICS: determined id offset as %llu. Used %d bits out of %d\n", ids_offset, bits_used, bits_available);
-#else /* #ifdef LONGIDS */
+#else  /* #ifdef LONGIDS */
   mpi_printf("GENERATE_GAS_IN_ICS: determined id offset as %u. Used %d bits out of %d\n", ids_offset, bits_used, bits_available);
 #endif /* #ifdef LONGIDS #else */
 
 #endif /* #ifndef OFFSET_FOR_NON_CONTIGUOUS_IDS */
   return ids_offset;
 }
-
 
 /*! \brief Reads out the io buffer that was filled with particle data.
  *
@@ -555,14 +549,14 @@ void empty_read_buffer(enum iofields blocknr, int offset, int pc, int type)
   int vt, vpb;
   char *cp;
 
-  fp = (MyInputFloat *) CommBuffer;
-  doublep = (double *) CommBuffer;
-  ip = (MyIDType *) CommBuffer;
-  intp = (int *) CommBuffer;
-  floatp = (float *) CommBuffer;
+  fp      = (MyInputFloat *)CommBuffer;
+  doublep = (double *)CommBuffer;
+  ip      = (MyIDType *)CommBuffer;
+  intp    = (int *)CommBuffer;
+  floatp  = (float *)CommBuffer;
 
-  cp = (char *) CommBuffer;
-  vt = get_datatype_in_block(blocknr, 1);
+  cp  = (char *)CommBuffer;
+  vt  = get_datatype_in_block(blocknr, 1);
   vpb = get_values_per_blockelement(blocknr);
   if(vt == 2)
     swap_Nbyte(cp, pc * vpb, 8);
@@ -595,125 +589,124 @@ void empty_read_buffer(enum iofields blocknr, int offset, int pc, int type)
       if(IO_Fields[field].io_func)
         {
           int particle;
-          switch (IO_Fields[field].array)
+          switch(IO_Fields[field].array)
             {
-            case A_NONE:
-            case A_SPHP:
-            case A_P:
-              particle = offset + n;
-              break;
-            case A_PS:
-              terminate("Not good, trying to read into PS[]?\n");
-              break;
-            default:
-              terminate("ERROR in empty_read_buffer: Array not found!\n");
-              break;
+              case A_NONE:
+              case A_SPHP:
+              case A_P:
+                particle = offset + n;
+                break;
+              case A_PS:
+                terminate("Not good, trying to read into PS[]?\n");
+                break;
+              default:
+                terminate("ERROR in empty_read_buffer: Array not found!\n");
+                break;
             }
 
-          switch (IO_Fields[field].type_in_file_input)
+          switch(IO_Fields[field].type_in_file_input)
             {
-            case FILE_NONE:
-              terminate("error");
-              break;
-            case FILE_INT:
-              IO_Fields[field].io_func(particle, IO_Fields[field].values_per_block, intp, 1);
-              intp += IO_Fields[field].values_per_block;
-              break;
-            case FILE_MY_ID_TYPE:
-              IO_Fields[field].io_func(particle, IO_Fields[field].values_per_block, ip, 1);
-              ip += IO_Fields[field].values_per_block;
-              break;
-            case FILE_MY_IO_FLOAT:
-              IO_Fields[field].io_func(particle, IO_Fields[field].values_per_block, fp, 1);
-              fp += IO_Fields[field].values_per_block;
-              break;
-            case FILE_DOUBLE:
-              IO_Fields[field].io_func(particle, IO_Fields[field].values_per_block, doublep, 1);
-              doublep += IO_Fields[field].values_per_block;
-              break;
-            case FILE_FLOAT:
-              IO_Fields[field].io_func(particle, IO_Fields[field].values_per_block, floatp, 1);
-              floatp += IO_Fields[field].values_per_block;
-              break;
+              case FILE_NONE:
+                terminate("error");
+                break;
+              case FILE_INT:
+                IO_Fields[field].io_func(particle, IO_Fields[field].values_per_block, intp, 1);
+                intp += IO_Fields[field].values_per_block;
+                break;
+              case FILE_MY_ID_TYPE:
+                IO_Fields[field].io_func(particle, IO_Fields[field].values_per_block, ip, 1);
+                ip += IO_Fields[field].values_per_block;
+                break;
+              case FILE_MY_IO_FLOAT:
+                IO_Fields[field].io_func(particle, IO_Fields[field].values_per_block, fp, 1);
+                fp += IO_Fields[field].values_per_block;
+                break;
+              case FILE_DOUBLE:
+                IO_Fields[field].io_func(particle, IO_Fields[field].values_per_block, doublep, 1);
+                doublep += IO_Fields[field].values_per_block;
+                break;
+              case FILE_FLOAT:
+                IO_Fields[field].io_func(particle, IO_Fields[field].values_per_block, floatp, 1);
+                floatp += IO_Fields[field].values_per_block;
+                break;
             }
-
         }
       else
         {
           void *array_pos;
-          switch (IO_Fields[field].array)
+          switch(IO_Fields[field].array)
             {
-            case A_NONE:
-              array_pos = 0;
-              break;
-            case A_SPHP:
-              array_pos = SphP + offset + n;
-              break;
-            case A_P:
-              array_pos = P + offset + n;
-              break;
-            case A_PS:
-              terminate("Not good, trying to read into PS[]?\n");
-              break;
-            default:
-              terminate("ERROR in empty_read_buffer: Array not found!\n");
-              break;
+              case A_NONE:
+                array_pos = 0;
+                break;
+              case A_SPHP:
+                array_pos = SphP + offset + n;
+                break;
+              case A_P:
+                array_pos = P + offset + n;
+                break;
+              case A_PS:
+                terminate("Not good, trying to read into PS[]?\n");
+                break;
+              default:
+                terminate("ERROR in empty_read_buffer: Array not found!\n");
+                break;
             }
 
           for(k = 0; k < IO_Fields[field].values_per_block; k++)
             {
               double value = 0;
-              switch (IO_Fields[field].type_in_file_input)
+              switch(IO_Fields[field].type_in_file_input)
                 {
-                case FILE_MY_IO_FLOAT:
-                  value = *fp;
-                  fp++;
-                  break;
-                case FILE_DOUBLE:
-                  value = *doublep;
-                  doublep++;
-                  break;
-                case FILE_FLOAT:
-                  value = *floatp;
-                  floatp++;
-                  break;
-                default:
-                  break;
+                  case FILE_MY_IO_FLOAT:
+                    value = *fp;
+                    fp++;
+                    break;
+                  case FILE_DOUBLE:
+                    value = *doublep;
+                    doublep++;
+                    break;
+                  case FILE_FLOAT:
+                    value = *floatp;
+                    floatp++;
+                    break;
+                  default:
+                    break;
                 }
 
-              switch (IO_Fields[field].type_in_memory)
+              switch(IO_Fields[field].type_in_memory)
                 {
-                case MEM_INT:
-                  *((int *) ((size_t) array_pos + IO_Fields[field].offset + k * sizeof(int))) = *intp;
-                  intp++;
-                  break;
-                case MEM_MY_ID_TYPE:
-                  *((MyIDType *) ((size_t) array_pos + IO_Fields[field].offset + k * sizeof(MyIDType))) = *ip;
-                  ip++;
-                  break;
-                case MEM_FLOAT:
-                  *((float *) ((size_t) array_pos + IO_Fields[field].offset + k * sizeof(float))) = value;
-                  break;
+                  case MEM_INT:
+                    *((int *)((size_t)array_pos + IO_Fields[field].offset + k * sizeof(int))) = *intp;
+                    intp++;
+                    break;
+                  case MEM_MY_ID_TYPE:
+                    *((MyIDType *)((size_t)array_pos + IO_Fields[field].offset + k * sizeof(MyIDType))) = *ip;
+                    ip++;
+                    break;
+                  case MEM_FLOAT:
+                    *((float *)((size_t)array_pos + IO_Fields[field].offset + k * sizeof(float))) = value;
+                    break;
 
-                case MEM_DOUBLE:
-                  *((double *) ((size_t) array_pos + IO_Fields[field].offset + k * sizeof(double))) = value;
-                  break;
+                  case MEM_DOUBLE:
+                    *((double *)((size_t)array_pos + IO_Fields[field].offset + k * sizeof(double))) = value;
+                    break;
 
-                case MEM_MY_SINGLE:
-                  *((MySingle *) ((size_t) array_pos + IO_Fields[field].offset + k * sizeof(MySingle))) = value;
-                  break;
+                  case MEM_MY_SINGLE:
+                    *((MySingle *)((size_t)array_pos + IO_Fields[field].offset + k * sizeof(MySingle))) = value;
+                    break;
 
-                case MEM_MY_FLOAT:
-                  *((MyFloat *) ((size_t) array_pos + IO_Fields[field].offset + k * sizeof(MyFloat))) = value;
-                  break;
+                  case MEM_MY_FLOAT:
+                    *((MyFloat *)((size_t)array_pos + IO_Fields[field].offset + k * sizeof(MyFloat))) = value;
+                    break;
 
-                case MEM_MY_DOUBLE:
-                  *((MyDouble *) ((size_t) array_pos + IO_Fields[field].offset + k * sizeof(MyDouble))) = value;
-                  break;
+                  case MEM_MY_DOUBLE:
+                    *((MyDouble *)((size_t)array_pos + IO_Fields[field].offset + k * sizeof(MyDouble))) = value;
+                    break;
 
-                default:
-                  terminate("ERROR in empty_read_buffer: Type not found!\n");
-                  break;
+                  default:
+                    terminate("ERROR in empty_read_buffer: Type not found!\n");
+                    break;
                 }
             }
         }
@@ -722,10 +715,9 @@ void empty_read_buffer(enum iofields blocknr, int offset, int pc, int type)
   if(blocknr == IO_VEL)
     {
       for(n = 0; n < pc; n++)
-        P[offset + n].Type = type;      /* initialize type here as well */
+        P[offset + n].Type = type; /* initialize type here as well */
     }
 }
-
 
 /*! \brief Distributes the particle numbers in the file fname
  *         to tasks 'readTask' to 'lastTask', and calculates the number of
@@ -770,7 +762,7 @@ void share_particle_number_in_file(const char *fname, int filenr, int readTask, 
               swap_file = blksize1;
               my_fread(&label, sizeof(char), 4, fd);
               my_fread(&nextblock, sizeof(int), 1, fd);
-              swap_Nbyte((char *) &nextblock, 1, 4);
+              swap_Nbyte((char *)&nextblock, 1, 4);
               printf("Reading header => '%c%c%c%c' (%d byte)\n", label[0], label[1], label[2], label[3], nextblock);
               SKIP2;
             }
@@ -783,8 +775,8 @@ void share_particle_number_in_file(const char *fname, int filenr, int readTask, 
             }
           read_header_attributes(fd);
           SKIP2;
-          swap_Nbyte((char *) &blksize1, 1, 4);
-          swap_Nbyte((char *) &blksize2, 1, 4);
+          swap_Nbyte((char *)&blksize1, 1, 4);
+          swap_Nbyte((char *)&blksize2, 1, 4);
 
           if(blksize1 != 256 || blksize2 != 256)
             terminate("incorrect header format blocksize %d, %d\n", blksize1, blksize2);
@@ -796,8 +788,8 @@ void share_particle_number_in_file(const char *fname, int filenr, int readTask, 
           header.npart[3] += header.npart[4] + header.npart[5];
           header.npartTotal[4] = 0;
           header.npartTotal[5] = 0;
-          header.npart[4] = 0;
-          header.npart[5] = 0;
+          header.npart[4]      = 0;
+          header.npart[5]      = 0;
 #endif /* #ifdef COMBINETYPES */
         }
 
@@ -821,10 +813,10 @@ void share_particle_number_in_file(const char *fname, int filenr, int readTask, 
                 {
                   // Override particle number in file. If we don't
                   // read the type, both npart and npartTotal will be 0
-                  header.npartTotal[type] = 0;
-                  header.npart[type] = 0;
+                  header.npartTotal[type]         = 0;
+                  header.npart[type]              = 0;
                   header.npartTotalHighWord[type] = 0;
-                  header.mass[type] = 0;
+                  header.mass[type]               = 0;
                 }
             }
         }
@@ -852,7 +844,8 @@ void share_particle_number_in_file(const char *fname, int filenr, int readTask, 
           {
             if(header.npartTotal[type] != header.npart[type])
               {
-                warn("header.npartTotal[%d]=%d != header.npart[%d]=%d, setting header.npartTotal[%d] = header.npart[%d]\n", type, header.npartTotal[type], type, header.npart[type], type, type);
+                warn("header.npartTotal[%d]=%d != header.npart[%d]=%d, setting header.npartTotal[%d] = header.npart[%d]\n", type,
+                     header.npartTotal[type], type, header.npart[type], type, type);
                 header.npartTotal[type] = header.npart[type];
               }
 #ifdef USE_SFR
@@ -860,16 +853,18 @@ void share_particle_number_in_file(const char *fname, int filenr, int readTask, 
 #endif
           }
 
-      All.TotNumGas = header.npartTotal[0] + (((long long) header.npartTotalHighWord[0]) << 32);
+      All.TotNumGas = header.npartTotal[0] + (((long long)header.npartTotalHighWord[0]) << 32);
 #ifdef EXACT_GRAVITY_FOR_PARTICLE_TYPE
-      All.TotPartSpecial = header.npartTotal[EXACT_GRAVITY_FOR_PARTICLE_TYPE] + (((long long) header.npartTotalHighWord[EXACT_GRAVITY_FOR_PARTICLE_TYPE]) << 32);
-      mpi_printf("Tot Special %d %d %d %d\n", All.TotPartSpecial, EXACT_GRAVITY_FOR_PARTICLE_TYPE, header.npart[4], header.npartTotal[4]);
+      All.TotPartSpecial = header.npartTotal[EXACT_GRAVITY_FOR_PARTICLE_TYPE] +
+                           (((long long)header.npartTotalHighWord[EXACT_GRAVITY_FOR_PARTICLE_TYPE]) << 32);
+      mpi_printf("Tot Special %d %d %d %d\n", All.TotPartSpecial, EXACT_GRAVITY_FOR_PARTICLE_TYPE, header.npart[4],
+                 header.npartTotal[4]);
 #endif /* #ifdef EXACT_GRAVITY_FOR_PARTICLE_TYPE */
 
       for(type = 0, All.TotNumPart = 0; type < NTYPES; type++)
         {
           All.TotNumPart += header.npartTotal[type];
-          All.TotNumPart += (((long long) header.npartTotalHighWord[type]) << 32);
+          All.TotNumPart += (((long long)header.npartTotalHighWord[type]) << 32);
         }
 
 #ifdef GENERATE_GAS_IN_ICS
@@ -882,14 +877,16 @@ void share_particle_number_in_file(const char *fname, int filenr, int readTask, 
           for(i = 0; i < NTYPES; i++)
             if((1 << i) & (SPLIT_PARTICLE_TYPE))
               {
-                All.TotNumGas += header.npartTotal[i] + (((long long) header.npartTotalHighWord[i]) << 32);
-                All.TotNumPart += header.npartTotal[i] + (((long long) header.npartTotalHighWord[i]) << 32);
-                mpi_printf("GENERATE_GAS_IN_ICS: generated %lld gas particles from type %d\n", header.npartTotal[i] + (((long long) header.npartTotalHighWord[i]) << 32), i);
+                All.TotNumGas += header.npartTotal[i] + (((long long)header.npartTotalHighWord[i]) << 32);
+                All.TotNumPart += header.npartTotal[i] + (((long long)header.npartTotalHighWord[i]) << 32);
+                mpi_printf("GENERATE_GAS_IN_ICS: generated %lld gas particles from type %d\n",
+                           header.npartTotal[i] + (((long long)header.npartTotalHighWord[i]) << 32), i);
               }
-#else /* #ifdef SPLIT_PARTICLE_TYPE */
-          All.TotNumGas += header.npartTotal[1] + (((long long) header.npartTotalHighWord[1]) << 32);
-          All.TotNumPart += header.npartTotal[1] + (((long long) header.npartTotalHighWord[1]) << 32);
-          mpi_printf("GENERATE_GAS_IN_ICS: generated %lld gas particles from type 1\n", header.npartTotal[1] + (((long long) header.npartTotalHighWord[1]) << 32));
+#else  /* #ifdef SPLIT_PARTICLE_TYPE */
+          All.TotNumGas += header.npartTotal[1] + (((long long)header.npartTotalHighWord[1]) << 32);
+          All.TotNumPart += header.npartTotal[1] + (((long long)header.npartTotalHighWord[1]) << 32);
+          mpi_printf("GENERATE_GAS_IN_ICS: generated %lld gas particles from type 1\n",
+                     header.npartTotal[1] + (((long long)header.npartTotalHighWord[1]) << 32));
 #endif /* #ifdef SPLIT_PARTICLE_TYPE #else */
         }
 #endif /* #ifdef GENERATE_GAS_IN_ICS */
@@ -918,15 +915,16 @@ void share_particle_number_in_file(const char *fname, int filenr, int readTask, 
       for(type = 0, n_in_file = 0; type < NTYPES; type++)
         n_in_file += header.npart[type];
 
-      printf("READIC: Reading file `%s' on task=%d and distribute it to %d to %d (contains %d particles).\n", fname, ThisTask, readTask, lastTask, n_in_file);
+      printf("READIC: Reading file `%s' on task=%d and distribute it to %d to %d (contains %d particles).\n", fname, ThisTask,
+             readTask, lastTask, n_in_file);
 
       myflush(stdout);
     }
 
   for(type = 0; type < NTYPES; type++)
     {
-      n_in_file = header.npart[type];
-      ntask = lastTask - readTask + 1;
+      n_in_file       = header.npart[type];
+      ntask           = lastTask - readTask + 1;
       n_for_this_task = n_in_file / ntask;
       if((ThisTask - readTask) < (n_in_file % ntask))
         n_for_this_task++;
@@ -961,7 +959,6 @@ void share_particle_number_in_file(const char *fname, int filenr, int readTask, 
     }
 }
 
-
 /*! \brief Reads a single snapshot file.
  *
  *  This routine reads a single file. The data it contains is
@@ -993,7 +990,7 @@ void read_file(const char *fname, int filenr, int readTask, int lastTask, int re
 
 #ifdef HAVE_HDF5
   int rank, pcsum;
-  hid_t hdf5_file = 0, hdf5_grp[NTYPES], hdf5_dataspace_in_file;
+  hid_t hdf5_file     = 0, hdf5_grp[NTYPES], hdf5_dataspace_in_file;
   hid_t hdf5_datatype = 0, hdf5_dataspace_in_memory, hdf5_dataset;
   hsize_t dims[2], count[2], start[2];
 #endif /* #ifdef HAVE_HDF5 */
@@ -1014,7 +1011,7 @@ void read_file(const char *fname, int filenr, int readTask, int lastTask, int re
               swap_file = blksize1;
               my_fread(&label, sizeof(char), 4, fd);
               my_fread(&nextblock, sizeof(int), 1, fd);
-              swap_Nbyte((char *) &nextblock, 1, 4);
+              swap_Nbyte((char *)&nextblock, 1, 4);
               SKIP2;
             }
 
@@ -1026,8 +1023,8 @@ void read_file(const char *fname, int filenr, int readTask, int lastTask, int re
             }
           read_header_attributes(fd);
           SKIP2;
-          swap_Nbyte((char *) &blksize1, 1, 4);
-          swap_Nbyte((char *) &blksize2, 1, 4);
+          swap_Nbyte((char *)&blksize1, 1, 4);
+          swap_Nbyte((char *)&blksize2, 1, 4);
 
           swap_header();
 
@@ -1036,8 +1033,8 @@ void read_file(const char *fname, int filenr, int readTask, int lastTask, int re
           header.npart[3] += header.npart[4] + header.npart[5];
           header.npartTotal[4] = 0;
           header.npartTotal[5] = 0;
-          header.npart[4] = 0;
-          header.npart[5] = 0;
+          header.npart[4]      = 0;
+          header.npart[5]      = 0;
 #endif /* #ifdef COMBINETYPES */
         }
 
@@ -1061,10 +1058,10 @@ void read_file(const char *fname, int filenr, int readTask, int lastTask, int re
                 {
                   // Override particle number in file. If we don't
                   // read the type, both npart and npartTotal will be 0
-                  header.npartTotal[type] = 0;
-                  header.npart[type] = 0;
+                  header.npartTotal[type]         = 0;
+                  header.npart[type]              = 0;
                   header.npartTotalHighWord[type] = 0;
-                  header.mass[type] = 0;
+                  header.mass[type]               = 0;
                 }
             }
         }
@@ -1082,7 +1079,7 @@ void read_file(const char *fname, int filenr, int readTask, int lastTask, int re
       sprintf(buf, "\nProblem: Code compiled with INPUT_IN_DOUBLEPRECISION, but input files are in single precision!\n");
       terminate(buf);
     }
-#else /* #ifdef INPUT_IN_DOUBLEPRECISION */
+#else  /* #ifdef INPUT_IN_DOUBLEPRECISION */
   if(header.flag_doubleprecision)
     {
       sprintf(buf, "\nProblem: Code not compiled with INPUT_IN_DOUBLEPRECISION, but input files are in double precision!\n");
@@ -1093,20 +1090,20 @@ void read_file(const char *fname, int filenr, int readTask, int lastTask, int re
   if(ThisTask == readTask)
     {
       if(filenr == 0)
-        mpi_printf("\nREADIC: filenr=%d, '%s' contains:\n"
-                   "READIC: Type 0 (gas):   %8d  (tot=%15lld) masstab= %g\n"
-                   "READIC: Type 1 (halo):  %8d  (tot=%15lld) masstab= %g\n"
-                   "READIC: Type 2 (disk):  %8d  (tot=%15lld) masstab= %g\n"
-                   "READIC: Type 3 (bulge): %8d  (tot=%15lld) masstab= %g\n"
-                   "READIC: Type 4 (stars): %8d  (tot=%15lld) masstab= %g\n"
-                   "READIC: Type 5 (bndry): %8d  (tot=%15lld) masstab= %g\n\n",
-                   filenr, fname,
-                   header.npart[0], header.npartTotal[0] + (((long long) header.npartTotalHighWord[0]) << 32), All.MassTable[0],
-                   header.npart[1], header.npartTotal[1] + (((long long) header.npartTotalHighWord[1]) << 32), All.MassTable[1],
-                   header.npart[2], header.npartTotal[2] + (((long long) header.npartTotalHighWord[2]) << 32), All.MassTable[2],
-                   header.npart[3], header.npartTotal[3] + (((long long) header.npartTotalHighWord[3]) << 32), All.MassTable[3],
-                   header.npart[4], header.npartTotal[4] + (((long long) header.npartTotalHighWord[4]) << 32), All.MassTable[4],
-                   header.npart[5], header.npartTotal[5] + (((long long) header.npartTotalHighWord[5]) << 32), All.MassTable[5]);
+        mpi_printf(
+            "\nREADIC: filenr=%d, '%s' contains:\n"
+            "READIC: Type 0 (gas):   %8d  (tot=%15lld) masstab= %g\n"
+            "READIC: Type 1 (halo):  %8d  (tot=%15lld) masstab= %g\n"
+            "READIC: Type 2 (disk):  %8d  (tot=%15lld) masstab= %g\n"
+            "READIC: Type 3 (bulge): %8d  (tot=%15lld) masstab= %g\n"
+            "READIC: Type 4 (stars): %8d  (tot=%15lld) masstab= %g\n"
+            "READIC: Type 5 (bndry): %8d  (tot=%15lld) masstab= %g\n\n",
+            filenr, fname, header.npart[0], header.npartTotal[0] + (((long long)header.npartTotalHighWord[0]) << 32), All.MassTable[0],
+            header.npart[1], header.npartTotal[1] + (((long long)header.npartTotalHighWord[1]) << 32), All.MassTable[1],
+            header.npart[2], header.npartTotal[2] + (((long long)header.npartTotalHighWord[2]) << 32), All.MassTable[2],
+            header.npart[3], header.npartTotal[3] + (((long long)header.npartTotalHighWord[3]) << 32), All.MassTable[3],
+            header.npart[4], header.npartTotal[4] + (((long long)header.npartTotalHighWord[4]) << 32), All.MassTable[4],
+            header.npart[5], header.npartTotal[5] + (((long long)header.npartTotalHighWord[5]) << 32), All.MassTable[5]);
     }
 
   /* to collect the gas particles all at the beginning (in case several
@@ -1115,9 +1112,8 @@ void read_file(const char *fname, int filenr, int readTask, int lastTask, int re
 
   for(type = 0, nall = 0; type < NTYPES; type++)
     {
-
-      n_in_file = header.npart[type];
-      ntask = lastTask - readTask + 1;
+      n_in_file       = header.npart[type];
+      ntask           = lastTask - readTask + 1;
       n_for_this_task = n_in_file / ntask;
       if((ThisTask - readTask) < (n_in_file % ntask))
         n_for_this_task++;
@@ -1128,10 +1124,9 @@ void read_file(const char *fname, int filenr, int readTask, int lastTask, int re
   memmove(&P[NumGas + nall], &P[NumGas], (NumPart - NumGas) * sizeof(struct particle_data));
   nstart = NumGas;
 
-
   for(bnr = 0; bnr < 1000; bnr++)
     {
-      blocknr = (enum iofields) bnr;
+      blocknr = (enum iofields)bnr;
 
       if(blocknr == IO_LASTENTRY)
         {
@@ -1144,7 +1139,7 @@ void read_file(const char *fname, int filenr, int readTask, int lastTask, int re
 
               long long nprevious = 0;
               for(int t = 0; t < type; t++)
-                nprevious += header.npartTotal[t] + (((long long) header.npartTotalHighWord[t]) << 32);
+                nprevious += header.npartTotal[t] + (((long long)header.npartTotalHighWord[t]) << 32);
 
               for(int nr = 0; nr < filenr; nr++)
                 nprevious += ntype_in_files[nr].npart[type];
@@ -1181,7 +1176,7 @@ void read_file(const char *fname, int filenr, int readTask, int lastTask, int re
 
           bytes_per_blockelement = get_bytes_per_blockelement(blocknr, 1);
 
-          blockmaxlen = (int) (COMMBUFFERSIZE / bytes_per_blockelement);
+          blockmaxlen = (int)(COMMBUFFERSIZE / bytes_per_blockelement);
 
           npart = get_particles_in_block(blocknr, &typelist[0]);
 
@@ -1194,15 +1189,15 @@ void read_file(const char *fname, int filenr, int readTask, int lastTask, int re
                       SKIP;
                       my_fread(&label, sizeof(char), 4, fd);
                       my_fread(&nextblock, sizeof(int), 1, fd);
-                      swap_Nbyte((char *) &nextblock, 1, 4);
+                      swap_Nbyte((char *)&nextblock, 1, 4);
                       printf("Reading header => '%c%c%c%c' (%d byte)\n", label[0], label[1], label[2], label[3], nextblock);
                       SKIP2;
 
                       get_Tab_IO_Label(blocknr, expected_label);
                       if(strncmp(label, expected_label, 4) != 0)
                         {
-                          sprintf(buf, "incorrect block-structure!\nexpected '%c%c%c%c' but found '%c%c%c%c'\n",
-                                  expected_label[0], expected_label[1], expected_label[2], expected_label[3], label[0], label[1], label[2], label[3]);
+                          sprintf(buf, "incorrect block-structure!\nexpected '%c%c%c%c' but found '%c%c%c%c'\n", expected_label[0],
+                                  expected_label[1], expected_label[2], expected_label[3], label[0], label[1], label[2], label[3]);
                           terminate(buf);
                         }
                     }
@@ -1264,7 +1259,7 @@ void read_file(const char *fname, int filenr, int readTask, int lastTask, int re
 
                                       hdf5_dataspace_in_file = my_H5Screate_simple(rank, dims, NULL);
 
-                                      dims[0] = pc;
+                                      dims[0]                  = pc;
                                       hdf5_dataspace_in_memory = my_H5Screate_simple(rank, dims, NULL);
 
                                       start[0] = pcsum;
@@ -1276,34 +1271,34 @@ void read_file(const char *fname, int filenr, int readTask, int lastTask, int re
 
                                       my_H5Sselect_hyperslab(hdf5_dataspace_in_file, H5S_SELECT_SET, start, NULL, count, NULL);
 
-                                      switch (get_datatype_in_block(blocknr, 1))
+                                      switch(get_datatype_in_block(blocknr, 1))
                                         {
-                                        case FILE_INT:
-                                          hdf5_datatype = my_H5Tcopy(H5T_NATIVE_UINT);
-                                          break;
-                                        case FILE_MY_IO_FLOAT:
+                                          case FILE_INT:
+                                            hdf5_datatype = my_H5Tcopy(H5T_NATIVE_UINT);
+                                            break;
+                                          case FILE_MY_IO_FLOAT:
 #ifdef INPUT_IN_DOUBLEPRECISION
-                                          hdf5_datatype = my_H5Tcopy(H5T_NATIVE_DOUBLE);
-#else /* #ifdef INPUT_IN_DOUBLEPRECISION */
-                                          hdf5_datatype = my_H5Tcopy(H5T_NATIVE_FLOAT);
+                                            hdf5_datatype = my_H5Tcopy(H5T_NATIVE_DOUBLE);
+#else  /* #ifdef INPUT_IN_DOUBLEPRECISION */
+                                            hdf5_datatype = my_H5Tcopy(H5T_NATIVE_FLOAT);
 #endif /* #ifdef INPUT_IN_DOUBLEPRECISION #else */
-                                          break;
-                                        case FILE_MY_ID_TYPE:
+                                            break;
+                                          case FILE_MY_ID_TYPE:
 #ifdef LONGIDS
-                                          hdf5_datatype = my_H5Tcopy(H5T_NATIVE_UINT64);
-#else /* #ifdef LONGIDS */
-                                          hdf5_datatype = my_H5Tcopy(H5T_NATIVE_UINT32);
+                                            hdf5_datatype = my_H5Tcopy(H5T_NATIVE_UINT64);
+#else  /* #ifdef LONGIDS */
+                                            hdf5_datatype = my_H5Tcopy(H5T_NATIVE_UINT32);
 #endif /* #ifdef LONGIDS #else */
-                                          break;
-                                        case FILE_DOUBLE:
-                                          hdf5_datatype = my_H5Tcopy(H5T_NATIVE_DOUBLE);
-                                          break;
-                                        case FILE_FLOAT:
-                                          hdf5_datatype = my_H5Tcopy(H5T_NATIVE_FLOAT);
-                                          break;
-                                        default:
-                                          terminate("can't process this input type");
-                                          break;
+                                            break;
+                                          case FILE_DOUBLE:
+                                            hdf5_datatype = my_H5Tcopy(H5T_NATIVE_DOUBLE);
+                                            break;
+                                          case FILE_FLOAT:
+                                            hdf5_datatype = my_H5Tcopy(H5T_NATIVE_FLOAT);
+                                            break;
+                                          default:
+                                            terminate("can't process this input type");
+                                            break;
                                         }
 
                                       /* test if HDF5 dataset is actually present */
@@ -1321,22 +1316,24 @@ void read_file(const char *fname, int filenr, int readTask, int lastTask, int re
                                       else
                                         {
                                           // yes, read into CommBuffer
-                                          my_H5Dread(hdf5_dataset, hdf5_datatype, hdf5_dataspace_in_memory, hdf5_dataspace_in_file, H5P_DEFAULT, CommBuffer, buf);
+                                          my_H5Dread(hdf5_dataset, hdf5_datatype, hdf5_dataspace_in_memory, hdf5_dataspace_in_file,
+                                                     H5P_DEFAULT, CommBuffer, buf);
                                           my_H5Dclose(hdf5_dataset, buf);
                                         }
                                       my_H5Tclose(hdf5_datatype);
                                       my_H5Sclose(hdf5_dataspace_in_memory, H5S_SIMPLE);
                                       my_H5Sclose(hdf5_dataspace_in_file, H5S_SIMPLE);
 
-                                    }   /* All.ICFormat == 3 */
-#endif /* #ifdef HAVE_HDF5 */
+                                    } /* All.ICFormat == 3 */
+#endif                                /* #ifdef HAVE_HDF5 */
                                 }
 
                               if(ThisTask == readTask && task != readTask && pc > 0)
                                 MPI_Ssend(CommBuffer, bytes_per_blockelement * pc, MPI_BYTE, task, TAG_PDATA, MPI_COMM_WORLD);
 
                               if(ThisTask != readTask && task == ThisTask && pc > 0)
-                                MPI_Recv(CommBuffer, bytes_per_blockelement * pc, MPI_BYTE, readTask, TAG_PDATA, MPI_COMM_WORLD, &status);
+                                MPI_Recv(CommBuffer, bytes_per_blockelement * pc, MPI_BYTE, readTask, TAG_PDATA, MPI_COMM_WORLD,
+                                         &status);
 
                               /* copy CommBuffer contents into actual particle data structs */
                               if(ThisTask == task)
@@ -1347,23 +1344,24 @@ void read_file(const char *fname, int filenr, int readTask, int lastTask, int re
                                 }
 
                               n_for_this_task -= pc;
-                            }   /* do */
+                            } /* do */
                           while(n_for_this_task > 0);
 
-                        }       /* task loop */
-                    }           /* typelist[type] > 0 */
-                }               /* type loop */
+                        } /* task loop */
+                    }     /* typelist[type] > 0 */
+                }         /* type loop */
 
               if(ThisTask == readTask)
                 {
                   if(All.ICFormat == 1 || All.ICFormat == 2)
                     {
                       SKIP2;
-                      swap_Nbyte((char *) &blksize1, 1, 4);
-                      swap_Nbyte((char *) &blksize2, 1, 4);
+                      swap_Nbyte((char *)&blksize1, 1, 4);
+                      swap_Nbyte((char *)&blksize2, 1, 4);
                       if(blksize1 != blksize2)
                         {
-                          sprintf(buf, "incorrect block-sizes detected!\n Task=%d   blocknr=%d  blksize1=%d  blksize2=%d\n", ThisTask, blocknr, blksize1, blksize2);
+                          sprintf(buf, "incorrect block-sizes detected!\n Task=%d   blocknr=%d  blksize1=%d  blksize2=%d\n", ThisTask,
+                                  blocknr, blksize1, blksize2);
                           if(blocknr == IO_ID)
                             {
                               strcat(buf, "Possible mismatch of 32bit and 64bit ID's in IC file and AREPO compilation !\n");
@@ -1373,10 +1371,9 @@ void read_file(const char *fname, int filenr, int readTask, int lastTask, int re
                     }
                 }
 
-            }                   /* npart > 0 */
-        }                       /* blockpresent */
-    }                           /* blocknr loop */
-
+            } /* npart > 0 */
+        }     /* blockpresent */
+    }         /* blocknr loop */
 
   for(type = 0; type < NTYPES; type++)
     {
@@ -1409,9 +1406,7 @@ void read_file(const char *fname, int filenr, int readTask, int lastTask, int re
         }
 #endif /* #ifdef HAVE_HDF5 */
     }
-
 }
-
 
 /*! \brief Determines on how many files a given snapshot is distributed.
  *
@@ -1475,8 +1470,8 @@ int find_files(const char *fname)
               header.npart[3] += header.npart[4] + header.npart[5];
               header.npartTotal[4] = 0;
               header.npartTotal[5] = 0;
-              header.npart[4] = 0;
-              header.npart[5] = 0;
+              header.npart[4]      = 0;
+              header.npart[5]      = 0;
 #endif /* #ifdef COMBINETYPES */
 
               my_fread(&dummy, sizeof(dummy), 1, fd);
@@ -1531,8 +1526,8 @@ int find_files(const char *fname)
               header.npart[3] += header.npart[4] + header.npart[5];
               header.npartTotal[4] = 0;
               header.npartTotal[5] = 0;
-              header.npart[4] = 0;
-              header.npart[5] = 0;
+              header.npart[4]      = 0;
+              header.npart[5]      = 0;
 #endif /* #ifdef COMBINETYPES */
 
               my_fread(&dummy, sizeof(dummy), 1, fd);
@@ -1558,7 +1553,6 @@ int find_files(const char *fname)
   return -1;
 }
 
-
 /*! \brief This function assigns a certain number of tasks to each file.
  *
  *  These tasks are containing the content of that file after the ICs have been
@@ -1577,23 +1571,23 @@ void distribute_file(int nfiles, int firstfile, int firsttask, int lasttask, int
 {
   int i, group;
   int tasks_per_file = NTask / nfiles;
-  int tasks_left = NTask % nfiles;
+  int tasks_left     = NTask % nfiles;
 
   if(tasks_left == 0)
     {
-      group = ThisTask / tasks_per_file;
+      group   = ThisTask / tasks_per_file;
       *master = group * tasks_per_file;
-      *last = (group + 1) * tasks_per_file - 1;
+      *last   = (group + 1) * tasks_per_file - 1;
       *filenr = group;
       return;
     }
 
-  double tpf = ((double) NTask) / nfiles;
+  double tpf = ((double)NTask) / nfiles;
 
   for(i = 0, *last = -1; i < nfiles; i++)
     {
       *master = *last + 1;
-      *last = (i + 1) * tpf;
+      *last   = (i + 1) * tpf;
       if(*last >= NTask)
         *last = *last - 1;
       if(*last < *master)
@@ -1607,7 +1601,6 @@ void distribute_file(int nfiles, int firstfile, int firsttask, int lasttask, int
         return;
     }
 }
-
 
 #ifdef HAVE_HDF5
 /*! \brief The error handler used during the loading of the hdf5 header.
@@ -1627,7 +1620,6 @@ herr_t hdf5_header_error_handler(void *unused)
 #endif
 }
 
-
 /*! \brief This function reads the snapshot header in case of hdf5 files
  *        (i.e. format 3).
  *
@@ -1641,7 +1633,7 @@ void read_header_attributes_in_hdf5(const char *fname)
   hssize_t scalar_attr_dim = 1;
   hssize_t vector_attr_dim = NTYPES;
 
-  hdf5_file = my_H5Fopen(fname, H5F_ACC_RDONLY, H5P_DEFAULT);
+  hdf5_file      = my_H5Fopen(fname, H5F_ACC_RDONLY, H5P_DEFAULT);
   hdf5_headergrp = my_H5Gopen(hdf5_file, "/Header");
 
   hdf5_attribute = my_H5Aopen_name(hdf5_headergrp, "NumPart_ThisFile");
@@ -1717,7 +1709,6 @@ void read_header_attributes_in_hdf5(const char *fname)
 }
 #endif /* #ifdef HAVE_HDF5 */
 
-
 /*! \brief Reads the snapshot header in case of non-hdf5 files (i.e. formats 1
  *         and 2).
  *
@@ -1725,7 +1716,7 @@ void read_header_attributes_in_hdf5(const char *fname)
  *
  * \return void
  */
-void read_header_attributes(FILE * fd)
+void read_header_attributes(FILE *fd)
 {
 #ifdef NTYPES_ICS
   int type;
@@ -1735,45 +1726,44 @@ void read_header_attributes(FILE * fd)
 
       for(type = 0; type < NTYPES_ICS; type++)
         {
-          header.npart[type] = header_ICs.npart[type];
-          header.mass[type] = header_ICs.mass[type];
-          header.npartTotal[type] = header_ICs.npartTotal[type];
+          header.npart[type]              = header_ICs.npart[type];
+          header.mass[type]               = header_ICs.mass[type];
+          header.npartTotal[type]         = header_ICs.npartTotal[type];
           header.npartTotalHighWord[type] = header_ICs.npartTotalHighWord[type];
         }
       for(type = NTYPES_ICS; type < NTYPES; type++)
         {
-          header.npart[type] = 0;
-          header.mass[type] = 0;
-          header.npartTotal[type] = 0;
+          header.npart[type]              = 0;
+          header.mass[type]               = 0;
+          header.npartTotal[type]         = 0;
           header.npartTotalHighWord[type] = 0;
         }
 
-      header.time = header_ICs.time;
-      header.redshift = header_ICs.redshift;
-      header.flag_sfr = header_ICs.flag_sfr;
-      header.flag_feedback = header_ICs.flag_feedback;
-      header.flag_cooling = header_ICs.flag_cooling;
-      header.num_files = header_ICs.num_files;
-      header.BoxSize = header_ICs.BoxSize;
-      header.Omega0 = header_ICs.Omega0;
-      header.OmegaLambda = header_ICs.OmegaLambda;
-      header.HubbleParam = header_ICs.HubbleParam;
-      header.flag_stellarage = header_ICs.flag_stellarage;
-      header.flag_metals = header_ICs.flag_metals;
-      header.flag_entropy_instead_u = header_ICs.flag_entropy_instead_u;
-      header.flag_doubleprecision = header_ICs.flag_doubleprecision;
-      header.flag_lpt_ics = header_ICs.flag_lpt_ics;
-      header.lpt_scalingfactor = header_ICs.lpt_scalingfactor;
-      header.flag_tracer_field = header_ICs.flag_tracer_field;
+      header.time                      = header_ICs.time;
+      header.redshift                  = header_ICs.redshift;
+      header.flag_sfr                  = header_ICs.flag_sfr;
+      header.flag_feedback             = header_ICs.flag_feedback;
+      header.flag_cooling              = header_ICs.flag_cooling;
+      header.num_files                 = header_ICs.num_files;
+      header.BoxSize                   = header_ICs.BoxSize;
+      header.Omega0                    = header_ICs.Omega0;
+      header.OmegaLambda               = header_ICs.OmegaLambda;
+      header.HubbleParam               = header_ICs.HubbleParam;
+      header.flag_stellarage           = header_ICs.flag_stellarage;
+      header.flag_metals               = header_ICs.flag_metals;
+      header.flag_entropy_instead_u    = header_ICs.flag_entropy_instead_u;
+      header.flag_doubleprecision      = header_ICs.flag_doubleprecision;
+      header.flag_lpt_ics              = header_ICs.flag_lpt_ics;
+      header.lpt_scalingfactor         = header_ICs.lpt_scalingfactor;
+      header.flag_tracer_field         = header_ICs.flag_tracer_field;
       header.composition_vector_length = header_ICs.composition_vector_length;
     }
   else
     my_fread(&header, sizeof(header), 1, fd);
-#else /* #ifdef NTYPES_ICS */
+#else  /* #ifdef NTYPES_ICS */
   my_fread(&header, sizeof(header), 1, fd);
 #endif /* #ifdef NTYPES_ICS #else */
 }
-
 
 /*! \brief Swaps endiannes of data.
  *
@@ -1801,37 +1791,35 @@ void swap_Nbyte(char *data, int n, int m)
     }
 }
 
-
 /*! \brief Swaps the endianness of the snapshot header.
  *
  *  \return void
  */
 void swap_header()
 {
-  swap_Nbyte((char *) &header.npart, NTYPES, 4);
-  swap_Nbyte((char *) &header.mass, NTYPES, 8);
-  swap_Nbyte((char *) &header.time, 1, 8);
-  swap_Nbyte((char *) &header.redshift, 1, 8);
-  swap_Nbyte((char *) &header.flag_sfr, 1, 4);
-  swap_Nbyte((char *) &header.flag_feedback, 1, 4);
-  swap_Nbyte((char *) &header.npartTotal, NTYPES, 4);
-  swap_Nbyte((char *) &header.flag_cooling, 1, 4);
-  swap_Nbyte((char *) &header.num_files, 1, 4);
-  swap_Nbyte((char *) &header.BoxSize, 1, 8);
-  swap_Nbyte((char *) &header.Omega0, 1, 8);
-  swap_Nbyte((char *) &header.OmegaLambda, 1, 8);
-  swap_Nbyte((char *) &header.HubbleParam, 1, 8);
-  swap_Nbyte((char *) &header.flag_stellarage, 1, 4);
-  swap_Nbyte((char *) &header.flag_metals, 1, 4);
-  swap_Nbyte((char *) &header.npartTotalHighWord, NTYPES, 4);
-  swap_Nbyte((char *) &header.flag_entropy_instead_u, 1, 4);
-  swap_Nbyte((char *) &header.flag_doubleprecision, 1, 4);
-  swap_Nbyte((char *) &header.flag_lpt_ics, 1, 4);
-  swap_Nbyte((char *) &header.lpt_scalingfactor, 1, 4);
-  swap_Nbyte((char *) &header.flag_tracer_field, 1, 4);
-  swap_Nbyte((char *) &header.composition_vector_length, 1, 4);
+  swap_Nbyte((char *)&header.npart, NTYPES, 4);
+  swap_Nbyte((char *)&header.mass, NTYPES, 8);
+  swap_Nbyte((char *)&header.time, 1, 8);
+  swap_Nbyte((char *)&header.redshift, 1, 8);
+  swap_Nbyte((char *)&header.flag_sfr, 1, 4);
+  swap_Nbyte((char *)&header.flag_feedback, 1, 4);
+  swap_Nbyte((char *)&header.npartTotal, NTYPES, 4);
+  swap_Nbyte((char *)&header.flag_cooling, 1, 4);
+  swap_Nbyte((char *)&header.num_files, 1, 4);
+  swap_Nbyte((char *)&header.BoxSize, 1, 8);
+  swap_Nbyte((char *)&header.Omega0, 1, 8);
+  swap_Nbyte((char *)&header.OmegaLambda, 1, 8);
+  swap_Nbyte((char *)&header.HubbleParam, 1, 8);
+  swap_Nbyte((char *)&header.flag_stellarage, 1, 4);
+  swap_Nbyte((char *)&header.flag_metals, 1, 4);
+  swap_Nbyte((char *)&header.npartTotalHighWord, NTYPES, 4);
+  swap_Nbyte((char *)&header.flag_entropy_instead_u, 1, 4);
+  swap_Nbyte((char *)&header.flag_doubleprecision, 1, 4);
+  swap_Nbyte((char *)&header.flag_lpt_ics, 1, 4);
+  swap_Nbyte((char *)&header.lpt_scalingfactor, 1, 4);
+  swap_Nbyte((char *)&header.flag_tracer_field, 1, 4);
+  swap_Nbyte((char *)&header.composition_vector_length, 1, 4);
 }
-
 
 #ifdef TILE_ICS
 /*! \brief Duplicates ICs and lines TileICsFactor of them up in each dimension.
@@ -1843,7 +1831,8 @@ void tile_ics(void)
   mpi_printf("TILE_ICS: tiling by a factor of %d...\n", All.TileICsFactor);
 
   /* allocate memory for new particles */
-  domain_resize_storage(NumPart * (All.TileICsFactor * All.TileICsFactor * All.TileICsFactor - 1), NumGas * (All.TileICsFactor * All.TileICsFactor * All.TileICsFactor - 1), 0);
+  domain_resize_storage(NumPart * (All.TileICsFactor * All.TileICsFactor * All.TileICsFactor - 1),
+                        NumGas * (All.TileICsFactor * All.TileICsFactor * All.TileICsFactor - 1), 0);
 
   /* tile gas particles at the beginning of P[] */
   int N_others = NumPart - NumGas;
@@ -1863,9 +1852,10 @@ void tile_ics(void)
                 {
                   if(ix == 0 && iy == 0 && iz == 0)
                     continue;
-                  j = i + NumGas * ix + NumGas * All.TileICsFactor * iy + NumGas * All.TileICsFactor * All.TileICsFactor * iz;
-                  P[j] = P[i];
-                  P[j].ID = P[i].ID + IDS_OFFSET * ix + IDS_OFFSET * All.TileICsFactor * iy + IDS_OFFSET * All.TileICsFactor * All.TileICsFactor * iz;
+                  j       = i + NumGas * ix + NumGas * All.TileICsFactor * iy + NumGas * All.TileICsFactor * All.TileICsFactor * iz;
+                  P[j]    = P[i];
+                  P[j].ID = P[i].ID + IDS_OFFSET * ix + IDS_OFFSET * All.TileICsFactor * iy +
+                            IDS_OFFSET * All.TileICsFactor * All.TileICsFactor * iz;
                   P[j].Pos[0] += All.BoxSize / All.TileICsFactor * ix;
                   P[j].Pos[1] += All.BoxSize / All.TileICsFactor * iy;
                   P[j].Pos[2] += All.BoxSize / All.TileICsFactor * iz;
@@ -1877,7 +1867,8 @@ void tile_ics(void)
   /* tile the other particle types */
   iy = 0;
   iz = 0;
-  for(i = NumGas * All.TileICsFactor * All.TileICsFactor * All.TileICsFactor; i < NumGas * All.TileICsFactor * All.TileICsFactor * All.TileICsFactor + N_others; i++)
+  for(i = NumGas * All.TileICsFactor * All.TileICsFactor * All.TileICsFactor;
+      i < NumGas * All.TileICsFactor * All.TileICsFactor * All.TileICsFactor + N_others; i++)
     {
       for(ix = 0; ix < All.TileICsFactor; ix++)
         {
@@ -1891,9 +1882,10 @@ void tile_ics(void)
                 {
                   if(ix == 0 && iy == 0 && iz == 0)
                     continue;
-                  j = i + N_others * ix + N_others * All.TileICsFactor * iy + N_others * All.TileICsFactor * All.TileICsFactor * iz;
+                  j    = i + N_others * ix + N_others * All.TileICsFactor * iy + N_others * All.TileICsFactor * All.TileICsFactor * iz;
                   P[j] = P[i];
-                  P[j].ID = P[i].ID + IDS_OFFSET * ix + IDS_OFFSET * All.TileICsFactor * iy + IDS_OFFSET * All.TileICsFactor * All.TileICsFactor * iz;
+                  P[j].ID = P[i].ID + IDS_OFFSET * ix + IDS_OFFSET * All.TileICsFactor * iy +
+                            IDS_OFFSET * All.TileICsFactor * All.TileICsFactor * iz;
                   P[j].Pos[0] += All.BoxSize / All.TileICsFactor * ix;
                   P[j].Pos[1] += All.BoxSize / All.TileICsFactor * iy;
                   P[j].Pos[2] += All.BoxSize / All.TileICsFactor * iz;

@@ -36,21 +36,17 @@
  * - DD.MM.YYYY Description
  */
 
-
+#include <math.h>
 #include <mpi.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <math.h>
 
-
+#include "../gravity/forcetree.h"
 #include "../main/allvars.h"
 #include "../main/proto.h"
-#include "../gravity/forcetree.h"
-
 
 #ifdef USE_SFR
-
 
 /*! \brief Main driver for star formation and gas cooling.
  *
@@ -78,7 +74,8 @@ void cooling_and_starformation(void)
   double eos_dens_threshold = All.PhysDensThresh;
 
   /* note: assuming FULL ionization */
-  double u_to_temp_fac = (4 / (8 - 5 * (1 - HYDROGEN_MASSFRAC))) * PROTONMASS / BOLTZMANN * GAMMA_MINUS1 * All.UnitEnergy_in_cgs / All.UnitMass_in_g;
+  double u_to_temp_fac =
+      (4 / (8 - 5 * (1 - HYDROGEN_MASSFRAC))) * PROTONMASS / BOLTZMANN * GAMMA_MINUS1 * All.UnitEnergy_in_cgs / All.UnitMass_in_g;
 
   /* clear the SFR stored in the active timebins */
   for(bin = 0; bin < TIMEBINS; bin++)
@@ -92,11 +89,11 @@ void cooling_and_starformation(void)
         continue;
 
       if(P[i].Mass == 0 && P[i].ID == 0)
-        continue;               /* skip cells that have been swallowed or eliminated */
+        continue; /* skip cells that have been swallowed or eliminated */
 
       dens = SphP[i].Density;
 
-      dt = (P[i].TimeBinHydro ? (((integertime) 1) << P[i].TimeBinHydro) : 0) * All.Timebase_interval;
+      dt    = (P[i].TimeBinHydro ? (((integertime)1) << P[i].TimeBinHydro) : 0) * All.Timebase_interval;
       dtime = All.cf_atime * dt / All.cf_time_hubble_a;
 
       /* apply the temperature floor */
@@ -114,7 +111,7 @@ void cooling_and_starformation(void)
       /* calculate the effective equation of state for gas above the density threshold */
       if(dens * All.cf_a3inv >= eos_dens_threshold)
         {
-          ne = SphP[i].Ne;
+          ne     = SphP[i].Ne;
           egyeff = calc_egyeff(i, dens * All.cf_a3inv, &ne, &x, &tsfr, &factorEVP);
         }
 
@@ -129,7 +126,7 @@ void cooling_and_starformation(void)
        * f=0  star formation
        */
 
-      flag = 1;                 /* default is normal cooling */
+      flag = 1; /* default is normal cooling */
 
       /* enable star formation if gas is above SF density threshold */
       if(dens * All.cf_a3inv >= eos_dens_threshold)
@@ -140,7 +137,7 @@ void cooling_and_starformation(void)
         if(dens < All.OverDensThresh)
           flag = 1;
 
-      if(P[i].Mass == 0)        /* tracer particles don't form stars */
+      if(P[i].Mass == 0) /* tracer particles don't form stars */
         flag = 1;
 
       if(flag == 1)
@@ -158,7 +155,7 @@ void cooling_and_starformation(void)
 
           if(dt > 0)
             {
-              if(P[i].TimeBinHydro)     /* upon start-up, we need to protect against dt==0 */
+              if(P[i].TimeBinHydro) /* upon start-up, we need to protect against dt==0 */
                 {
                   unew = SphP[i].Utherm;
 
@@ -188,11 +185,10 @@ void cooling_and_starformation(void)
 
           TimeBinSfr[P[i].TimeBinHydro] += SphP[i].Sfr;
         }
-    }                           /* end of main loop over active particles */
+    } /* end of main loop over active particles */
 
   TIMER_STOP(CPU_COOLINGSFR);
 }
-
 
 /*! \brief Return the star formation rate associated with the gas cell i.
  *
@@ -210,16 +206,17 @@ double get_starformation_rate(int i)
   double tsfr;
   double factorEVP, egyeff, ne, x, cloudmass;
   /* note: assuming FULL ionization */
-  double u_to_temp_fac = (4 / (8 - 5 * (1 - HYDROGEN_MASSFRAC))) * PROTONMASS / BOLTZMANN * GAMMA_MINUS1 * All.UnitEnergy_in_cgs / All.UnitMass_in_g;
+  double u_to_temp_fac =
+      (4 / (8 - 5 * (1 - HYDROGEN_MASSFRAC))) * PROTONMASS / BOLTZMANN * GAMMA_MINUS1 * All.UnitEnergy_in_cgs / All.UnitMass_in_g;
 
   double eos_dens_threshold = All.PhysDensThresh;
 
-  flag = 1;                     /* default is normal cooling */
+  flag   = 1; /* default is normal cooling */
   egyeff = 0.0;
 
   if(SphP[i].Density * All.cf_a3inv >= eos_dens_threshold)
     {
-      ne = SphP[i].Ne;
+      ne     = SphP[i].Ne;
       egyeff = calc_egyeff(i, SphP[i].Density * All.cf_a3inv, &ne, &x, &tsfr, &factorEVP);
     }
 
@@ -244,7 +241,6 @@ double get_starformation_rate(int i)
   return rateOfSF;
 }
 
-
 /*! \brief Initialize the parameters of effective multi-phase model.
  *
  *   In particular this function computes the value of PhysDensThresh, that is
@@ -264,8 +260,8 @@ void init_clouds(void)
 
       egyhot = All.EgySpecSN / A0;
 
-      meanweight = 4 / (8 - 5 * (1 - HYDROGEN_MASSFRAC));       /* note: assuming FULL ionization */
-      u4 = 1 / meanweight * (1.0 / GAMMA_MINUS1) * (BOLTZMANN / PROTONMASS) * 1.0e4;
+      meanweight = 4 / (8 - 5 * (1 - HYDROGEN_MASSFRAC)); /* note: assuming FULL ionization */
+      u4         = 1 / meanweight * (1.0 / GAMMA_MINUS1) * (BOLTZMANN / PROTONMASS) * 1.0e4;
       u4 *= All.UnitMass_in_g / All.UnitEnergy_in_cgs;
 
       /* choose a high reference density to avoid that we pick up a compton cooling contribution */
@@ -276,7 +272,7 @@ void init_clouds(void)
 
       if(All.ComovingIntegrationOn)
         {
-          All.Time = 1.0;       /* to be guaranteed to get z=0 rate */
+          All.Time = 1.0; /* to be guaranteed to get z=0 rate */
           set_cosmo_factors_for_current_time();
           IonizeParams();
         }
@@ -290,28 +286,31 @@ void init_clouds(void)
 
       x = (egyhot - u4) / (egyhot - All.EgySpecCold);
 
-      All.PhysDensThresh = x / pow(1 - x, 2) * (All.FactorSN * All.EgySpecSN - (1 - All.FactorSN) * All.EgySpecCold) / (All.MaxSfrTimescale * coolrate);
+      All.PhysDensThresh =
+          x / pow(1 - x, 2) * (All.FactorSN * All.EgySpecSN - (1 - All.FactorSN) * All.EgySpecCold) / (All.MaxSfrTimescale * coolrate);
 
-      mpi_printf
-        ("USE_SFR: A0=%g   PhysDensThresh=%g (int units) %g h^2 cm^-3   expected fraction of cold gas at threshold=%g   tcool=%g   dens=%g   egyhot=%g\n",
-         A0, All.PhysDensThresh, All.PhysDensThresh / (PROTONMASS / HYDROGEN_MASSFRAC / All.UnitDensity_in_cgs), x, tcool, dens, egyhot);
+      mpi_printf(
+          "USE_SFR: A0=%g   PhysDensThresh=%g (int units) %g h^2 cm^-3   expected fraction of cold gas at threshold=%g   tcool=%g   "
+          "dens=%g   egyhot=%g\n",
+          A0, All.PhysDensThresh, All.PhysDensThresh / (PROTONMASS / HYDROGEN_MASSFRAC / All.UnitDensity_in_cgs), x, tcool, dens,
+          egyhot);
 
       dens = All.PhysDensThresh;
 
       do
         {
-          ne = 0.5;
+          ne     = 0.5;
           egyeff = calc_egyeff(-1, dens, &ne, &x, &tsfr, &factorEVP);
-          peff = GAMMA_MINUS1 * dens * egyeff;
+          peff   = GAMMA_MINUS1 * dens * egyeff;
 
           fac = 1 / (log(dens * 1.025) - log(dens));
           dens *= 1.025;
 
           neff = -log(peff) * fac;
 
-          ne = 0.5;
+          ne     = 0.5;
           egyeff = calc_egyeff(-1, dens, &ne, &x, &tsfr, &factorEVP);
-          peff = GAMMA_MINUS1 * dens * egyeff;
+          peff   = GAMMA_MINUS1 * dens * egyeff;
 
           neff += log(peff) * fac;
         }
@@ -319,7 +318,8 @@ void init_clouds(void)
 
       thresholdStarburst = dens;
 
-      mpi_printf("USE_SFR: run-away sets in for dens=%g   dynamic range for quiescent star formation=%g\n", thresholdStarburst, thresholdStarburst / All.PhysDensThresh);
+      mpi_printf("USE_SFR: run-away sets in for dens=%g   dynamic range for quiescent star formation=%g\n", thresholdStarburst,
+                 thresholdStarburst / All.PhysDensThresh);
 
       integrate_sfr();
 
@@ -327,9 +327,9 @@ void init_clouds(void)
         {
           sigma = 10.0 / All.Hubble * 1.0e-10 / pow(1.0e-3, 2);
 
-          printf("USE_SFR: isotherm sheet central density=%g   z0=%g\n", M_PI * All.G * sigma * sigma / (2 * GAMMA_MINUS1) / u4, GAMMA_MINUS1 * u4 / (2 * M_PI * All.G * sigma));
+          printf("USE_SFR: isotherm sheet central density=%g   z0=%g\n", M_PI * All.G * sigma * sigma / (2 * GAMMA_MINUS1) / u4,
+                 GAMMA_MINUS1 * u4 / (2 * M_PI * All.G * sigma));
           myflush(stdout);
-
         }
 
       mpi_printf("USE_SFR: SNII energy=%g [internal units] = %g [erg/M_sun] = %g [1e51 erg/Msun]\n", All.FactorSN * All.EgySpecSN,
@@ -342,10 +342,8 @@ void init_clouds(void)
           set_cosmo_factors_for_current_time();
           IonizeParams();
         }
-
     }
 }
-
 
 /*! \brief Compute the effective equation of state for the gas and
  *         the integrated SFR per unit area.
@@ -369,13 +367,13 @@ void integrate_sfr(void)
 
   double eos_dens_threshold = All.PhysDensThresh;
 
-  meanweight = 4 / (8 - 5 * (1 - HYDROGEN_MASSFRAC));   /* note: assuming FULL ionization */
-  u4 = 1 / meanweight * (1.0 / GAMMA_MINUS1) * (BOLTZMANN / PROTONMASS) * 1.0e4;
+  meanweight = 4 / (8 - 5 * (1 - HYDROGEN_MASSFRAC)); /* note: assuming FULL ionization */
+  u4         = 1 / meanweight * (1.0 / GAMMA_MINUS1) * (BOLTZMANN / PROTONMASS) * 1.0e4;
   u4 *= All.UnitMass_in_g / All.UnitEnergy_in_cgs;
 
   if(All.ComovingIntegrationOn)
     {
-      All.Time = 1.0;           /* to be guaranteed to get z=0 rate */
+      All.Time = 1.0; /* to be guaranteed to get z=0 rate */
       set_cosmo_factors_for_current_time();
       IonizeParams();
     }
@@ -387,7 +385,7 @@ void integrate_sfr(void)
 
   for(rho = eos_dens_threshold; rho <= 1000 * eos_dens_threshold; rho *= 1.1)
     {
-      ne = 1.0;
+      ne     = 1.0;
       egyeff = calc_egyeff(-1, rho, &ne, &x, &tsfr, &factorEVP);
 
       P = GAMMA_MINUS1 * rho * egyeff;
@@ -409,8 +407,8 @@ void integrate_sfr(void)
   for(rho0 = eos_dens_threshold; rho0 <= 10000 * eos_dens_threshold; rho0 *= 1.02)
     {
       rho = rho0;
-      q = 0;
-      dz = 0.001;
+      q   = 0;
+      dz  = 0.001;
 
       sigma = sigmasfr = sigma_u4 = 0;
 
@@ -418,7 +416,7 @@ void integrate_sfr(void)
         {
           if(rho > All.PhysDensThresh)
             {
-              ne = 1.0;
+              ne     = 1.0;
               egyeff = calc_egyeff(-1, rho, &ne, &x, &tsfr, &factorEVP);
 
               P = P1 = GAMMA_MINUS1 * rho * egyeff;
@@ -435,14 +433,14 @@ void integrate_sfr(void)
             {
               tsfr = 0;
 
-              P = GAMMA_MINUS1 * rho * u4;
+              P   = GAMMA_MINUS1 * rho * u4;
               gam = 1.0;
 
               sigma_u4 += rho * dz;
             }
 
           drho = q;
-          dq = -(gam - 2) / rho * q * q - 4 * M_PI * All.G / (gam * P) * rho * rho * rho;
+          dq   = -(gam - 2) / rho * q * q - 4 * M_PI * All.G / (gam * P) * rho * rho * rho;
 
           sigma += rho * dz;
           if(tsfr > 0)
@@ -454,12 +452,13 @@ void integrate_sfr(void)
           q += dq * dz;
         }
 
-      sigma *= 2;               /* to include the other side */
+      sigma *= 2; /* to include the other side */
       sigmasfr *= 2;
       sigma_u4 *= 2;
 
       sigma *= All.HubbleParam * (All.UnitMass_in_g / SOLAR_MASS) * PARSEC * PARSEC / (All.UnitLength_in_cm * All.UnitLength_in_cm);
-      sigmasfr *= All.HubbleParam * All.HubbleParam * (All.UnitMass_in_g / SOLAR_MASS) * (SEC_PER_YEAR / All.UnitTime_in_s) * 1.0e6 * PARSEC * PARSEC / (All.UnitLength_in_cm * All.UnitLength_in_cm);
+      sigmasfr *= All.HubbleParam * All.HubbleParam * (All.UnitMass_in_g / SOLAR_MASS) * (SEC_PER_YEAR / All.UnitTime_in_s) * 1.0e6 *
+                  PARSEC * PARSEC / (All.UnitLength_in_cm * All.UnitLength_in_cm);
       sigma_u4 *= All.HubbleParam * (All.UnitMass_in_g / SOLAR_MASS) * PARSEC * PARSEC / (All.UnitLength_in_cm * All.UnitLength_in_cm);
 
       if(WriteMiscFiles && (ThisTask == 0))
@@ -479,7 +478,6 @@ void integrate_sfr(void)
     fclose(fd);
 }
 
-
 /*! \brief Set the appropriate units for the parameters of the multi-phase
  *         model.
  *
@@ -498,7 +496,7 @@ void set_units_sfr(void)
   All.EgySpecCold = 1 / meanweight * (1.0 / GAMMA_MINUS1) * (BOLTZMANN / PROTONMASS) * All.TempClouds;
   All.EgySpecCold *= All.UnitMass_in_g / All.UnitEnergy_in_cgs;
 
-  meanweight = 4 / (8 - 5 * (1 - HYDROGEN_MASSFRAC));   /* note: assuming FULL ionization */
+  meanweight = 4 / (8 - 5 * (1 - HYDROGEN_MASSFRAC)); /* note: assuming FULL ionization */
 
   All.EgySpecSN = 1 / meanweight * (1.0 / GAMMA_MINUS1) * (BOLTZMANN / PROTONMASS) * All.TempSupernova;
   All.EgySpecSN *= All.UnitMass_in_g / All.UnitEnergy_in_cgs;
@@ -536,6 +534,5 @@ double calc_egyeff(int i, double gasdens, double *ne, double *x, double *tsfr, d
 
   return egyeff;
 }
-
 
 #endif /* #ifdef USE_SFR */

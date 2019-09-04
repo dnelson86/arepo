@@ -23,32 +23,29 @@
  * \details     contains functions:
  *                void subfind_add_grp_props_calc_fof_angular_momentum(int num,
  *                  int ngroups_cat)
- * 
- * 
+ *
+ *
  * \par Major modifications and contributions:
- * 
+ *
  * - DD.MM.YYYY Description
  * - 14.05.2018 Prepared file for public release -- Rainer Weinberger
  */
 
-
+#include <gsl/gsl_math.h>
+#include <inttypes.h>
+#include <math.h>
 #include <mpi.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <math.h>
 #include <sys/stat.h>
 #include <sys/types.h>
-#include <gsl/gsl_math.h>
-#include <inttypes.h>
 
-
-#include "../main/allvars.h"
-#include "../main/proto.h"
 #include "../domain/domain.h"
 #include "../fof/fof.h"
+#include "../main/allvars.h"
+#include "../main/proto.h"
 #include "subfind.h"
-
 
 #ifdef SUBFIND_EXTENDED_PROPERTIES
 /*! \brief Angular Momentum calculation for groups.
@@ -64,20 +61,20 @@ void subfind_add_grp_props_calc_fof_angular_momentum(int num, int ngroups_cat)
 
   /* assign target CPUs for the particles in groups */
   /* the particles not in groups will be distributed such that a uniform particle load results */
-  double t0 = second();
+  double t0           = second();
   int *count_loc_task = mymalloc_clear("count_loc_task", NTask * sizeof(int));
-  int *count_task = mymalloc("count_task", NTask * sizeof(int));
-  int *count_free = mymalloc("count_free", NTask * sizeof(int));
-  int count_loc_free = 0;
+  int *count_task     = mymalloc("count_task", NTask * sizeof(int));
+  int *count_free     = mymalloc("count_free", NTask * sizeof(int));
+  int count_loc_free  = 0;
 
   for(int i = 0; i < NumPart; i++)
     {
       if(PS[i].GrNr < 0)
         terminate("PS[i].GrNr=%d", PS[i].GrNr);
 
-      if(PS[i].GrNr < TotNgroups)       /* particle is in a group */
+      if(PS[i].GrNr < TotNgroups) /* particle is in a group */
         {
-          if(PS[i].GrNr < Ncollective)  /* we are in a collective group */
+          if(PS[i].GrNr < Ncollective) /* we are in a collective group */
             PS[i].TargetTask = ProcAssign[PS[i].GrNr].FirstTask + (i % ProcAssign[PS[i].GrNr].NTask);
           else
             PS[i].TargetTask = ((PS[i].GrNr - Ncollective) % (NTask - NprocsCollective)) + NprocsCollective;
@@ -90,7 +87,7 @@ void subfind_add_grp_props_calc_fof_angular_momentum(int num, int ngroups_cat)
       else
         count_loc_free++;
 
-      PS[i].TargetIndex = 0;    /* unimportant here */
+      PS[i].TargetIndex = 0; /* unimportant here */
     }
 
   MPI_Allgather(&count_loc_free, 1, MPI_INT, count_free, 1, MPI_INT, MPI_COMM_WORLD);
@@ -103,7 +100,7 @@ void subfind_add_grp_props_calc_fof_angular_momentum(int num, int ngroups_cat)
   int maxload = (sum + NTask - 1) / NTask;
   for(int i = 0; i < NTask; i++)
     {
-      count_task[i] = maxload - count_task[i];  /* this is the amount that can fit on this task */
+      count_task[i] = maxload - count_task[i]; /* this is the amount that can fit on this task */
       if(count_task[i] < 0)
         count_task[i] = 0;
     }
@@ -130,12 +127,13 @@ void subfind_add_grp_props_calc_fof_angular_momentum(int num, int ngroups_cat)
 
   for(int i = 0; i < NumPart; i++)
     {
-      if(PS[i].GrNr >= TotNgroups)      /* particle not in a group. Can in principle stay but we move it such that a good load balance is obtained. */
+      if(PS[i].GrNr >=
+         TotNgroups) /* particle not in a group. Can in principle stay but we move it such that a good load balance is obtained. */
         {
           while(count_task[current_task] == 0 && current_task < NTask - 1)
             current_task++;
 
-          PS[i].TargetTask = current_task;      /* particle not in any group, move it here so that uniform load is achieved */
+          PS[i].TargetTask = current_task; /* particle not in any group, move it here so that uniform load is achieved */
           count_task[current_task]--;
         }
     }
@@ -164,7 +162,7 @@ void subfind_add_grp_props_calc_fof_angular_momentum(int num, int ngroups_cat)
   /* here the execution paths for collective groups and serial groups branch. The collective CPUs work in small sets that each
    * deal with one large group. The serial CPUs each deal with several halos by themselves
    */
-  if(CommSplitColor < Ncollective)      /* we are one of the CPUs that does a collective group */
+  if(CommSplitColor < Ncollective) /* we are one of the CPUs that does a collective group */
     {
       /* we now apply a collective version of subfind to the group split across the processors belonging to communicator SubComm
        * The relevant group is the one stored in Group[0] on SubThisTask==0.
@@ -173,13 +171,14 @@ void subfind_add_grp_props_calc_fof_angular_momentum(int num, int ngroups_cat)
     }
   else
     {
-      /* now let us sort according to GrNr and Density. This step will temporarily break the association with SphP[] and other arrays! */
-      submp = (struct submp_data *) mymalloc("submp", sizeof(struct submp_data) * NumPart);
+      /* now let us sort according to GrNr and Density. This step will temporarily break the association with SphP[] and other arrays!
+       */
+      submp = (struct submp_data *)mymalloc("submp", sizeof(struct submp_data) * NumPart);
       for(int i = 0; i < NumPart; i++)
         {
-          PS[i].OldIndex = i;
-          submp[i].index = i;
-          submp[i].GrNr = PS[i].GrNr;
+          PS[i].OldIndex      = i;
+          submp[i].index      = i;
+          submp[i].GrNr       = PS[i].GrNr;
           submp[i].DM_Density = PS[i].Density;
         }
       qsort(submp, NumPart, sizeof(struct submp_data), subfind_compare_submp_GrNr_DM_Density);
@@ -188,7 +187,8 @@ void subfind_add_grp_props_calc_fof_angular_momentum(int num, int ngroups_cat)
 
       /* now we have the particles in each group consecutively */
       if(SubThisTask == 0)
-        printf("SUBFIND-SERIAL: Start to do AM for %d small groups with serial subfind algorithm on %d processors (root-node=%d)\n", TotNgroups - Ncollective, SubNTask, ThisTask);
+        printf("SUBFIND-SERIAL: Start to do AM for %d small groups with serial subfind algorithm on %d processors (root-node=%d)\n",
+               TotNgroups - Ncollective, SubNTask, ThisTask);
 
       /* we now apply a serial version of subfind to the local groups */
 
@@ -207,10 +207,10 @@ void subfind_add_grp_props_calc_fof_angular_momentum(int num, int ngroups_cat)
         printf("SUBFIND-SERIAL: processing AM of serial groups took %g sec\n", timediff(t0, t1));
 
       /* undo local rearrangement that made groups consecutive. After that, the association of SphP[] will be correct again */
-      submp = (struct submp_data *) mymalloc("submp", sizeof(struct submp_data) * NumPart);
+      submp = (struct submp_data *)mymalloc("submp", sizeof(struct submp_data) * NumPart);
       for(int i = 0; i < NumPart; i++)
         {
-          submp[i].index = i;
+          submp[i].index    = i;
           submp[i].OldIndex = PS[i].OldIndex;
         }
       qsort(submp, NumPart, sizeof(struct submp_data), subfind_compare_submp_OldIndex);
@@ -225,7 +225,7 @@ void subfind_add_grp_props_calc_fof_angular_momentum(int num, int ngroups_cat)
   t0 = second();
   for(int i = 0; i < NumPart; i++)
     {
-      PS[i].TargetTask = PS[i].OriginTask;
+      PS[i].TargetTask  = PS[i].OriginTask;
       PS[i].TargetIndex = PS[i].OriginIndex;
     }
 
@@ -235,6 +235,5 @@ void subfind_add_grp_props_calc_fof_angular_momentum(int num, int ngroups_cat)
     printf("SUBFIND: subfind_exchange() (for return to original CPU after AM)  took %g sec\n", timediff(t0, t1));
 
   mpi_printf("FOF: Angular Momentum Calculation for FOF Groups finished successfully.\n");
-
 }
 #endif /* #ifdef SUBFIND_EXTENDED_PROPERTIES */

@@ -30,46 +30,39 @@
  *                  *vHead, int *vLen, int *vNext, int *vTail, int *vMinIDTask)
  *                static int fof_find_nearest_dmparticle_evaluate(int target,
  *                  int mode, int threadid)
- * 
- * 
+ *
+ *
  * \par Major modifications and contributions:
- * 
+ *
  * - DD.MM.YYYY Description
  * - 24.05.2018 Prepared file for public release -- Rainer Weinberger
  */
 
-
+#include <gsl/gsl_math.h>
+#include <inttypes.h>
+#include <math.h>
 #include <mpi.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <math.h>
 #include <sys/stat.h>
 #include <sys/types.h>
-#include <gsl/gsl_math.h>
-#include <inttypes.h>
 
-
+#include "../domain/domain.h"
 #include "../main/allvars.h"
 #include "../main/proto.h"
-#include "../domain/domain.h"
-#include "fof.h"
 #include "../subfind/subfind.h"
-
+#include "fof.h"
 
 #ifdef FOF
-
 
 static MyFloat *fof_nearest_distance;
 static MyFloat *fof_nearest_hsml;
 
-
 static MyIDType *MinID;
 static int *Head, *Len, *Next, *Tail, *MinIDTask;
 
-
 static int fof_find_nearest_dmparticle_evaluate(int target, int mode, int threadid);
-
 
 /*! \brief Local data structure for collecting particle/cell data that is sent
  *         to other processors if needed. Type called data_in and static
@@ -85,7 +78,6 @@ typedef struct
 
 static data_in *DataIn, *DataGet;
 
-
 /*! \brief Routine that fills the relevant particle/cell data into the input
  *         structure defined above. Needed by generic_comm_helpers2.
  *
@@ -95,16 +87,15 @@ static data_in *DataIn, *DataGet;
  *
  *  \return void
  */
-static void particle2in(data_in * in, int i, int firstnode)
+static void particle2in(data_in *in, int i, int firstnode)
 {
   in->Pos[0] = P[i].Pos[0];
   in->Pos[1] = P[i].Pos[1];
   in->Pos[2] = P[i].Pos[2];
-  in->Hsml = fof_nearest_hsml[i];
+  in->Hsml   = fof_nearest_hsml[i];
 
   in->Firstnode = firstnode;
 }
-
 
 /*! \brief Local data structure that holds results acquired on remote
  *         processors. Type called data_out and static pointers DataResult and
@@ -117,11 +108,10 @@ typedef struct
   int MinIDTask;
 #if defined(SUBFIND)
   MyFloat DM_Hsml;
-#endif                          /* #if defined(SUBFIND) */
+#endif /* #if defined(SUBFIND) */
 } data_out;
 
 static data_out *DataResult, *DataOut;
-
 
 /*! \brief Routine to store or combine result data. Needed by
  *         generic_comm_helpers2.
@@ -134,22 +124,20 @@ static data_out *DataResult, *DataOut;
  *
  *  \return void
  */
-static void out2particle(data_out * out, int i, int mode)
+static void out2particle(data_out *out, int i, int mode)
 {
   if(out->Distance < fof_nearest_distance[i])
     {
       fof_nearest_distance[i] = out->Distance;
-      MinID[i] = out->MinID;
-      MinIDTask[i] = out->MinIDTask;
+      MinID[i]                = out->MinID;
+      MinIDTask[i]            = out->MinIDTask;
 #if defined(SUBFIND)
       PS[i].Hsml = out->DM_Hsml;
 #endif /* #if defined(SUBFIND) */
     }
 }
 
-
 #include "../utils/generic_comm_helpers2.h"
-
 
 /*! \brief Routine that defines what to do with local particles.
  *
@@ -180,16 +168,14 @@ static void kernel_local(void)
 
         if((1 << P[i].Type) & (FOF_SECONDARY_LINK_TYPES))
           {
-            if(fof_nearest_distance[i] > 1.0e29)        /* we haven't found any neighbor yet */
+            if(fof_nearest_distance[i] > 1.0e29) /* we haven't found any neighbor yet */
               {
                 fof_find_nearest_dmparticle_evaluate(i, MODE_LOCAL_PARTICLES, threadid);
               }
           }
       }
   }
-
 }
-
 
 /*! \brief Routine that defines what to do with imported particles.
  *
@@ -214,9 +200,7 @@ static void kernel_imported(void)
         fof_find_nearest_dmparticle_evaluate(i, MODE_IMPORTED_PARTICLES, threadid);
       }
   }
-
 }
-
 
 /*! \brief Finds nearest dark matter particle for secondary link types
  *
@@ -229,13 +213,13 @@ static void kernel_imported(void)
  *
  *  \return Time spent in this function.
  */
-double fof_find_nearest_dmparticle(MyIDType * vMinID, int *vHead, int *vLen, int *vNext, int *vTail, int *vMinIDTask)
+double fof_find_nearest_dmparticle(MyIDType *vMinID, int *vHead, int *vLen, int *vNext, int *vTail, int *vMinIDTask)
 {
-  MinID = vMinID;
-  Head = vHead;
-  Len = vLen;
-  Next = vNext;
-  Tail = vTail;
+  MinID     = vMinID;
+  Head      = vHead;
+  Len       = vLen;
+  Next      = vNext;
+  Tail      = vTail;
   MinIDTask = vMinIDTask;
 
   int i, n, npleft, iter;
@@ -244,8 +228,8 @@ double fof_find_nearest_dmparticle(MyIDType * vMinID, int *vHead, int *vLen, int
 
   mpi_printf("FOF: Start finding nearest dm-particle (presently allocated=%g MB)\n", AllocatedBytes / (1024.0 * 1024.0));
 
-  fof_nearest_distance = (MyFloat *) mymalloc("fof_nearest_distance", sizeof(MyFloat) * NumPart);
-  fof_nearest_hsml = (MyFloat *) mymalloc("fof_nearest_hsml", sizeof(MyFloat) * NumPart);
+  fof_nearest_distance = (MyFloat *)mymalloc("fof_nearest_distance", sizeof(MyFloat) * NumPart);
+  fof_nearest_hsml     = (MyFloat *)mymalloc("fof_nearest_hsml", sizeof(MyFloat) * NumPart);
 
   for(n = 0; n < NumPart; n++)
     {
@@ -255,7 +239,7 @@ double fof_find_nearest_dmparticle(MyIDType * vMinID, int *vHead, int *vLen, int
           if(P[n].Type == 0)
 #ifdef USE_AREPO_FOF_WITH_GADGET_FIX
             fof_nearest_hsml[n] = SphP[n].Hsml;
-#else /* #ifdef USE_AREPO_FOF_WITH_GADGET_FIX */
+#else  /* #ifdef USE_AREPO_FOF_WITH_GADGET_FIX */
             fof_nearest_hsml[n] = get_cell_radius(n);
 #endif /* #ifdef USE_AREPO_FOF_WITH_GADGET_FIX #else */
           else
@@ -280,22 +264,22 @@ double fof_find_nearest_dmparticle(MyIDType * vMinID, int *vHead, int *vLen, int
             {
               if(fof_nearest_distance[i] > 1.0e29)
                 {
-                  if(fof_nearest_hsml[i] < 4 * LinkL)   /* we only search out to a maximum distance */
+                  if(fof_nearest_hsml[i] < 4 * LinkL) /* we only search out to a maximum distance */
                     {
-
                       /* need to redo this particle */
                       npleft++;
                       fof_nearest_hsml[i] *= 2.0;
                       if(iter >= MAXITER - 10)
                         {
-                          printf("FOF: i=%d task=%d ID=%d P[i].Type=%d Hsml=%g LinkL=%g nearest=%g pos=(%g|%g|%g)\n",
-                                 i, ThisTask, (int) P[i].ID, P[i].Type, fof_nearest_hsml[i], LinkL, fof_nearest_distance[i], P[i].Pos[0], P[i].Pos[1], P[i].Pos[2]);
+                          printf("FOF: i=%d task=%d ID=%d P[i].Type=%d Hsml=%g LinkL=%g nearest=%g pos=(%g|%g|%g)\n", i, ThisTask,
+                                 (int)P[i].ID, P[i].Type, fof_nearest_hsml[i], LinkL, fof_nearest_distance[i], P[i].Pos[0],
+                                 P[i].Pos[1], P[i].Pos[2]);
                           myflush(stdout);
                         }
                     }
                   else
                     {
-                      fof_nearest_distance[i] = 0;      /* we do not continue to search for this particle */
+                      fof_nearest_distance[i] = 0; /* we do not continue to search for this particle */
                     }
                 }
             }
@@ -308,7 +292,8 @@ double fof_find_nearest_dmparticle(MyIDType * vMinID, int *vHead, int *vLen, int
         {
           iter++;
           if(iter > 0)
-            mpi_printf("FOF: fof-nearest iteration %d: need to repeat for %lld particles. (took = %g sec)\n", iter, ntot, timediff(t0, t1));
+            mpi_printf("FOF: fof-nearest iteration %d: need to repeat for %lld particles. (took = %g sec)\n", iter, ntot,
+                       timediff(t0, t1));
 
           if(iter > MAXITER)
             terminate("FOF: failed to converge in fof-nearest\n");
@@ -324,7 +309,6 @@ double fof_find_nearest_dmparticle(MyIDType * vMinID, int *vHead, int *vLen, int
   double tend = second();
   return timediff(tstart, tend);
 }
-
 
 /*! \brief Evaluate function to finding nearest dark matter particle for
  *         secondary link types.
@@ -351,7 +335,7 @@ static int fof_find_nearest_dmparticle_evaluate(int target, int mode, int thread
       particle2in(&local, target, 0);
       target_data = &local;
 
-      numnodes = 1;
+      numnodes  = 1;
       firstnode = NULL;
     }
   else
@@ -362,7 +346,7 @@ static int fof_find_nearest_dmparticle_evaluate(int target, int mode, int thread
     }
 
   pos = target_data->Pos;
-  h = target_data->Hsml;
+  h   = target_data->Hsml;
 
   index = -1;
   r2max = 1.0e30;
@@ -373,12 +357,12 @@ static int fof_find_nearest_dmparticle_evaluate(int target, int mode, int thread
     {
       if(mode == MODE_LOCAL_PARTICLES)
         {
-          no = Tree_MaxPart;    /* root node */
+          no = Tree_MaxPart; /* root node */
         }
       else
         {
           no = firstnode[k];
-          no = Nodes[no].u.d.nextnode;  /* open it */
+          no = Nodes[no].u.d.nextnode; /* open it */
         }
 
       while(no >= 0)
@@ -386,13 +370,13 @@ static int fof_find_nearest_dmparticle_evaluate(int target, int mode, int thread
           if(no < Tree_MaxPart) /* single particle */
             {
               int p = no;
-              no = Nextnode[no];
+              no    = Nextnode[no];
 
               if(!((1 << P[p].Type) & (FOF_SECONDARY_LINK_TARGET_TYPES)))
                 continue;
 
               dist = h;
-              dx = FOF_NEAREST_LONG_X(Tree_Pos_list[3 * p + 0] - pos[0]);
+              dx   = FOF_NEAREST_LONG_X(Tree_Pos_list[3 * p + 0] - pos[0]);
               if(dx > dist)
                 continue;
               dy = FOF_NEAREST_LONG_Y(Tree_Pos_list[3 * p + 1] - pos[1]);
@@ -409,20 +393,21 @@ static int fof_find_nearest_dmparticle_evaluate(int target, int mode, int thread
                   r2max = r2;
                 }
             }
-          else if(no < Tree_MaxPart + Tree_MaxNodes)    /* internal node */
+          else if(no < Tree_MaxPart + Tree_MaxNodes) /* internal node */
             {
               if(mode == MODE_IMPORTED_PARTICLES)
                 {
-                  if(no < Tree_FirstNonTopLevelNode)    /* we reached a top-level node again, which means that we are done with the branch */
+                  if(no <
+                     Tree_FirstNonTopLevelNode) /* we reached a top-level node again, which means that we are done with the branch */
                     break;
                 }
 
               struct NODE *current = &Nodes[no];
 
-              no = current->u.d.sibling;        /* in case the node can be discarded */
+              no = current->u.d.sibling; /* in case the node can be discarded */
 
               dist = h + 0.5 * current->len;
-              dx = FOF_NEAREST_LONG_X(current->center[0] - pos[0]);
+              dx   = FOF_NEAREST_LONG_X(current->center[0] - pos[0]);
               if(dx > dist)
                 continue;
               dy = FOF_NEAREST_LONG_Y(current->center[1] - pos[1]);
@@ -437,13 +422,13 @@ static int fof_find_nearest_dmparticle_evaluate(int target, int mode, int thread
               if(dx * dx + dy * dy + dz * dz > dist * dist)
                 continue;
 
-              no = current->u.d.nextnode;       /* ok, we need to open the node */
+              no = current->u.d.nextnode; /* ok, we need to open the node */
             }
-          else if(no >= Tree_ImportedNodeOffset)        /* point from imported nodelist */
+          else if(no >= Tree_ImportedNodeOffset) /* point from imported nodelist */
             {
               terminate("do not expect imported points here");
             }
-          else                  /* pseudo particle */
+          else /* pseudo particle */
             {
               if(mode == MODE_IMPORTED_PARTICLES)
                 terminate("mode == MODE_IMPORTED_PARTICLES");
@@ -458,8 +443,8 @@ static int fof_find_nearest_dmparticle_evaluate(int target, int mode, int thread
 
   if(index >= 0)
     {
-      out.Distance = sqrt(r2max);
-      out.MinID = MinID[Head[index]];
+      out.Distance  = sqrt(r2max);
+      out.MinID     = MinID[Head[index]];
       out.MinIDTask = MinIDTask[Head[index]];
 #if defined(SUBFIND)
       out.DM_Hsml = PS[index].Hsml;
@@ -467,8 +452,8 @@ static int fof_find_nearest_dmparticle_evaluate(int target, int mode, int thread
     }
   else
     {
-      out.Distance = 2.0e30;
-      out.MinID = 0;
+      out.Distance  = 2.0e30;
+      out.MinID     = 0;
       out.MinIDTask = -1;
 #if defined(SUBFIND)
       out.DM_Hsml = 0;
@@ -483,6 +468,5 @@ static int fof_find_nearest_dmparticle_evaluate(int target, int mode, int thread
 
   return 0;
 }
-
 
 #endif /* #ifdef FOF */

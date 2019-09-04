@@ -33,21 +33,18 @@
  * - 06.05.2018 Prepared file for public release -- Rainer Weinberger
  */
 
-
+#include <gsl/gsl_rng.h>
+#include <math.h>
 #include <mpi.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <math.h>
-#include <sys/types.h>
 #include <sys/stat.h>
+#include <sys/types.h>
 #include <unistd.h>
-#include <gsl/gsl_rng.h>
-
 
 #include "../main/allvars.h"
 #include "../main/proto.h"
-
 
 /*! \brief This function parses the parameter file.
  *
@@ -70,7 +67,8 @@ void read_parameter_file(char *fname)
 #define INT 3
 
   FILE *fd, *fdout;
-  char buf[MAXLEN_PARAM_TAG + MAXLEN_PARAM_VALUE + 200], buf1[MAXLEN_PARAM_TAG + 200], buf2[MAXLEN_PARAM_VALUE + 200], buf3[MAXLEN_PARAM_TAG + MAXLEN_PARAM_VALUE + 400];
+  char buf[MAXLEN_PARAM_TAG + MAXLEN_PARAM_VALUE + 200], buf1[MAXLEN_PARAM_TAG + 200], buf2[MAXLEN_PARAM_VALUE + 200],
+      buf3[MAXLEN_PARAM_TAG + MAXLEN_PARAM_VALUE + 400];
   int i, j, nt;
   int id[MAX_PARAMETERS];
   void *addr[MAX_PARAMETERS];
@@ -78,7 +76,7 @@ void read_parameter_file(char *fname)
   int param_handled[MAX_PARAMETERS];
   int errorFlag = 0;
 
-  All.StarformationOn = 0;      /* defaults */
+  All.StarformationOn = 0; /* defaults */
 
   for(i = 0; i < MAX_PARAMETERS; i++)
     {
@@ -105,7 +103,7 @@ void read_parameter_file(char *fname)
       mpi_terminate("\nType `double' is not 64 bit on this platform. Stopping.\n\n");
     }
 
-  if(ThisTask == 0)             /* read parameter file on process 0 */
+  if(ThisTask == 0) /* read parameter file on process 0 */
     {
       nt = 0;
 
@@ -393,7 +391,7 @@ void read_parameter_file(char *fname)
       strcpy(tag[nt], "CellMaxAngleFactor");
       addr[nt] = &All.CellMaxAngleFactor;
       id[nt++] = REAL;
-#else /* #ifdef REGULARIZE_MESH_FACE_ANGLE */
+#else  /* #ifdef REGULARIZE_MESH_FACE_ANGLE */
       strcpy(tag[nt], "CellShapingFactor");
       addr[nt] = &All.CellShapingFactor;
       id[nt++] = REAL;
@@ -534,7 +532,7 @@ void read_parameter_file(char *fname)
                       {
                         if(param_handled[i] == 0)
                           {
-                            j = i;
+                            j                = i;
                             param_handled[i] = 1;
                             break;
                           }
@@ -547,36 +545,36 @@ void read_parameter_file(char *fname)
 
                   if(j >= 0)
                     {
-                      switch (id[j])
+                      switch(id[j])
                         {
-                        case REAL:
-                          *((double *) addr[j]) = atof(buf2);
-                          sprintf(buf3, "%%-%ds%%g\n", MAXLEN_PARAM_TAG);
-                          fprintf(fdout, buf3, buf1, *((double *) addr[j]));
-                          fprintf(stdout, "        ");
-                          fprintf(stdout, buf3, buf1, *((double *) addr[j]));
-                          break;
-                        case STRING:
-                          strcpy((char *) addr[j], buf2);
-                          sprintf(buf3, "%%-%ds%%s\n", MAXLEN_PARAM_TAG);
-                          fprintf(fdout, buf3, buf1, buf2);
-                          fprintf(stdout, "        ");
-                          fprintf(stdout, buf3, buf1, buf2);
-                          break;
-                        case INT:
-                          *((int *) addr[j]) = atoi(buf2);
-                          sprintf(buf3, "%%-%ds%%d\n", MAXLEN_PARAM_TAG);
-                          fprintf(fdout, buf3, buf1, *((int *) addr[j]));
-                          fprintf(stdout, "        ");
-                          fprintf(stdout, buf3, buf1, *((int *) addr[j]));
-                          break;
+                          case REAL:
+                            *((double *)addr[j]) = atof(buf2);
+                            sprintf(buf3, "%%-%ds%%g\n", MAXLEN_PARAM_TAG);
+                            fprintf(fdout, buf3, buf1, *((double *)addr[j]));
+                            fprintf(stdout, "        ");
+                            fprintf(stdout, buf3, buf1, *((double *)addr[j]));
+                            break;
+                          case STRING:
+                            strcpy((char *)addr[j], buf2);
+                            sprintf(buf3, "%%-%ds%%s\n", MAXLEN_PARAM_TAG);
+                            fprintf(fdout, buf3, buf1, buf2);
+                            fprintf(stdout, "        ");
+                            fprintf(stdout, buf3, buf1, buf2);
+                            break;
+                          case INT:
+                            *((int *)addr[j]) = atoi(buf2);
+                            sprintf(buf3, "%%-%ds%%d\n", MAXLEN_PARAM_TAG);
+                            fprintf(fdout, buf3, buf1, *((int *)addr[j]));
+                            fprintf(stdout, "        ");
+                            fprintf(stdout, buf3, buf1, *((int *)addr[j]));
+                            break;
                         }
                     }
                   else if(j == -2)
                     {
 #ifdef ALLOWEXTRAPARAMS
                       warn("Tag '%s' ignored from file %s !", buf1, fname);
-#else /* #ifdef ALLOWEXTRAPARAMS */
+#else  /* #ifdef ALLOWEXTRAPARAMS */
                       fprintf(stdout, "Error in file %s:   Tag '%s' multiply defined.\n", fname, buf1);
                       errorFlag = 1;
 #endif /* #ifdef ALLOWEXTRAPARAMS #else */
@@ -585,7 +583,7 @@ void read_parameter_file(char *fname)
                     {
 #ifdef ALLOWEXTRAPARAMS
                       warn("Tag '%s' ignored from file %s !", buf1, fname);
-#else /* #ifdef ALLOWEXTRAPARAMS */
+#else  /* #ifdef ALLOWEXTRAPARAMS */
                       fprintf(stdout, "Error in file %s:   Tag '%s' not allowed\n", fname, buf1);
                       errorFlag = 1;
 #endif /* #ifdef ALLOWEXTRAPARAMS #else */
@@ -616,7 +614,6 @@ void read_parameter_file(char *fname)
           errorFlag = 1;
         }
 
-
       for(i = 0; i < nt; i++)
         {
           if(param_handled[i] != 1)
@@ -630,7 +627,6 @@ void read_parameter_file(char *fname)
         errorFlag += read_outputlist(All.OutputListFilename);
       else
         All.OutputListLength = 0;
-
     }
 
   MPI_Bcast(&errorFlag, 1, MPI_INT, 0, MPI_COMM_WORLD);
@@ -656,9 +652,9 @@ void read_parameter_file(char *fname)
 
   mymalloc_init();
 
-  Parameters = (char (*)[MAXLEN_PARAM_TAG]) mymalloc("Parameters", All.NParameters * MAXLEN_PARAM_TAG * sizeof(char));
-  ParametersValue = (char (*)[MAXLEN_PARAM_VALUE]) mymalloc("ParametersValue", All.NParameters * MAXLEN_PARAM_VALUE * sizeof(char));
-  ParametersType = mymalloc("ParamtersType", All.NParameters * sizeof(char));
+  Parameters      = (char(*)[MAXLEN_PARAM_TAG])mymalloc("Parameters", All.NParameters * MAXLEN_PARAM_TAG * sizeof(char));
+  ParametersValue = (char(*)[MAXLEN_PARAM_VALUE])mymalloc("ParametersValue", All.NParameters * MAXLEN_PARAM_VALUE * sizeof(char));
+  ParametersType  = mymalloc("ParamtersType", All.NParameters * sizeof(char));
 
   if(ThisTask == 0)
     {
@@ -666,23 +662,22 @@ void read_parameter_file(char *fname)
         {
           strncpy(Parameters[i], tag[i], MAXLEN_PARAM_TAG);
           ParametersType[i] = id[i];
-          void *tmp = ParametersValue[i];
-          switch (id[i])
+          void *tmp         = ParametersValue[i];
+          switch(id[i])
             {
-            case REAL:
-              *((double *) tmp) = *((double *) addr[i]);
-              break;
-            case STRING:
-              strncpy(tmp, addr[i], MAXLEN_PARAM_VALUE);
-              break;
-            case INT:
-              tmp = ParametersValue[i];
-              *((int *) tmp) = *((int *) addr[i]);
-              break;
+              case REAL:
+                *((double *)tmp) = *((double *)addr[i]);
+                break;
+              case STRING:
+                strncpy(tmp, addr[i], MAXLEN_PARAM_VALUE);
+                break;
+              case INT:
+                tmp           = ParametersValue[i];
+                *((int *)tmp) = *((int *)addr[i]);
+                break;
             }
         }
     }
-
 
   MPI_Bcast(Parameters, sizeof(char) * All.NParameters * MAXLEN_PARAM_TAG, MPI_BYTE, 0, MPI_COMM_WORLD);
   MPI_Bcast(ParametersValue, sizeof(char) * All.NParameters * MAXLEN_PARAM_VALUE, MPI_BYTE, 0, MPI_COMM_WORLD);
@@ -692,7 +687,6 @@ void read_parameter_file(char *fname)
 #undef STRING
 #undef INT
 }
-
 
 /*! \brief This function checks the consistency of the input parameters.
  *
@@ -709,8 +703,11 @@ void check_parameters()
   /* check whether time max is larger than max timestep */
   if(All.TimeMax - All.TimeBegin <= All.MaxSizeTimestep)
     {
-      printf("PARAMETERS: check_parameters: TimeBegin = %g, TimeMax = %g, MaxSizeTimestep = %g \n", All.TimeBegin, All.TimeMax, All.MaxSizeTimestep);
-      terminate("check_parameters: Your total runtime is smaller than the maximum allowed timestep! Choose an appropriate value for MaxSizeTimestep < TimeMax-TimeBegin! \n");
+      printf("PARAMETERS: check_parameters: TimeBegin = %g, TimeMax = %g, MaxSizeTimestep = %g \n", All.TimeBegin, All.TimeMax,
+             All.MaxSizeTimestep);
+      terminate(
+          "check_parameters: Your total runtime is smaller than the maximum allowed timestep! Choose an appropriate value for "
+          "MaxSizeTimestep < TimeMax-TimeBegin! \n");
     }
 
   /* check softening types */
@@ -733,23 +730,25 @@ void check_parameters()
       All.NumFilesWrittenInParallel = NTask;
     }
 
-
   if(All.NumFilesWrittenInParallel == 0)
     {
       mpi_printf("NOTICE: All.NumFilesWrittenInParallel has been set to be equal to the number of processors\n");
       All.NumFilesWrittenInParallel = NTask;
     }
 
-
 #ifndef GRAVITY_NOT_PERIODIC
   if(All.PeriodicBoundariesOn == 0)
     {
-      mpi_terminate("Code was compiled with gravity periodic boundary conditions switched on.\nYou must set `PeriodicBoundariesOn=1', or recompile the code.\n");
+      mpi_terminate(
+          "Code was compiled with gravity periodic boundary conditions switched on.\nYou must set `PeriodicBoundariesOn=1', or "
+          "recompile the code.\n");
     }
-#else /* #ifndef GRAVITY_NOT_PERIODIC */
+#else  /* #ifndef GRAVITY_NOT_PERIODIC */
   if(All.PeriodicBoundariesOn == 1)
     {
-      mpi_terminate("Code was compiled with gravity periodic boundary conditions switched off.\nYou must set `PeriodicBoundariesOn=0', or recompile the code.\n");
+      mpi_terminate(
+          "Code was compiled with gravity periodic boundary conditions switched off.\nYou must set `PeriodicBoundariesOn=0', or "
+          "recompile the code.\n");
     }
 #endif /* #ifndef GRAVITY_NOT_PERIODIC #else */
 
@@ -758,7 +757,7 @@ void check_parameters()
     {
       mpi_terminate("Code was compiled with cooling switched on.\nYou must set `CoolingOn=1', or recompile the code.\n");
     }
-#else /* #ifdef COOLING */
+#else  /* #ifdef COOLING */
   if(All.CoolingOn == 1)
     {
       mpi_terminate("Code was compiled with cooling switched off.\nYou must set `CoolingOn=0', or recompile the code.\n");
@@ -770,15 +769,15 @@ void check_parameters()
       mpi_terminate("The specified timestep criterion\nis not valid\n");
     }
 
-#if (NTYPES < 6)
+#if(NTYPES < 6)
   mpi_terminate("NTYPES < 6 is not allowed.\n");
 #endif /* #if (NTYPES < 6) */
 
-#if (NTYPES > 15)
+#if(NTYPES > 15)
   mpi_terminate("NTYPES > 15 is not supported yet.\n");
 #endif /* #if (NTYPES > 15) */
 
-#if (NTYPES > 8)
+#if(NTYPES > 8)
   if(All.ICFormat == 1 || All.ICFormat == 2)
     {
       mpi_terminate("NTYPES>8 is not allowed with ICFormat=%d, since the header block is limited to 256 bytes.\n", All.ICFormat);
@@ -792,9 +791,10 @@ void check_parameters()
     }
   if(All.CoolingOn == 0)
     {
-      mpi_terminate("You try to use the code with star formation enabled,\nbut you did not switch on cooling.\nThis mode is not supported.\n");
+      mpi_terminate(
+          "You try to use the code with star formation enabled,\nbut you did not switch on cooling.\nThis mode is not supported.\n");
     }
-#else /* #ifdef USE_SFR */
+#else  /* #ifdef USE_SFR */
   if(All.StarformationOn == 1)
     {
       mpi_terminate("Code was compiled with star formation switched off.\nYou must set `StarformationOn=0', or recompile the code.\n");
@@ -805,9 +805,7 @@ void check_parameters()
   if(ThisTask == 0)
     warn("Code was compiled with ENFORCE_JEANS_STABILITY_OF_CELLS together with another EOS. Please make sure you really want this.");
 #endif /* #if defined(ENFORCE_JEANS_STABILITY_OF_CELLS) && (defined(ISOTHERM_EQS) || (defined(USE_SFR) && !defined(FM_SFR))) */
-
 }
-
 
 /*! \brief This function reads a table with a list of desired output times.
  *
@@ -846,7 +844,7 @@ int read_outputlist(char *fname)
         {
           if(All.OutputListLength >= MAXLEN_OUTPUTLIST)
             {
-              sprintf(msg, "\ntoo many entries in output-list. You should increase MAXLEN_OUTPUTLIST=%d.\n", (int) MAXLEN_OUTPUTLIST);
+              sprintf(msg, "\ntoo many entries in output-list. You should increase MAXLEN_OUTPUTLIST=%d.\n", (int)MAXLEN_OUTPUTLIST);
               terminate(msg);
             }
 

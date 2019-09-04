@@ -24,21 +24,18 @@
  *              and terminate the run if such conditions occur.  The HDF5 error
  *              handler is disabled in case of termination not to repeat the
  *              error message of the handler again at the program exit.
- * 
+ *
  * \par Major modifications and contributions:
  * - 07.05.2018 Prepared file for public release -- Rainer Weinberger
  */
 
-
 #include "../main/allvars.h"
 #include "../main/proto.h"
-
 
 #ifdef HAVE_HDF5
 #ifndef HDF5UTIL_H
 #define HDF5UTIL_H
 #include <hdf5.h>
-
 
 /*! \brief Wraps creating a file to give a nice error message.
  *
@@ -71,7 +68,6 @@ hid_t my_H5Fcreate(const char *fname, unsigned int flags, hid_t fcpl_id, hid_t f
   return file_id;
 }
 
-
 /*! \brief Wraps creating a group to give a nice error message.
  *
  *  Calls H5Gcreate.
@@ -103,7 +99,6 @@ hid_t my_H5Gcreate(hid_t loc_id, const char *groupname, size_t size_hint)
   return group_id;
 }
 
-
 /*! \brief Wraps creating a dataset to give a nice error message.
  *
  *  Calls H5Dcreate.
@@ -134,7 +129,6 @@ hid_t my_H5Dcreate(hid_t loc_id, const char *datasetname, hid_t type_id, hid_t s
   return dataset_id;
 }
 
-
 /*! \brief Wraps writing a dataset to give a nice error message.
  *
  *  Calls H5Dwrite.
@@ -150,7 +144,8 @@ hid_t my_H5Dcreate(hid_t loc_id, const char *datasetname, hid_t type_id, hid_t s
  *
  *  \return Status of write operation.
  */
-herr_t my_H5Dwrite(hid_t dataset_id, hid_t mem_type_id, hid_t mem_space_id, hid_t file_space_id, hid_t xfer_plist_id, const void *buf, const char *datasetname)
+herr_t my_H5Dwrite(hid_t dataset_id, hid_t mem_type_id, hid_t mem_space_id, hid_t file_space_id, hid_t xfer_plist_id, const void *buf,
+                   const char *datasetname)
 {
 #ifdef TOLERATE_WRITE_ERROR
   if(WriteErrorFlag)
@@ -169,7 +164,6 @@ herr_t my_H5Dwrite(hid_t dataset_id, hid_t mem_type_id, hid_t mem_space_id, hid_
 
   return status;
 }
-
 
 /*! \brief Wraps creating an attribute to give a nice error message.
  *
@@ -201,7 +195,6 @@ hid_t my_H5Acreate(hid_t loc_id, const char *attr_name, hid_t type_id, hid_t spa
   return attribute_id;
 }
 
-
 /*! \brief Wraps writing an attribute to give a nice error message.
  *
  *  \param[in] attr_id Identifier of an attribute to write.
@@ -231,7 +224,6 @@ herr_t my_H5Awrite(hid_t attr_id, hid_t mem_type_id, const void *buf, const char
   return status;
 }
 
-
 /*! \brief Wraps creating a dataspace to give a nice error message.
  *
  *  \param[in] type Type of dataspace to be created.
@@ -246,24 +238,23 @@ hid_t my_H5Screate(H5S_class_t type)
   if(dataspace_id < 0)
     {
       H5Eset_auto(NULL, NULL);
-      switch (type)
+      switch(type)
         {
-        case H5S_SCALAR:
-          terminate("On Task %d, error detected in HDF5: unable to create a scalar dataspace\n", ThisTask);
-          break;
-        case H5S_SIMPLE:
-          terminate("On Task %d, error detected in HDF5: unable to create a simple dataspace\n", ThisTask);
-          break;
-        default:
-          terminate("On Task %d, error detected in HDF5: unknown dataspace type\n", ThisTask);
-          break;
+          case H5S_SCALAR:
+            terminate("On Task %d, error detected in HDF5: unable to create a scalar dataspace\n", ThisTask);
+            break;
+          case H5S_SIMPLE:
+            terminate("On Task %d, error detected in HDF5: unable to create a simple dataspace\n", ThisTask);
+            break;
+          default:
+            terminate("On Task %d, error detected in HDF5: unknown dataspace type\n", ThisTask);
+            break;
         }
     }
 #endif /* #ifndef TOLERATE_WRITE_ERROR */
 
   return dataspace_id;
 }
-
 
 /*! \brief Wraps creating a simple dataspace to give a nice error message.
  *
@@ -274,7 +265,7 @@ hid_t my_H5Screate(H5S_class_t type)
  *
  *  \return Dataspace identifier if successful.
  */
-hid_t my_H5Screate_simple(int rank, const hsize_t * current_dims, const hsize_t * maximum_dims)
+hid_t my_H5Screate_simple(int rank, const hsize_t *current_dims, const hsize_t *maximum_dims)
 {
   hid_t dataspace_id = H5Screate_simple(rank, current_dims, maximum_dims);
 
@@ -288,7 +279,6 @@ hid_t my_H5Screate_simple(int rank, const hsize_t * current_dims, const hsize_t 
 
   return dataspace_id;
 }
-
 
 /*! \brief Wraps opening a file to give a nice error message.
  *
@@ -316,7 +306,6 @@ hid_t my_H5Fopen(const char *fname, unsigned int flags, hid_t fapl_id)
   return file_id;
 }
 
-
 /*! \brief Wraps opening a group to give a nice error message.
  *
  *  \param[in] loc_id File or group identifier within which the group is to be
@@ -340,7 +329,6 @@ hid_t my_H5Gopen(hid_t loc_id, const char *groupname)
   return group;
 }
 
-
 /*! \brief Wraps opening a dataset to give a nice error message.
  *
  *  \param[in] file_id Identifier of the file or group within which the
@@ -363,7 +351,6 @@ hid_t my_H5Dopen(hid_t file_id, const char *datasetname)
 
   return dataset;
 }
-
 
 /*! \brief Wraps opening a dataset.
  *
@@ -394,7 +381,6 @@ hid_t my_H5Dopen_if_existing(hid_t file_id, const char *datasetname)
   return dataset;
 }
 
-
 /*! \brief Wraps opening an attribute to give a nice error message.
  *
  *  \param[in] loc_id  Identifier of a group, dataset, or named datatype that
@@ -418,7 +404,6 @@ hid_t my_H5Aopen_name(hid_t loc_id, const char *attr_name)
   return attribute_id;
 }
 
-
 /*! \brief Wraps reading a dataset to give a nice error message.
  *
  *  \param[in] dataset_id Identifier of the dataset read from.
@@ -432,7 +417,8 @@ hid_t my_H5Aopen_name(hid_t loc_id, const char *attr_name)
  *
  *  \return Returns a non-negative value if successful.
  */
-herr_t my_H5Dread(hid_t dataset_id, hid_t mem_type_id, hid_t mem_space_id, hid_t file_space_id, hid_t xfer_plist_id, void *buf, const char *datasetname)
+herr_t my_H5Dread(hid_t dataset_id, hid_t mem_type_id, hid_t mem_space_id, hid_t file_space_id, hid_t xfer_plist_id, void *buf,
+                  const char *datasetname)
 {
   herr_t status = H5Dread(dataset_id, mem_type_id, mem_space_id, file_space_id, xfer_plist_id, buf);
   if(status < 0)
@@ -442,7 +428,6 @@ herr_t my_H5Dread(hid_t dataset_id, hid_t mem_type_id, hid_t mem_space_id, hid_t
     }
   return status;
 }
-
 
 /*! \brief Wraps makeing a copy of the dataspace to give a nice error message.
  *
@@ -466,7 +451,6 @@ hid_t my_H5Dget_space(hid_t dataset_id, const char *datasetname)
   return status;
 }
 
-
 /*! \brief Wraps reading an attribute to give a nice error message
  *
  *  \param[in] attr_id Identifier of an attribute to read.
@@ -479,14 +463,17 @@ hid_t my_H5Dget_space(hid_t dataset_id, const char *datasetname)
  */
 herr_t my_H5Aread(hid_t attr_id, hid_t mem_type_id, void *buf, const char *attr_name, hssize_t size)
 {
-  hid_t hdf5_space = H5Aget_space(attr_id);
+  hid_t hdf5_space   = H5Aget_space(attr_id);
   hssize_t attr_size = H5Sget_simple_extent_npoints(hdf5_space);
   H5Sclose(hdf5_space);
 
   if(attr_size != size)
     {
       H5Eset_auto(NULL, NULL);
-      terminate("On Task %d, error detected in HDF5: mismatch in size for attribute %s, expected size = %lld, actual attribute size = %lld\n", ThisTask, attr_name, size, attr_size);
+      terminate(
+          "On Task %d, error detected in HDF5: mismatch in size for attribute %s, expected size = %lld, actual attribute size = "
+          "%lld\n",
+          ThisTask, attr_name, size, attr_size);
     }
 
   herr_t status = H5Aread(attr_id, mem_type_id, buf);
@@ -497,7 +484,6 @@ herr_t my_H5Aread(hid_t attr_id, hid_t mem_type_id, void *buf, const char *attr_
     }
   return status;
 }
-
 
 /*! \brief Wraps reseting the size of an existing dataspace to give a nice
  *         error message.
@@ -510,7 +496,8 @@ herr_t my_H5Aread(hid_t attr_id, hid_t mem_type_id, void *buf, const char *attr_
  *
  *  \return Non-negative value if successful.
  */
-herr_t my_H5Sset_extent_simple(hid_t space_id, int rank, const hsize_t * current_size, const hsize_t * maximum_size, const char *attr_name)
+herr_t my_H5Sset_extent_simple(hid_t space_id, int rank, const hsize_t *current_size, const hsize_t *maximum_size,
+                               const char *attr_name)
 {
   herr_t status = H5Sset_extent_simple(space_id, rank, current_size, maximum_size);
 
@@ -524,7 +511,6 @@ herr_t my_H5Sset_extent_simple(hid_t space_id, int rank, const hsize_t * current
 
   return status;
 }
-
 
 /*! \brief Wraps closing an attribute to give a nice error message.
  *
@@ -548,7 +534,6 @@ herr_t my_H5Aclose(hid_t attr_id, const char *attr_name)
   return status;
 }
 
-
 /*! \brief Wraps closing a dataset to give a nice error message.
  *
  *  \param[in] dataset_id Identifier of the dataset to close access to.
@@ -570,7 +555,6 @@ herr_t my_H5Dclose(hid_t dataset_id, const char *datasetname)
 
   return status;
 }
-
 
 /*! \brief Wraps closing a group to give a nice error message.
  *
@@ -594,7 +578,6 @@ herr_t my_H5Gclose(hid_t group_id, const char *groupname)
   return status;
 }
 
-
 /*! \brief Wraps closing a file to give a nice error message.
  *
  *  \param[in] file_id Identifier of a file to terminate access to.
@@ -616,7 +599,6 @@ herr_t my_H5Fclose(hid_t file_id, const char *fname)
   return status;
 }
 
-
 /*! \brief Wraps releasing and terminating access to a dataspace to give a nice
  *         error message.
  *
@@ -633,24 +615,23 @@ herr_t my_H5Sclose(hid_t dataspace_id, H5S_class_t type)
   if(status < 0)
     {
       H5Eset_auto(NULL, NULL);
-      switch (type)
+      switch(type)
         {
-        case H5S_SCALAR:
-          terminate("On Task %d, error detected in HDF5: unable to close a scalar dataspace\n", ThisTask);
-          break;
-        case H5S_SIMPLE:
-          terminate("On Task %d, error detected in HDF5: unable to close a simple dataspace\n", ThisTask);
-          break;
-        default:
-          terminate("On Task %d, error detected in HDF5: unknown dataspace type\n", ThisTask);
-          break;
+          case H5S_SCALAR:
+            terminate("On Task %d, error detected in HDF5: unable to close a scalar dataspace\n", ThisTask);
+            break;
+          case H5S_SIMPLE:
+            terminate("On Task %d, error detected in HDF5: unable to close a simple dataspace\n", ThisTask);
+            break;
+          default:
+            terminate("On Task %d, error detected in HDF5: unknown dataspace type\n", ThisTask);
+            break;
         }
     }
 #endif /* #ifndef TOLERATE_WRITE_ERROR */
 
   return status;
 }
-
 
 /*! \brief Wraps copying an existing datatype to give a nice error message.
  *
@@ -673,7 +654,6 @@ hid_t my_H5Tcopy(hid_t type_id)
   return datatype_id;
 }
 
-
 /*! \brief Wraps closing a datatype to give a nice error message.
  *
  *  \param[in] type_id Identifier of datatype to release.
@@ -693,7 +673,6 @@ herr_t my_H5Tclose(hid_t type_id)
   return status;
 }
 
-
 /*! \brief Wraps selecting a hyperslab to give a nice error message.
  *
  *  \param[in] space_id Identifier of dataspace selection to modify.
@@ -705,7 +684,8 @@ herr_t my_H5Tclose(hid_t type_id)
  *
  *  \return Non-negative value if successful.
  */
-herr_t my_H5Sselect_hyperslab(hid_t space_id, H5S_seloper_t op, const hsize_t * start, const hsize_t * stride, const hsize_t * count, const hsize_t * block)
+herr_t my_H5Sselect_hyperslab(hid_t space_id, H5S_seloper_t op, const hsize_t *start, const hsize_t *stride, const hsize_t *count,
+                              const hsize_t *block)
 {
   herr_t status = H5Sselect_hyperslab(space_id, op, start, stride, count, block);
 
@@ -718,7 +698,6 @@ herr_t my_H5Sselect_hyperslab(hid_t space_id, H5S_seloper_t op, const hsize_t * 
 #endif /* #ifndef TOLERATE_WRITE_ERROR */
   return status;
 }
-
 
 /*! \brief Wraps returning the size in bytes of a given datatype to give a nice
  *         error message.
@@ -740,7 +719,6 @@ size_t my_H5Tget_size(hid_t datatype_id)
 #endif /* #ifndef TOLERATE_WRITE_ERROR */
   return size;
 }
-
 
 /*! \brief Wraps setting the size in bytes of a given datatype to give a nice
  *         error message.
@@ -766,7 +744,6 @@ herr_t my_H5Tset_size(hid_t datatype_id, size_t size)
   return status;
 }
 
-
 #ifdef HDF5_FILTERS
 /*! \brief Wraps checking if all hdf5 filters selected for plist_id are
  *         available to give a nice error message.
@@ -787,7 +764,6 @@ htri_t my_H5Pall_filters_avail(hid_t plist_id)
   return status;
 }
 
-
 /*! \brief Wraps creating the property list of the given property class
  *         identified by class_id to give a nice error message.
  *
@@ -801,11 +777,11 @@ hid_t my_H5Pcreate(hid_t class_id)
   if(plist_id < 0)
     {
       H5Eset_auto(NULL, NULL);
-      terminate("On Task %d, error detected in HDF5: could not create the property list associated to the given property class\n", ThisTask);
+      terminate("On Task %d, error detected in HDF5: could not create the property list associated to the given property class\n",
+                ThisTask);
     }
   return plist_id;
 }
-
 
 /*! \brief Wraps closing a property list to give a nice error message.
  *
@@ -824,7 +800,6 @@ herr_t my_H5Pclose(hid_t plist)
   return status;
 }
 
-
 /*! \brief Wraps setting the size of the chunks of a chunked dataset to give a
  *         nice error message.
  *
@@ -835,7 +810,7 @@ herr_t my_H5Pclose(hid_t plist)
  *
  *  \return Non-negative value if successful.
  */
-herr_t my_H5Pset_chunk(hid_t plist, int ndims, const hsize_t * dim)
+herr_t my_H5Pset_chunk(hid_t plist, int ndims, const hsize_t *dim)
 {
   herr_t status = H5Pset_chunk(plist, ndims, dim);
   if(status < 0)
@@ -845,7 +820,6 @@ herr_t my_H5Pset_chunk(hid_t plist, int ndims, const hsize_t * dim)
     }
   return status;
 }
-
 
 /*! \brief Wraps setting the use of the shuffle filter to give a nice error
  *         message.
@@ -865,7 +839,6 @@ herr_t my_H5Pset_shuffle(hid_t plist_id)
   return status;
 }
 
-
 /*! \brief Wraps setting the use of the deflate compression (gzip) to give a
  *         nice error message.
  *
@@ -884,7 +857,6 @@ herr_t my_H5Pset_deflate(hid_t plist_id, uint level)
     }
   return status;
 }
-
 
 /*! \brief Wraps setting the use of the Fletcher32 checksum to give a nice
  *         error message.

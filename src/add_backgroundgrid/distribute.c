@@ -28,28 +28,23 @@
  *                static void kernel_imported(void)
  *                void distribute_particles(void)
  *                int find_cells_evaluate(int target, int mode, int thread_id)
- * 
- * 
+ *
+ *
  * \par Major modifications and contributions:
- * 
+ *
  * - DD.MM.YYYY Description
  * - 11.05.2018 Prepared file for public release -- Rainer Weinberger
  */
 
-
 #include <mpi.h>
-
 
 #include "../main/allvars.h"
 #include "../main/proto.h"
 #include "add_bggrid.h"
 
-
 #ifdef ADDBACKGROUNDGRID
 
-
 static int find_cells_evaluate(int target, int mode, int thread_id);
-
 
 /*! \brief Local data structure for collecting particle/cell data that is sent
  *         to other processors if needed. Type called data_in and static
@@ -65,12 +60,11 @@ typedef struct
   MyFloat Momentum[3];
 #ifdef MHD
   MyFloat B[3];
-#endif                          /* #ifdef MHD */
+#endif /* #ifdef MHD */
   int Firstnode;
 } data_in;
 
 static data_in *DataIn, *DataGet;
-
 
 /*! \brief Routine that fills the relevant particle/cell data into the input
  *         structure defined above. Needed by generic_comm_helpers2.
@@ -81,7 +75,7 @@ static data_in *DataIn, *DataGet;
  *
  *  \return void
  */
-static void particle2in(data_in * in, int i, int firstnode)
+static void particle2in(data_in *in, int i, int firstnode)
 {
   in->Pos[0] = P[i].Pos[0];
   in->Pos[1] = P[i].Pos[1];
@@ -89,8 +83,8 @@ static void particle2in(data_in * in, int i, int firstnode)
 
   in->Hsml = SphP[i].Hsml;
 
-  in->Weight = SphP[i].Weight;
-  in->Mass = P[i].Mass;
+  in->Weight         = SphP[i].Weight;
+  in->Mass           = P[i].Mass;
   in->InternalEnergy = SphP[i].Utherm * P[i].Mass;
 
   int k;
@@ -105,7 +99,6 @@ static void particle2in(data_in * in, int i, int firstnode)
   in->Firstnode = firstnode;
 }
 
-
 /*! \brief Local data structure that holds results acquired on remote
  *         processors. Type called data_out and static pointers DataResult and
  *         DataOut needed by generic_comm_helpers2.
@@ -116,7 +109,6 @@ typedef struct
 } data_out;
 
 static data_out *DataResult, *DataOut;
-
 
 /*! \brief Routine to store or combine result data. Needed by
  *         generic_comm_helpers2.
@@ -129,14 +121,9 @@ static data_out *DataResult, *DataOut;
  *
  *  \return void
  */
-static void out2particle(data_out * out, int i, int mode)
-{
-  return;
-}
-
+static void out2particle(data_out *out, int i, int mode) { return; }
 
 #include "../utils/generic_comm_helpers2.h"
-
 
 /*! \brief Routine that defines what to do with local particles.
  *
@@ -169,9 +156,7 @@ static void kernel_local(void)
         find_cells_evaluate(i, MODE_LOCAL_PARTICLES, threadid);
       }
   }
-
 }
-
 
 /*! \brief Routine that defines what to do with imported particles.
  *
@@ -197,7 +182,6 @@ static void kernel_imported(void)
       }
   }
 }
-
 
 /*! \brief Main function to distribute hydro quantities over a kernel average.
  *
@@ -233,7 +217,6 @@ void distribute_particles(void)
   mpi_printf("ADD BACKGROUND GRID: done\n");
 }
 
-
 /*! \brief Distributes imported properties on neighbouring cells.
  *
  *  \param[in] target Index of particle/cell.
@@ -259,7 +242,7 @@ int find_cells_evaluate(int target, int mode, int thread_id)
       particle2in(&local, target, 0);
       target_data = &local;
 
-      numnodes = 1;
+      numnodes  = 1;
       firstnode = NULL;
     }
   else
@@ -269,13 +252,13 @@ int find_cells_evaluate(int target, int mode, int thread_id)
       generic_get_numnodes(target, &numnodes, &firstnode);
     }
 
-  pos = target_data->Pos;
-  h = target_data->Hsml;
-  h2 = h * h;
+  pos  = target_data->Pos;
+  h    = target_data->Hsml;
+  h2   = h * h;
   hinv = 1.0 / h;
-#ifndef  TWODIMS
+#ifndef TWODIMS
   hinv3 = hinv * hinv * hinv;
-#else /* #ifndef  TWODIMS */
+#else  /* #ifndef  TWODIMS */
   hinv3 = hinv * hinv / boxSize_Z;
 #endif /* #ifndef  TWODIMS #else */
 
@@ -340,6 +323,5 @@ int find_cells_evaluate(int target, int mode, int thread_id)
 
   return 0;
 }
-
 
 #endif /* #ifdef ADDBACKGROUNDGRID */

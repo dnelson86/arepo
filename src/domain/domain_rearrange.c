@@ -23,28 +23,25 @@
  *              particles.
  * \details     contains functions:
  *                void domain_rearrange_particle_sequence(void)
- * 
- * 
+ *
+ *
  * \par Major modifications and contributions:
- * 
+ *
  * - DD.MM.YYYY Description
  * - 05.05.2018 Prepared file for public release -- Rainer Weinberger
  */
 
-
+#include <math.h>
 #include <mpi.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <strings.h>
-#include <math.h>
-
 
 #include "../main/allvars.h"
 #include "../main/proto.h"
-#include "domain.h"
 #include "../mesh/voronoi/voronoi.h"
-
+#include "domain.h"
 
 /*! \brief Gets rid of inactive/eliminated cells and particles.
  *
@@ -64,16 +61,16 @@ void domain_rearrange_particle_sequence(void)
       peanokey key;
 
       for(int i = 0; i < NumGas; i++)
-        if(P[i].Type != 0)      /*If not a gas particle, swap to the end of the list */
+        if(P[i].Type != 0) /*If not a gas particle, swap to the end of the list */
           {
             psave = P[i];
-            key = Key[i];
+            key   = Key[i];
 
-            P[i] = P[NumGas - 1];
+            P[i]    = P[NumGas - 1];
             SphP[i] = SphP[NumGas - 1];
-            Key[i] = Key[NumGas - 1];
+            Key[i]  = Key[NumGas - 1];
 
-            P[NumGas - 1] = psave;
+            P[NumGas - 1]   = psave;
             Key[NumGas - 1] = key;
 
             NumGas--;
@@ -89,7 +86,7 @@ void domain_rearrange_particle_sequence(void)
 #if defined(REFINEMENT_MERGE_CELLS)
   int i, count_elim, count_gaselim;
 
-  count_elim = 0;
+  count_elim    = 0;
   count_gaselim = 0;
 
   for(i = 0; i < NumPart; i++)
@@ -97,11 +94,11 @@ void domain_rearrange_particle_sequence(void)
       {
         if(P[i].Type == 0)
           {
-            P[i] = P[NumGas - 1];
+            P[i]    = P[NumGas - 1];
             SphP[i] = SphP[NumGas - 1];
-            Key[i] = Key[NumGas - 1];
+            Key[i]  = Key[NumGas - 1];
 
-            P[NumGas - 1] = P[NumPart - 1];
+            P[NumGas - 1]   = P[NumPart - 1];
             Key[NumGas - 1] = Key[NumPart - 1];
 
             NumGas--;
@@ -113,8 +110,8 @@ void domain_rearrange_particle_sequence(void)
         count_elim++;
       }
 
-  int count[2] = { count_elim, count_gaselim };
-  int tot[2] = { 0, 0 }, nelem = 2;
+  int count[2] = {count_elim, count_gaselim};
+  int tot[2] = {0, 0}, nelem = 2;
 
   MPI_Allreduce(count, tot, nelem, MPI_INT, MPI_SUM, MPI_COMM_WORLD);
 

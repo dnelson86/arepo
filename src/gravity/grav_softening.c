@@ -34,17 +34,14 @@
  * - 06.05.2018 Prepared file for public release -- Rainer Weinberger
  */
 
-
+#include <math.h>
 #include <mpi.h>
 #include <stdlib.h>
 #include <string.h>
-#include <math.h>
 
-
+#include "../domain/domain.h"
 #include "../main/allvars.h"
 #include "../main/proto.h"
-#include "../domain/domain.h"
-
 
 /*! \brief Sets the (comoving) softening length of all particle
  *         types in the table All.SofteningTable[...].
@@ -94,10 +91,8 @@ void set_softenings(void)
   for(i = 0; i < NSOFTTYPES + NSOFTTYPES_HYDRO; i++)
     All.ForceSoftening[i] = 2.8 * All.SofteningTable[i];
 
-  All.ForceSoftening[NSOFTTYPES + NSOFTTYPES_HYDRO] = 0;        /* important - this entry is actually used */
-
+  All.ForceSoftening[NSOFTTYPES + NSOFTTYPES_HYDRO] = 0; /* important - this entry is actually used */
 }
-
 
 #ifdef ADAPTIVE_HYDRO_SOFTENING
 /*! \brief Finds the index of the softening table for a given cell depending
@@ -122,18 +117,13 @@ int get_softeningtype_for_hydro_cell(int i)
 }
 #endif /* #ifdef ADAPTIVE_HYDRO_SOFTENING */
 
-
 /*! \brief Returns the default softening length for particle type 'type'.
  *
  * \param[in] type Type of the local particle.
  *
  * \return The softening length of particle with type 'type'.
  */
-double get_default_softening_of_particletype(int type)
-{
-  return All.SofteningTable[All.SofteningTypeOfPartType[type]];
-}
-
+double get_default_softening_of_particletype(int type) { return All.SofteningTable[All.SofteningTypeOfPartType[type]]; }
 
 #ifdef INDIVIDUAL_GRAVITY_SOFTENING
 /*! \brief Determines the softening type from the mass of a particle.
@@ -145,12 +135,12 @@ double get_default_softening_of_particletype(int type)
 int get_softening_type_from_mass(double mass)
 {
   int i, min_type = -1;
-  double eps = get_desired_softening_from_mass(mass);
+  double eps     = get_desired_softening_from_mass(mass);
   double min_dln = MAX_FLOAT_NUMBER;
 
 #if defined(MULTIPLE_NODE_SOFTENING) && defined(ADAPTIVE_HYDRO_SOFTENING)
   i = 1;
-#else /* #if defined(MULTIPLE_NODE_SOFTENING) && defined(ADAPTIVE_HYDRO_SOFTENING) */
+#else  /* #if defined(MULTIPLE_NODE_SOFTENING) && defined(ADAPTIVE_HYDRO_SOFTENING) */
   i = 0;
 #endif /* #if defined(MULTIPLE_NODE_SOFTENING) && defined(ADAPTIVE_HYDRO_SOFTENING) #else */
 
@@ -162,17 +152,17 @@ int get_softening_type_from_mass(double mass)
 
           if(dln < min_dln)
             {
-              min_dln = dln;
+              min_dln  = dln;
               min_type = i;
             }
         }
     }
   if(min_type < 0)
-    terminate("min_type < 0  mass=%g  eps=%g   All.AvgType1Mass=%g  All.ForceSoftening[1]=%g", mass, eps, All.AvgType1Mass, All.ForceSoftening[1]);
+    terminate("min_type < 0  mass=%g  eps=%g   All.AvgType1Mass=%g  All.ForceSoftening[1]=%g", mass, eps, All.AvgType1Mass,
+              All.ForceSoftening[1]);
 
   return min_type;
 }
-
 
 /*! \brief Returns the softening length of softening type 1
  *  particles depending on the particle mass.
@@ -188,7 +178,6 @@ double get_desired_softening_from_mass(double mass)
   else
     return 2.8 * All.SofteningComoving[1] * pow(mass / All.AvgType1Mass, 1.0 / 3);
 }
-
 
 /*! \brief Initializes the mass dependent softening calculation for Type 1
  *         particles.

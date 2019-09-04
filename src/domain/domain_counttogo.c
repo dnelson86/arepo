@@ -22,28 +22,25 @@
  * \brief       Functions to determine number of exchanged particles.
  * \details     contains functions:
  *                int domain_countToGo(void)
- * 
- * 
+ *
+ *
  * \par Major modifications and contributions:
- * 
+ *
  * - DD.MM.YYYY Description
  * - 05.05.2018 Prepared file for public release -- Rainer Weinberger
  */
 
-
+#include <math.h>
 #include <mpi.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <strings.h>
-#include <math.h>
-
 
 #include "../main/allvars.h"
 #include "../main/proto.h"
-#include "domain.h"
 #include "../mesh/voronoi/voronoi.h"
-
+#include "domain.h"
 
 /*! \brief Determines communication matrix for particles and cells.
  *
@@ -57,7 +54,7 @@ int domain_countToGo(void)
 {
   for(int n = 0; n < NTask; n++)
     {
-      toGo[n] = 0;
+      toGo[n]    = 0;
       toGoSph[n] = 0;
     }
 

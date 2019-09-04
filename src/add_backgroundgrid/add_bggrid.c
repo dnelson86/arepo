@@ -26,29 +26,24 @@
  *                int add_backgroundgrid(void)
  *                void modify_boxsize(double new_val)
  *                void prepare_domain_backgroundgrid(void)
- * 
- * 
+ *
+ *
  * \par Major modifications and contributions:
- * 
+ *
  * - DD.MM.YYYY Description
  * - 11.05.2018 Prepared file for public release -- Rainer Weinberger
  */
 
-
+#include "add_bggrid.h"
+#include "../domain/domain.h"
 #include "../main/allvars.h"
 #include "../main/proto.h"
-#include "../domain/domain.h"
-#include "add_bggrid.h"
-
 
 #ifdef ADDBACKGROUNDGRID
 
-
 static void modify_boxsize(double new_val);
 
-
 MyIDType IDNew;
-
 
 /*! \brief Re-gridding of ICs onto oct-tree nodes.
  *
@@ -79,9 +74,9 @@ int add_backgroundgrid(void)
 
   domain_free();
 
-  domain_Decomposition();       /* do new domain decomposition, will also make a new chained-list of synchronized particles */
+  domain_Decomposition(); /* do new domain decomposition, will also make a new chained-list of synchronized particles */
 
-  numnodes = construct_forcetree(1, 1, 0, 0);   /* build tree only with gas cells */
+  numnodes = construct_forcetree(1, 1, 0, 0); /* build tree only with gas cells */
 
   for(i = Tree_MaxPart, vol = 0; i < numnodes + Tree_MaxPart; i++)
     {
@@ -91,18 +86,15 @@ int add_backgroundgrid(void)
         }
     }
 
-
   for(i = 0; i < NumGas; i++)
     {
       no = Father[i];
       vol += Nodes[no].len * Nodes[no].len * Nodes[no].len / 8;
     }
 
-
   MPI_Allreduce(&vol, &voltot, 1, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
 
   mpi_printf("\nADD BACKGROUND GRID: voltot=%g  %g\n", voltot, pow(DomainLen, 3));
-
 
   int count_leaves = 0, count_leaves_all;
 
@@ -120,7 +112,6 @@ int add_backgroundgrid(void)
   MPI_Allreduce(&count_leaves, &count_leaves_all, 1, MPI_INT, MPI_SUM, MPI_COMM_WORLD);
 
   mpi_printf("ADD BACKGROUND GRID: count_leaves_all=%d\n\n", count_leaves_all);
-
 
   if((NumGas + count_leaves >= All.MaxPartSph) || (NumPart + count_leaves >= All.MaxPart))
     flag = 1;
@@ -163,7 +154,7 @@ int add_backgroundgrid(void)
 
   // newid is now the maxid+total of count_leaves over all previous tasks
 
-  IDNew = maxid + 1;            /* old gas particles will have IDs below this */
+  IDNew = maxid + 1; /* old gas particles will have IDs below this */
 
   // move all particle and sph particle data down the arrays by
   // count_leaves.
@@ -192,10 +183,9 @@ int add_backgroundgrid(void)
                   P[count_leaves].Vel[1] = 0;
                   P[count_leaves].Vel[2] = 0;
 
-
-                  P[count_leaves].Mass = 0;
+                  P[count_leaves].Mass         = 0;
                   P[count_leaves].TimeBinHydro = 0;
-                  P[count_leaves].TimeBinGrav = 0;
+                  P[count_leaves].TimeBinGrav  = 0;
 
                   P[count_leaves].Ti_Current = All.Ti_Current;
 
@@ -206,15 +196,15 @@ int add_backgroundgrid(void)
                   SphP[count_leaves].DivB = 0;
 #endif /* #ifdef MHD */
 
-                  P[count_leaves].Type = 0;
+                  P[count_leaves].Type          = 0;
                   P[count_leaves].SofteningType = All.SofteningTypeOfPartType[0];
 
                   // this puts the new ID at the right spot
                   P[count_leaves].ID = newid++;
 
-                  SphP[count_leaves].Volume = Nodes[i].len * Nodes[i].len * Nodes[i].len;
-                  SphP[count_leaves].Utherm = 0;
-                  SphP[count_leaves].Energy = 0;
+                  SphP[count_leaves].Volume      = Nodes[i].len * Nodes[i].len * Nodes[i].len;
+                  SphP[count_leaves].Utherm      = 0;
+                  SphP[count_leaves].Energy      = 0;
                   SphP[count_leaves].Momentum[0] = 0;
                   SphP[count_leaves].Momentum[1] = 0;
                   SphP[count_leaves].Momentum[2] = 0;
@@ -224,7 +214,7 @@ int add_backgroundgrid(void)
         }
     }
 
-/* Delete the force tree */
+  /* Delete the force tree */
   myfree(Father);
   myfree(Nextnode);
   myfree(Tree_Points);
@@ -242,7 +232,7 @@ int add_backgroundgrid(void)
           {
             // remove particle i by swapping in the last sph particle
             // and then swap the last particle to that spot
-            P[i] = P[NumGas - 1];
+            P[i]          = P[NumGas - 1];
             P[NumGas - 1] = P[NumPart - 1];
 
             SphP[i] = SphP[NumGas - 1];
@@ -258,12 +248,10 @@ int add_backgroundgrid(void)
             if(P[i].Mass > 0)
               {
                 SphP[i].Utherm = SphP[i].Energy / P[i].Mass;
-                P[i].Vel[0] = SphP[i].Momentum[0] / P[i].Mass;
-                P[i].Vel[1] = SphP[i].Momentum[1] / P[i].Mass;
-                P[i].Vel[2] = SphP[i].Momentum[2] / P[i].Mass;
-
+                P[i].Vel[0]    = SphP[i].Momentum[0] / P[i].Mass;
+                P[i].Vel[1]    = SphP[i].Momentum[1] / P[i].Mass;
+                P[i].Vel[2]    = SphP[i].Momentum[2] / P[i].Mass;
               }
-
           }
       }
 
@@ -288,14 +276,14 @@ int add_backgroundgrid(void)
   savepositions(0, 0);
 
   mpi_printf("\nADD BACKGROUND GRID: GridSize = %d\n", All.GridSize);
-  mpi_printf("ADD BACKGROUND GRID: Suggested value for MeanVolume = %g\nADD BACKGROUND GRID: Suggested value for ReferenceGasPartMass = %g\n",
-             pow(All.BoxSize / All.GridSize, 3), mtot / ngas_count_all_old);
+  mpi_printf(
+      "ADD BACKGROUND GRID: Suggested value for MeanVolume = %g\nADD BACKGROUND GRID: Suggested value for ReferenceGasPartMass = %g\n",
+      pow(All.BoxSize / All.GridSize, 3), mtot / ngas_count_all_old);
   mpi_printf("ADD BACKGROUND GRID: Suggested value for BoxSize = %g\n", All.BoxSize);
   mpi_printf("ADD BACKGROUND GRID: Done!\n\n");
 
   return 0;
 }
-
 
 /*! \brief Changes the box size to a new value.
  *
@@ -325,7 +313,6 @@ void modify_boxsize(double new_val)
 #endif /* #ifdef LONG_Z */
 }
 
-
 /*! \brief Prepares computational box; makes sure simulation volume is large
  *         enough.
  *
@@ -338,7 +325,6 @@ void prepare_domain_backgroundgrid(void)
   double len, xmin[3], xmax[3], xmin_glob[3], xmax_glob[3];
   double len_gas, xmin_gas[3], xmax_gas[3], xmin_gas_glob[3], xmax_gas_glob[3];
   double min_box_size, max_box_size;
-
 
   mpi_printf("\n\nADD BACKGROUND GRID: preparing domain for first domain decomposition\n");
 
@@ -354,7 +340,7 @@ void prepare_domain_backgroundgrid(void)
 
   /* Now checking it is a power of two. If not assign the closest value (is this required?) */
   bit_num = 0;
-  size = ADDBACKGROUNDGRIDMAX;
+  size    = ADDBACKGROUNDGRIDMAX;
   while(((size & 1) == 0) && size > 1)
     {
       size >>= 1;
@@ -381,8 +367,8 @@ void prepare_domain_backgroundgrid(void)
   /* determine local extension */
   for(j = 0; j < 3; j++)
     {
-      xmin[j] = MAX_REAL_NUMBER;
-      xmax[j] = -MAX_REAL_NUMBER;
+      xmin[j]     = MAX_REAL_NUMBER;
+      xmax[j]     = -MAX_REAL_NUMBER;
       xmin_gas[j] = MAX_REAL_NUMBER;
       xmax_gas[j] = -MAX_REAL_NUMBER;
     }
@@ -416,14 +402,13 @@ void prepare_domain_backgroundgrid(void)
   MPI_Allreduce(xmin_gas, xmin_gas_glob, 3, MPI_DOUBLE, MPI_MIN, MPI_COMM_WORLD);
   MPI_Allreduce(xmax_gas, xmax_gas_glob, 3, MPI_DOUBLE, MPI_MAX, MPI_COMM_WORLD);
 
-
   mpi_printf("ADD BACKGROUND GRID: Min and max coordinates.\n");
   mpi_printf("ADD BACKGROUND GRID: xmin|ymin|zmin=% g|% g|% g.\n", xmin_glob[0], xmin_glob[1], xmin_glob[2]);
   mpi_printf("ADD BACKGROUND GRID: xmax|ymax|zmax=% g|% g|% g.\n", xmax_glob[0], xmax_glob[1], xmax_glob[2]);
   mpi_printf("ADD BACKGROUND GRID: xmin_gas|ymin_gas|zmin_gas=% g|% g|% g.\n", xmin_gas_glob[0], xmin_gas_glob[1], xmin_gas_glob[2]);
   mpi_printf("ADD BACKGROUND GRID: xmax_gas|ymax_gas|zmax_gas=% g|% g|% g.\n", xmax_gas_glob[0], xmax_gas_glob[1], xmax_gas_glob[2]);
 
-  len = 0;
+  len     = 0;
   len_gas = 0;
   for(j = 0; j < 3; j++)
     {
@@ -460,7 +445,7 @@ void prepare_domain_backgroundgrid(void)
       while(min_topleave_num < NTask && (All.BoxSize / len_gas) > All.GridSize && All.GridSize < ADDBACKGROUNDGRIDMAX)
         {
           All.GridSize <<= 1;
-          min_topleave_num = (int) pow(len_gas * All.GridSize / All.BoxSize, 3.0);
+          min_topleave_num = (int)pow(len_gas * All.GridSize / All.BoxSize, 3.0);
           mpi_printf("ADD BACKGROUND GRID: GridSize=%3d, min_topleave_num=%6d, NTask=%6d, BoxSize/GridSize=%g, len_gas/GridSize=%g\n",
                      All.GridSize, min_topleave_num, NTask, All.BoxSize / All.GridSize, len_gas / All.BoxSize);
         }
@@ -468,7 +453,7 @@ void prepare_domain_backgroundgrid(void)
   else
     {
       All.GridSize <<= 1;
-      min_topleave_num = (int) pow(len_gas * All.GridSize / All.BoxSize, 3.0);
+      min_topleave_num = (int)pow(len_gas * All.GridSize / All.BoxSize, 3.0);
       mpi_printf("ADD BACKGROUND GRID: GridSize=%3d, min_topleave_num=%6d, NTask=%6d, BoxSize/GridSize=%g, len_gas/GridSize=%g\n",
                  All.GridSize, min_topleave_num, NTask, All.BoxSize / All.GridSize, len_gas / All.BoxSize);
     }
@@ -476,14 +461,18 @@ void prepare_domain_backgroundgrid(void)
   if(min_topleave_num < NTask)
     {
       char buf[500];
-      sprintf(buf, "min_topleave_num=%d < NTask=%d, MaxGridSize=%d. Try either to run with less task or to set the BoxSize to a smaller value\n", min_topleave_num, NTask, ADDBACKGROUNDGRIDMAX);
+      sprintf(buf,
+              "min_topleave_num=%d < NTask=%d, MaxGridSize=%d. Try either to run with less task or to set the BoxSize to a smaller "
+              "value\n",
+              min_topleave_num, NTask, ADDBACKGROUNDGRIDMAX);
       terminate(buf);
     }
 
   if(len_gas / All.BoxSize > All.GridSize)
     {
       char buf[500];
-      sprintf(buf, "len_gas/BoxSize=%g > GridSize=%d, MaxGridSize=%d. GridSize should be increased if possible\n", len_gas / All.BoxSize, All.GridSize, ADDBACKGROUNDGRIDMAX);
+      sprintf(buf, "len_gas/BoxSize=%g > GridSize=%d, MaxGridSize=%d. GridSize should be increased if possible\n",
+              len_gas / All.BoxSize, All.GridSize, ADDBACKGROUNDGRIDMAX);
       terminate(buf);
     }
 
@@ -498,6 +487,5 @@ void prepare_domain_backgroundgrid(void)
         }
     }
 }
-
 
 #endif /* #ifdef ADDBACKGROUNDGRID */

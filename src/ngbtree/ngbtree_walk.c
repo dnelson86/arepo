@@ -26,25 +26,22 @@
  *                  numnodes, int *firstnode)
  *                int ngb_treefind_export_node_threads(int no, int target, int
  *                  thread_id, int image_flag)
- * 
+ *
  * \par Major modifications and contributions:
- * 
+ *
  * - DD.MM.YYYY Description
  * - 16.05.2018 Prepared file for public release -- Rainer Weinberger
  */
 
-
+#include <math.h>
 #include <mpi.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <math.h>
 #include <time.h>
-
 
 #include "../main/allvars.h"
 #include "../main/proto.h"
-
 
 /*! \brief Finds all cells around seearchcenter in region with radius hsml.
  *
@@ -70,7 +67,8 @@
  *
  *  \return The number of neighbors found.
  */
-int ngb_treefind_variable_threads(MyDouble searchcenter[3], MyFloat hsml, int target, int mode, int thread_id, int numnodes, int *firstnode)
+int ngb_treefind_variable_threads(MyDouble searchcenter[3], MyFloat hsml, int target, int mode, int thread_id, int numnodes,
+                                  int *firstnode)
 {
   MyDouble search_min[3], search_max[3], search_max_Lsub[3], search_min_Ladd[3];
 
@@ -98,20 +96,20 @@ int ngb_treefind_variable_threads(MyDouble searchcenter[3], MyFloat hsml, int ta
 
       if(mode == MODE_LOCAL_PARTICLES)
         {
-          no = Ngb_MaxPart;     /* root node */
+          no = Ngb_MaxPart; /* root node */
         }
       else
         {
           no = firstnode[k];
-          no = Ngb_Nodes[no].u.d.nextnode;      /* open it */
+          no = Ngb_Nodes[no].u.d.nextnode; /* open it */
         }
 
       while(no >= 0)
         {
-          if(no < Ngb_MaxPart)  /* single particle */
+          if(no < Ngb_MaxPart) /* single particle */
             {
               int p = no;
-              no = Ngb_Nextnode[no];
+              no    = Ngb_Nextnode[no];
 
               if(P[p].Type > 0)
                 continue;
@@ -135,20 +133,21 @@ int ngb_treefind_variable_threads(MyDouble searchcenter[3], MyFloat hsml, int ta
               if(r2 > hsml2)
                 continue;
 
-              Thread[thread_id].R2list[numngb] = r2;
+              Thread[thread_id].R2list[numngb]    = r2;
               Thread[thread_id].Ngblist[numngb++] = p;
             }
-          else if(no < Ngb_MaxPart + Ngb_MaxNodes)      /* internal node */
+          else if(no < Ngb_MaxPart + Ngb_MaxNodes) /* internal node */
             {
               struct NgbNODE *current = &Ngb_Nodes[no];
 
               if(mode == MODE_IMPORTED_PARTICLES)
                 {
-                  if(no < Ngb_FirstNonTopLevelNode)     /* we reached a top-level node again, which means that we are done with the branch */
+                  if(no <
+                     Ngb_FirstNonTopLevelNode) /* we reached a top-level node again, which means that we are done with the branch */
                     break;
                 }
 
-              no = current->u.d.sibling;        /* in case the node can be discarded */
+              no = current->u.d.sibling; /* in case the node can be discarded */
 
               if(current->Ti_Current != All.Ti_Current)
                 {
@@ -170,26 +169,24 @@ int ngb_treefind_variable_threads(MyDouble searchcenter[3], MyFloat hsml, int ta
               if(search_min_Ladd[2] > current->u.d.range_max[2] && search_max[2] < current->u.d.range_min[2])
                 continue;
 
-              no = current->u.d.nextnode;       /* ok, we need to open the node */
+              no = current->u.d.nextnode; /* ok, we need to open the node */
             }
-          else                  /* pseudo particle */
+          else /* pseudo particle */
             {
               if(mode == MODE_IMPORTED_PARTICLES)
                 terminate("mode == MODE_IMPORTED_PARTICLES should not occur here");
 
-              if(target >= 0)   /* if no target is given, export will not occur */
+              if(target >= 0) /* if no target is given, export will not occur */
                 if(ngb_treefind_export_node_threads(no, target, thread_id, 0))
                   return -1;
 
               no = Ngb_Nextnode[no - Ngb_MaxNodes];
               continue;
             }
-
         }
     }
   return numngb;
 }
-
 
 /*! \brief Prepares export of ngb-tree node.
  *
@@ -207,19 +204,19 @@ int ngb_treefind_export_node_threads(int no, int target, int thread_id, int imag
 
   if(Thread[thread_id].Exportflag[task] != target)
     {
-      Thread[thread_id].Exportflag[task] = target;
-      int nexp = Thread[thread_id].Nexport++;
-      Thread[thread_id].PartList[nexp].Task = task;
+      Thread[thread_id].Exportflag[task]     = target;
+      int nexp                               = Thread[thread_id].Nexport++;
+      Thread[thread_id].PartList[nexp].Task  = task;
       Thread[thread_id].PartList[nexp].Index = target;
       Thread[thread_id].ExportSpace -= Thread[thread_id].ItemSize;
     }
 
-  int nexp = Thread[thread_id].NexportNodes++;
-  nexp = -1 - nexp;
-  struct datanodelist *nodelist = (struct datanodelist *) (((char *) Thread[thread_id].PartList) + Thread[thread_id].InitialSpace);
-  nodelist[nexp].Task = task;
-  nodelist[nexp].Index = target;
-  nodelist[nexp].Node = Ngb_DomainNodeIndex[no - (Ngb_MaxPart + Ngb_MaxNodes)];
+  int nexp                      = Thread[thread_id].NexportNodes++;
+  nexp                          = -1 - nexp;
+  struct datanodelist *nodelist = (struct datanodelist *)(((char *)Thread[thread_id].PartList) + Thread[thread_id].InitialSpace);
+  nodelist[nexp].Task           = task;
+  nodelist[nexp].Index          = target;
+  nodelist[nexp].Node           = Ngb_DomainNodeIndex[no - (Ngb_MaxPart + Ngb_MaxNodes)];
 #ifdef EXTENDED_GHOST_SEARCH
   nodelist[nexp].BitFlags = image_flag;
 #endif /* #ifdef EXTENDED_GHOST_SEARCH */

@@ -45,28 +45,25 @@
  *                void domain_free(void)
  *                void domain_printf(char *buf)
  *                void domain_report_balance(void)
- * 
- * 
+ *
+ *
  * \par Major modifications and contributions:
- * 
+ *
  * - DD.MM.YYYY Description
  * - 16.05.2018 Prepared file for public release -- Rainer Weinberger
  */
 
-
+#include <math.h>
 #include <mpi.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <strings.h>
-#include <math.h>
-
 
 #include "../main/allvars.h"
 #include "../main/proto.h"
-#include "domain.h"
 #include "../mesh/voronoi/voronoi.h"
-
+#include "domain.h"
 
 /*! \brief The main routine for the domain decomposition.
  *
@@ -96,7 +93,7 @@ void domain_Decomposition(void)
   domain_allocate();
   domain_allocate_lists();
 
-  topNodes = (struct local_topnode_data *) mymalloc_movable(&topNodes, "topNodes", (MaxTopNodes * sizeof(struct local_topnode_data)));
+  topNodes = (struct local_topnode_data *)mymalloc_movable(&topNodes, "topNodes", (MaxTopNodes * sizeof(struct local_topnode_data)));
   /* find total cost factors */
   domain_find_total_cost();
   /* determine global dimensions of domain grid */
@@ -150,12 +147,13 @@ void domain_Decomposition(void)
   voronoi_1D_order();
 #endif /* #ifdef ONEDIMS */
 
-  TopNodes = (struct topnode_data *) myrealloc_movable(TopNodes, NTopnodes * sizeof(struct topnode_data));
-  DomainTask = (int *) myrealloc_movable(DomainTask, NTopleaves * sizeof(int));
+  TopNodes   = (struct topnode_data *)myrealloc_movable(TopNodes, NTopnodes * sizeof(struct topnode_data));
+  DomainTask = (int *)myrealloc_movable(DomainTask, NTopleaves * sizeof(int));
 
   domain_voronoi_dynamic_update_execute();
 
-  DomainListOfLocalTopleaves = (int *) mymalloc_movable(&DomainListOfLocalTopleaves, "DomainListOfLocalTopleaves", (NTopleaves * sizeof(int)));
+  DomainListOfLocalTopleaves =
+      (int *)mymalloc_movable(&DomainListOfLocalTopleaves, "DomainListOfLocalTopleaves", (NTopleaves * sizeof(int)));
 
   memset(DomainNLocalTopleave, 0, NTask * sizeof(int));
 
@@ -170,8 +168,8 @@ void domain_Decomposition(void)
 
   for(int i = 0; i < NTopleaves; i++)
     {
-      int task = DomainTask[i];
-      int off = DomainFirstLocTopleave[task] + DomainNLocalTopleave[task]++;
+      int task                        = DomainTask[i];
+      int off                         = DomainFirstLocTopleave[task] + DomainNLocalTopleave[task]++;
       DomainListOfLocalTopleaves[off] = i;
     }
 
@@ -185,7 +183,6 @@ void domain_Decomposition(void)
   TIMER_STOP(CPU_DOMAIN);
 }
 
-
 /*! \brief Prepares for voronoi dynamic update.
  *
  *  Allocates required arrays and communicates required information.
@@ -195,11 +192,10 @@ void domain_Decomposition(void)
 void domain_prepare_voronoi_dynamic_update(void)
 {
   /* prepare storage for translation table */
-  N_trans = NumGas;             /* length of translation table */
+  N_trans     = NumGas; /* length of translation table */
   trans_table = mymalloc_movable(&trans_table, "trans_table", N_trans * sizeof(struct trans_data));
   MPI_Allreduce(&Nvc, &Largest_Nvc, 1, MPI_INT, MPI_MAX, MPI_COMM_WORLD);
 }
-
 
 /*! \brief Flag particles that need to be exported.
  *
@@ -225,7 +221,6 @@ void domain_voronoi_dynamic_flag_particles(void)
     }
 }
 
-
 /*! \brief Execute voronoi_dynamic_update
  *
  *  Calls domain_exchange_and_update_DC() if needed.
@@ -243,7 +238,6 @@ void domain_voronoi_dynamic_update_execute(void)
   CPU_Step[CPU_MESH_DYNAMIC] += measure_time();
 }
 
-
 /*! \brief Save the new top-level tree data into global arrays.
  *
  *  \return void
@@ -253,11 +247,11 @@ void domain_preserve_relevant_topnode_data(void)
   for(int i = 0; i < NTopnodes; i++)
     {
       TopNodes[i].StartKey = topNodes[i].StartKey;
-      TopNodes[i].Size = topNodes[i].Size;
+      TopNodes[i].Size     = topNodes[i].Size;
       TopNodes[i].Daughter = topNodes[i].Daughter;
-      TopNodes[i].Leaf = topNodes[i].Leaf;
+      TopNodes[i].Leaf     = topNodes[i].Leaf;
 
-      int bits = my_ffsll(TopNodes[i].Size);
+      int bits   = my_ffsll(TopNodes[i].Size);
       int blocks = (bits - 1) / 3 - 1;
 
       for(int j = 0; j < 8; j++)
@@ -276,7 +270,6 @@ void domain_preserve_relevant_topnode_data(void)
     }
 }
 
-
 /*! \brief Calculates the total cost of different operations.
  *
  *  This function gathers information about the cost of gravity and
@@ -289,8 +282,8 @@ void domain_find_total_cost(void)
   if(All.MultipleDomains < 1 || All.MultipleDomains > 512)
     terminate("All.MultipleDomains < 1 || All.MultipleDomains > 512");
 
-  gravcost = sphcost = 0;
-  double partcount = 0;
+  gravcost = sphcost  = 0;
+  double partcount    = 0;
   double sphpartcount = 0;
 
   for(int i = 0; i < NumPart; i++)
@@ -310,54 +303,53 @@ void domain_find_total_cost(void)
         sphpartcount += 1.0;
     }
 
-  double loc[4] = { gravcost, sphcost, partcount, sphpartcount }, sum[4];
+  double loc[4] = {gravcost, sphcost, partcount, sphpartcount}, sum[4];
 
   MPI_Allreduce(loc, sum, 4, MPI_DOUBLE, MPI_SUM, MPI_COMM_WORLD);
 
-  totgravcost = sum[0];
-  totsphcost = sum[1];
-  totpartcount = sum[2];
+  totgravcost            = sum[0];
+  totsphcost             = sum[1];
+  totpartcount           = sum[2];
   double totsphpartcount = sum[3];
 
   if(totsphcost > 0 && totgravcost > 0 && totsphpartcount > (All.TopNodeFactor * All.MultipleDomains * NTask))
     {
       /* in this case we give equal weight to gravitational work-load, hydro work load, and particle load.
        */
-      normsum_work = 0.333333;
-      normsum_load = 0.333333;
+      normsum_work    = 0.333333;
+      normsum_load    = 0.333333;
       normsum_worksph = 0.333333;
-      fac_work = normsum_work / totgravcost;
-      fac_load = normsum_load / totpartcount;
-      fac_worksph = normsum_worksph / totsphcost;
+      fac_work        = normsum_work / totgravcost;
+      fac_load        = normsum_load / totpartcount;
+      fac_worksph     = normsum_worksph / totsphcost;
     }
   else if(totgravcost > 0)
     {
       /* in this case we give equal weight to gravitational work-load and particle load.
        * The final pieces should have at most imbalance 2.0 in either of the two
        */
-      normsum_work = 0.5;
-      normsum_load = 0.5;
+      normsum_work    = 0.5;
+      normsum_load    = 0.5;
       normsum_worksph = 0;
-      fac_work = normsum_work / totgravcost;
-      fac_load = normsum_load / totpartcount;
-      fac_worksph = 0.0;
+      fac_work        = normsum_work / totgravcost;
+      fac_load        = normsum_load / totpartcount;
+      fac_worksph     = 0.0;
     }
   else if(totsphcost > 0)
     {
       /* here we only appear to do hydrodynamics. We hence give equal weight to SPH cost and
        * particle load.
        */
-      normsum_work = 0;
-      normsum_load = 0.5;
+      normsum_work    = 0;
+      normsum_load    = 0.5;
       normsum_worksph = 0.5;
-      fac_work = 0.0;
-      fac_load = normsum_load / totpartcount;
-      fac_worksph = normsum_worksph / totsphcost;
+      fac_work        = 0.0;
+      fac_load        = normsum_load / totpartcount;
+      fac_worksph     = normsum_worksph / totsphcost;
     }
   else
     terminate("strange: totsphcost=%g  totgravcost=%g\n", totsphcost, totgravcost);
 }
-
 
 /*! \brief Coordinate conversion to integer.
  *
@@ -373,9 +365,8 @@ peano1D domain_double_to_int(double d)
     unsigned long long ull;
   } u;
   u.d = d;
-  return (peano1D) ((u.ull & 0xFFFFFFFFFFFFFllu) >> (52 - BITS_PER_DIMENSION));
+  return (peano1D)((u.ull & 0xFFFFFFFFFFFFFllu) >> (52 - BITS_PER_DIMENSION));
 }
-
 
 /*! \brief Allocates memory
  *
@@ -386,20 +377,20 @@ peano1D domain_double_to_int(double d)
  */
 void domain_allocate(void)
 {
-  MaxTopNodes = (int) (All.TopNodeAllocFactor * All.MaxPart + 1);
+  MaxTopNodes = (int)(All.TopNodeAllocFactor * All.MaxPart + 1);
 
   if(DomainStartList)
     terminate("domain storage already allocated");
 
-  DomainStartList = (int *) mymalloc_movable(&DomainStartList, "DomainStartList", (NTask * All.MultipleDomains * sizeof(int)));
-  DomainEndList = (int *) mymalloc_movable(&DomainEndList, "DomainEndList", (NTask * All.MultipleDomains * sizeof(int)));
-  DomainFirstLocTopleave = (int *) mymalloc_movable(&DomainFirstLocTopleave, "DomainFirstLocTopleave", NTask * sizeof(int));
-  DomainNLocalTopleave = (int *) mymalloc_movable(&DomainNLocalTopleave, "DomainNLocalTopleave", NTask * sizeof(int));
-  TopNodes = (struct topnode_data *) mymalloc_movable(&TopNodes, "TopNodes", (MaxTopNodes * sizeof(struct topnode_data)));
-  DomainTask = (int *) mymalloc_movable(&DomainTask, "DomainTask", (MaxTopNodes * sizeof(int)));
-  DomainListOfLocalTopleaves = (int *) mymalloc_movable(&DomainListOfLocalTopleaves, "DomainListOfLocalTopleaves", (MaxTopNodes * sizeof(int)));
+  DomainStartList        = (int *)mymalloc_movable(&DomainStartList, "DomainStartList", (NTask * All.MultipleDomains * sizeof(int)));
+  DomainEndList          = (int *)mymalloc_movable(&DomainEndList, "DomainEndList", (NTask * All.MultipleDomains * sizeof(int)));
+  DomainFirstLocTopleave = (int *)mymalloc_movable(&DomainFirstLocTopleave, "DomainFirstLocTopleave", NTask * sizeof(int));
+  DomainNLocalTopleave   = (int *)mymalloc_movable(&DomainNLocalTopleave, "DomainNLocalTopleave", NTask * sizeof(int));
+  TopNodes               = (struct topnode_data *)mymalloc_movable(&TopNodes, "TopNodes", (MaxTopNodes * sizeof(struct topnode_data)));
+  DomainTask             = (int *)mymalloc_movable(&DomainTask, "DomainTask", (MaxTopNodes * sizeof(int)));
+  DomainListOfLocalTopleaves =
+      (int *)mymalloc_movable(&DomainListOfLocalTopleaves, "DomainListOfLocalTopleaves", (MaxTopNodes * sizeof(int)));
 }
-
 
 /*! \brief Free arrays needed in domain decomposition.
  *
@@ -421,14 +412,13 @@ void domain_free(void)
   myfree_movable(DomainEndList);
   myfree_movable(DomainStartList);
 
-  DomainTask = NULL;
-  TopNodes = NULL;
-  DomainNLocalTopleave = NULL;
+  DomainTask             = NULL;
+  TopNodes               = NULL;
+  DomainNLocalTopleave   = NULL;
   DomainFirstLocTopleave = NULL;
-  DomainEndList = NULL;
-  DomainStartList = NULL;
+  DomainEndList          = NULL;
+  DomainStartList        = NULL;
 }
-
 
 /*! \brief Print message in domain.txt logfile.
  *
@@ -441,7 +431,6 @@ void domain_printf(char *buf)
   if(RestartFlag <= 2)
     fprintf(FdDomain, "%s", buf);
 }
-
 
 /*! \brief Function that reports load-balancing
  *
@@ -457,7 +446,7 @@ void domain_report_balance(void)
 
   for(int i = 0; i < TIMEBINS; i++)
     {
-      loc_count[i] = TimeBinsGravity.TimeBinCount[i];
+      loc_count[i]            = TimeBinsGravity.TimeBinCount[i];
       loc_count[TIMEBINS + i] = TimeBinsHydro.TimeBinCount[i];
     }
 
@@ -471,16 +460,16 @@ void domain_report_balance(void)
 
   double glob_sum_data[2 * TIMEBINS];
 
-  double *loc_HydroCost = &loc_max_data[0];
-  double *loc_GravCost = &loc_max_data[TIMEBINS];
-  double *max_HydroCost = &glob_max_data[0];
-  double *max_GravCost = &glob_max_data[TIMEBINS];
+  double *loc_HydroCost  = &loc_max_data[0];
+  double *loc_GravCost   = &loc_max_data[TIMEBINS];
+  double *max_HydroCost  = &glob_max_data[0];
+  double *max_GravCost   = &glob_max_data[TIMEBINS];
   double *glob_HydroCost = &glob_sum_data[0];
-  double *glob_GravCost = &glob_sum_data[TIMEBINS];
+  double *glob_GravCost  = &glob_sum_data[TIMEBINS];
 
   for(int i = 0; i < TIMEBINS; i++)
     {
-      loc_GravCost[i] = 0;
+      loc_GravCost[i]  = 0;
       loc_HydroCost[i] = 0;
     }
 
@@ -498,7 +487,8 @@ void domain_report_balance(void)
               else
                 {
                   if(domain_refbin[bin] >= 0)
-                    loc_GravCost[bin] += MIN_FLOAT_NUMBER + domain_grav_weight[bin] * P[i].GravCost[domain_bintolevel[domain_refbin[bin]]];
+                    loc_GravCost[bin] +=
+                        MIN_FLOAT_NUMBER + domain_grav_weight[bin] * P[i].GravCost[domain_bintolevel[domain_refbin[bin]]];
                   else
                     loc_GravCost[bin] += 1.0;
                 }
@@ -522,9 +512,9 @@ void domain_report_balance(void)
     {
       double max_tot = glob_max_data[2 * TIMEBINS + 0];
       double max_sph = glob_max_data[2 * TIMEBINS + 1];
-      double max_dm = glob_max_data[2 * TIMEBINS + 2];
+      double max_dm  = glob_max_data[2 * TIMEBINS + 2];
 
-      long long *tot_count = &glob_count[0];
+      long long *tot_count     = &glob_count[0];
       long long *tot_count_sph = &glob_count[TIMEBINS];
 
       long long tot_cumulative[TIMEBINS];
@@ -556,22 +546,24 @@ void domain_report_balance(void)
           if(tot_count[i] > 0)
             {
               bal_grav_bin[i] = max_GravCost[i] / (glob_GravCost[i] / NTask + 1.0e-60);
-              bal_grav_bin_rel[i] = (tot_gravcost + domain_to_be_balanced[i] * (max_GravCost[i] - glob_GravCost[i] / NTask)) / (tot_gravcost + 1.0e-60);
+              bal_grav_bin_rel[i] =
+                  (tot_gravcost + domain_to_be_balanced[i] * (max_GravCost[i] - glob_GravCost[i] / NTask)) / (tot_gravcost + 1.0e-60);
             }
           else
             {
-              bal_grav_bin[i] = 0.0;
+              bal_grav_bin[i]     = 0.0;
               bal_grav_bin_rel[i] = 0.0;
             }
 
           if(tot_count_sph[i] > 0)
             {
-              bal_hydro_bin[i] = max_HydroCost[i] / (glob_HydroCost[i] / NTask + 1.0e-60);
-              bal_hydro_bin_rel[i] = (tot_hydrocost + domain_to_be_balanced[i] * (max_HydroCost[i] - glob_HydroCost[i] / NTask)) / (tot_hydrocost + 1.0e-60);
+              bal_hydro_bin[i]     = max_HydroCost[i] / (glob_HydroCost[i] / NTask + 1.0e-60);
+              bal_hydro_bin_rel[i] = (tot_hydrocost + domain_to_be_balanced[i] * (max_HydroCost[i] - glob_HydroCost[i] / NTask)) /
+                                     (tot_hydrocost + 1.0e-60);
             }
           else
             {
-              bal_hydro_bin[i] = 0.0;
+              bal_hydro_bin[i]     = 0.0;
               bal_hydro_bin_rel[i] = 0.0;
             }
         }
@@ -590,22 +582,22 @@ void domain_report_balance(void)
 
       for(int i = TIMEBINS - 1; i >= 0; i--)
         {
-#if (defined(SELFGRAVITY) || defined(EXTERNALGRAVITY) || defined(EXACT_GRAVITY_FOR_PARTICLE_TYPE)) && !defined(MESHRELAX)
+#if(defined(SELFGRAVITY) || defined(EXTERNALGRAVITY) || defined(EXACT_GRAVITY_FOR_PARTICLE_TYPE)) && !defined(MESHRELAX)
           if(tot_count_sph[i] > 0 || tot_count[i] > 0)
-#else /* #if (defined(SELFGRAVITY) || defined(EXTERNALGRAVITY) || defined(EXACT_GRAVITY_FOR_PARTICLE_TYPE)) && !defined(MESHRELAX) */
+#else  /* #if (defined(SELFGRAVITY) || defined(EXTERNALGRAVITY) || defined(EXACT_GRAVITY_FOR_PARTICLE_TYPE)) && !defined(MESHRELAX) */
           if(tot_count[i] > 0)
             tot += tot_count[i];
 
           if(tot_count_sph[i] > 0)
-#endif /* #if (defined(SELFGRAVITY) || defined(EXTERNALGRAVITY) || defined(EXACT_GRAVITY_FOR_PARTICLE_TYPE)) && !defined(MESHRELAX) #else */
+#endif /* #if (defined(SELFGRAVITY) || defined(EXTERNALGRAVITY) || defined(EXACT_GRAVITY_FOR_PARTICLE_TYPE)) && !defined(MESHRELAX) \
+          #else */
             {
               char buf[1000];
 
               sprintf(buf, "%c%cbin=%2d     %10llu  %10llu  %10llu  %c %6.3f |%6.3f  %c   %6.3f |%6.3f\n",
-                      i == All.HighestActiveTimeBin ? '>' : ' ',
-                      i >= All.SmallestTimeBinWithDomainDecomposition ? '|' : ' ',
-                      i, tot_count[i], tot_count_sph[i], tot_cumulative[i],
-                      domain_bintolevel[i] >= 0 ? 'm' : ' ', bal_grav_bin[i], bal_grav_bin_rel[i], domain_to_be_balanced[i] > 0 ? '*' : ' ', bal_hydro_bin[i], bal_hydro_bin_rel[i]);
+                      i == All.HighestActiveTimeBin ? '>' : ' ', i >= All.SmallestTimeBinWithDomainDecomposition ? '|' : ' ', i,
+                      tot_count[i], tot_count_sph[i], tot_cumulative[i], domain_bintolevel[i] >= 0 ? 'm' : ' ', bal_grav_bin[i],
+                      bal_grav_bin_rel[i], domain_to_be_balanced[i] > 0 ? '*' : ' ', bal_hydro_bin[i], bal_hydro_bin_rel[i]);
 
               domain_printf(buf);
 
@@ -619,8 +611,8 @@ void domain_report_balance(void)
       domain_printf(buf);
 
       sprintf(buf, "BALANCE,  LOAD:  %6.3f      %6.3f      %6.3f  WORK:     %6.3f              %6.3f\n",
-              max_dm / (tot - tot_sph + 1.0e-60) * NTask,
-              max_sph / (tot_sph + 1.0e-60) * NTask, max_tot / (tot + 1.0e-60) * NTask, max_gravcost / (tot_gravcost + 1.0e-60), max_hydrocost / (tot_hydrocost + 1.0e-60));
+              max_dm / (tot - tot_sph + 1.0e-60) * NTask, max_sph / (tot_sph + 1.0e-60) * NTask, max_tot / (tot + 1.0e-60) * NTask,
+              max_gravcost / (tot_gravcost + 1.0e-60), max_hydrocost / (tot_hydrocost + 1.0e-60));
 
       domain_printf(buf);
 

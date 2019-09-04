@@ -44,13 +44,10 @@
  * - 11.05.2018 Prepared file for public release -- Rainer Weinberger
  */
 
-
 #include "../main/allvars.h"
 #include "../main/proto.h"
 
-
 #include <gsl/gsl_linalg.h>
-
 
 /*! \brief Main routine to update the primitive hydrodynamics variables from
  *         the conserved ones.
@@ -70,9 +67,9 @@ void update_primitive_variables(void)
 
   if(All.ComovingIntegrationOn)
     {
-      pvd.atime = All.Time;
+      pvd.atime    = All.Time;
       pvd.hubble_a = hubble_function(All.Time);
-      pvd.a3inv = 1 / (All.Time * All.Time * All.Time);
+      pvd.a3inv    = 1 / (All.Time * All.Time * All.Time);
     }
   else
     pvd.atime = pvd.hubble_a = pvd.a3inv = 1.0;
@@ -89,7 +86,7 @@ void update_primitive_variables(void)
 
       update_internal_energy(P, SphP, i, &pvd);
 
-      set_pressure_of_cell_internal(P, SphP, i);        /* calculate the pressure from Density and Utherm (and composition) */
+      set_pressure_of_cell_internal(P, SphP, i); /* calculate the pressure from Density and Utherm (and composition) */
 
       SphP[i].OldMass = P[i].Mass;
 
@@ -99,7 +96,6 @@ void update_primitive_variables(void)
   TIMER_STOP(CPU_CELL_UPDATES);
 }
 
-
 /*! \brief Wrapper function to calculate pressure of a cell from its internal
  *         energy.
  *
@@ -107,11 +103,7 @@ void update_primitive_variables(void)
  *
  *  \return void
  */
-void set_pressure_of_cell(int i)
-{
-  set_pressure_of_cell_internal(P, SphP, i);
-}
-
+void set_pressure_of_cell(int i) { set_pressure_of_cell_internal(P, SphP, i); }
 
 /*! \brief Function to calculate pressure from other hydrodynamics quantities.
  *
@@ -129,7 +121,7 @@ void set_pressure_of_cell_internal(struct particle_data *localP, struct sph_part
 {
 #ifdef ISOTHERM_EQS
   localSphP[i].Pressure = localSphP[i].Density * All.IsoSoundSpeed * All.IsoSoundSpeed;
-#else /* #ifdef ISOTHERM_EQS */
+#else  /* #ifdef ISOTHERM_EQS */
 
   if(localSphP[i].Utherm >= 0)
     localSphP[i].Pressure = GAMMA_MINUS1 * localSphP[i].Density * localSphP[i].Utherm;
@@ -142,18 +134,17 @@ void set_pressure_of_cell_internal(struct particle_data *localP, struct sph_part
   if(get_starformation_rate(i) == 0)
 #endif /* #if defined(USE_SFR) */
     {
-
 #ifdef ADAPTIVE_HYDRO_SOFTENING
       double cell_soft = All.ForceSoftening[localP[i].SofteningType];
-#else /* #ifdef ADAPTIVE_HYDRO_SOFTENING */
-      double cell_soft = All.GasSoftFactor * get_cell_radius(i);
+#else  /* #ifdef ADAPTIVE_HYDRO_SOFTENING */
+    double cell_soft = All.GasSoftFactor * get_cell_radius(i);
 #endif /* #ifdef ADAPTIVE_HYDRO_SOFTENING #else */
 
-      localSphP[i].Pressure = dmax(localSphP[i].Pressure, GAMMA_MINUS1 * localSphP[i].Density * 2 * All.G * localP[i].Mass / (All.cf_atime * cell_soft));
+      localSphP[i].Pressure =
+          dmax(localSphP[i].Pressure, GAMMA_MINUS1 * localSphP[i].Density * 2 * All.G * localP[i].Mass / (All.cf_atime * cell_soft));
     }
 #endif /* #ifdef ENFORCE_JEANS_STABILITY_OF_CELLS */
 }
-
 
 /*! \brief Validity checks for a gas cell.
  *
@@ -171,13 +162,12 @@ void do_validity_checks(struct particle_data *localP, struct sph_particle_data *
 {
   if(localP[i].Mass < 0)
     {
-      printf("very bad...i=%d ID=%d mass=%g oldMass=%g utherm=%g pos=%g|%g|%g\n",
-             i, (int) localP[i].ID, localP[i].Mass, localSphP[i].OldMass, localSphP[i].Utherm, localP[i].Pos[0], localP[i].Pos[1], localP[i].Pos[2]);
+      printf("very bad...i=%d ID=%d mass=%g oldMass=%g utherm=%g pos=%g|%g|%g\n", i, (int)localP[i].ID, localP[i].Mass,
+             localSphP[i].OldMass, localSphP[i].Utherm, localP[i].Pos[0], localP[i].Pos[1], localP[i].Pos[2]);
 
       terminate("stop");
     }
 }
-
 
 /*! \brief Updates primitive variables in a specified cell.
  *
@@ -189,9 +179,9 @@ void do_validity_checks(struct particle_data *localP, struct sph_particle_data *
  *
  *  \return void
  */
-void update_primitive_variables_single(struct particle_data *localP, struct sph_particle_data *localSphP, int i, struct pv_update_data *pvd)
+void update_primitive_variables_single(struct particle_data *localP, struct sph_particle_data *localSphP, int i,
+                                       struct pv_update_data *pvd)
 {
-
   localSphP[i].Density = localP[i].Mass / localSphP[i].Volume;
 
   if(localP[i].Mass > 0)
@@ -203,7 +193,8 @@ void update_primitive_variables_single(struct particle_data *localP, struct sph_
 #ifdef MAXSCALARS
       for(int k = 0; k < N_Scalar; k++)
         {
-          *(MyFloat *) (((char *) (&localSphP[i])) + scalar_elements[k].offset) = *(MyFloat *) (((char *) (&localSphP[i])) + scalar_elements[k].offset_mass) / localP[i].Mass;
+          *(MyFloat *)(((char *)(&localSphP[i])) + scalar_elements[k].offset) =
+              *(MyFloat *)(((char *)(&localSphP[i])) + scalar_elements[k].offset_mass) / localP[i].Mass;
         }
 #endif /* #ifdef MAXSCALARS */
 
@@ -213,7 +204,7 @@ void update_primitive_variables_single(struct particle_data *localP, struct sph_
       localSphP[i].B[2] = localSphP[i].BConserved[2] / localSphP[i].Volume;
 #endif /* #ifdef MHD */
     }
-  else                          /* P[i].Mass <= 0 */
+  else /* P[i].Mass <= 0 */
     {
       localP[i].Vel[0] = 0;
       localP[i].Vel[1] = 0;
@@ -221,11 +212,10 @@ void update_primitive_variables_single(struct particle_data *localP, struct sph_
 
 #ifdef MAXSCALARS
       for(int k = 0; k < N_Scalar; k++)
-        *(MyFloat *) (((char *) (&localSphP[i])) + scalar_elements[k].offset) = 0;
+        *(MyFloat *)(((char *)(&localSphP[i])) + scalar_elements[k].offset) = 0;
 #endif /* #ifdef MAXSCALARS */
     }
 }
-
 
 /*! \brief Updates the internal energy field in a specified cell
  *
@@ -239,7 +229,6 @@ void update_primitive_variables_single(struct particle_data *localP, struct sph_
  */
 void update_internal_energy(struct particle_data *localP, struct sph_particle_data *localSphP, int i, struct pv_update_data *pvd)
 {
-
 #ifndef ISOTHERM_EQS
   double ulimit;
 
@@ -247,13 +236,18 @@ void update_internal_energy(struct particle_data *localP, struct sph_particle_da
     {
 #ifdef MESHRELAX
       localSphP[i].Utherm = localSphP[i].Energy / localP[i].Mass;
-#else /* #ifdef MESHRELAX */
-      localSphP[i].Utherm = (localSphP[i].Energy / localP[i].Mass - 0.5 * (localP[i].Vel[0] * localP[i].Vel[0] +
-                                                                           localP[i].Vel[1] * localP[i].Vel[1] + localP[i].Vel[2] * localP[i].Vel[2])) / (pvd->atime * pvd->atime);
+#else  /* #ifdef MESHRELAX */
+      localSphP[i].Utherm =
+          (localSphP[i].Energy / localP[i].Mass -
+           0.5 * (localP[i].Vel[0] * localP[i].Vel[0] + localP[i].Vel[1] * localP[i].Vel[1] + localP[i].Vel[2] * localP[i].Vel[2])) /
+          (pvd->atime * pvd->atime);
 #endif /* #ifdef MESHRELAX #else */
 
 #ifdef MHD
-      localSphP[i].Utherm -= 0.5 * (localSphP[i].B[0] * localSphP[i].B[0] + localSphP[i].B[1] * localSphP[i].B[1] + localSphP[i].B[2] * localSphP[i].B[2]) / localSphP[i].Density / pvd->atime;
+      localSphP[i].Utherm -=
+          0.5 *
+          (localSphP[i].B[0] * localSphP[i].B[0] + localSphP[i].B[1] * localSphP[i].B[1] + localSphP[i].B[2] * localSphP[i].B[2]) /
+          localSphP[i].Density / pvd->atime;
 #endif /* #ifdef MHD */
 
       ulimit = All.MinEgySpec;
@@ -266,14 +260,18 @@ void update_internal_energy(struct particle_data *localP, struct sph_particle_da
 
 #ifdef MESHRELAX
           localSphP[i].Energy = localP[i].Mass * localSphP[i].Utherm;
-#else /* #ifdef MESHRELAX */
+#else  /* #ifdef MESHRELAX */
           localSphP[i].Energy =
-            pvd->atime * pvd->atime * localP[i].Mass * localSphP[i].Utherm +
-            0.5 * localP[i].Mass * (localP[i].Vel[0] * localP[i].Vel[0] + localP[i].Vel[1] * localP[i].Vel[1] + localP[i].Vel[2] * localP[i].Vel[2]);
+              pvd->atime * pvd->atime * localP[i].Mass * localSphP[i].Utherm +
+              0.5 * localP[i].Mass *
+                  (localP[i].Vel[0] * localP[i].Vel[0] + localP[i].Vel[1] * localP[i].Vel[1] + localP[i].Vel[2] * localP[i].Vel[2]);
 #endif /* #ifdef MESHRELAX */
 
 #ifdef MHD
-          localSphP[i].Energy += 0.5 * (localSphP[i].B[0] * localSphP[i].B[0] + localSphP[i].B[1] * localSphP[i].B[1] + localSphP[i].B[2] * localSphP[i].B[2]) * localSphP[i].Volume * pvd->atime;
+          localSphP[i].Energy +=
+              0.5 *
+              (localSphP[i].B[0] * localSphP[i].B[0] + localSphP[i].B[1] * localSphP[i].B[1] + localSphP[i].B[2] * localSphP[i].B[2]) *
+              localSphP[i].Volume * pvd->atime;
 #endif /* #ifdef MHD */
 
           EgyInjection += localSphP[i].Energy;
@@ -286,10 +284,14 @@ void update_internal_energy(struct particle_data *localP, struct sph_particle_da
     {
       localSphP[i].Utherm = All.LimitUBelowCertainDensityToThisValue;
       localSphP[i].Energy =
-        pvd->atime * pvd->atime * localP[i].Mass * localSphP[i].Utherm + 0.5 * localP[i].Mass * (localP[i].Vel[0] * localP[i].Vel[0] +
-                                                                                                 localP[i].Vel[1] * localP[i].Vel[1] + localP[i].Vel[2] * localP[i].Vel[2]);
+          pvd->atime * pvd->atime * localP[i].Mass * localSphP[i].Utherm +
+          0.5 * localP[i].Mass *
+              (localP[i].Vel[0] * localP[i].Vel[0] + localP[i].Vel[1] * localP[i].Vel[1] + localP[i].Vel[2] * localP[i].Vel[2]);
 #ifdef MHD
-      localSphP[i].Energy += 0.5 * (localSphP[i].B[0] * localSphP[i].B[0] + localSphP[i].B[1] * localSphP[i].B[1] + localSphP[i].B[2] * localSphP[i].B[2]) * localSphP[i].Volume * pvd->atime;
+      localSphP[i].Energy +=
+          0.5 *
+          (localSphP[i].B[0] * localSphP[i].B[0] + localSphP[i].B[1] * localSphP[i].B[1] + localSphP[i].B[2] * localSphP[i].B[2]) *
+          localSphP[i].Volume * pvd->atime;
 #endif /* #ifdef MHD */
     }
 
@@ -300,9 +302,7 @@ void update_internal_energy(struct particle_data *localP, struct sph_particle_da
     }
 
 #endif /* #ifndef ISOTHERM_EQS */
-
 }
-
 
 /*! \brief Calculates the sound speed of a specified cell
  *
@@ -318,7 +318,7 @@ double get_sound_speed(int p)
 
 #ifdef ISOTHERM_EQS
   csnd = All.IsoSoundSpeed;
-#else /* #ifdef ISOTHERM_EQS */
+#else  /* #ifdef ISOTHERM_EQS */
 
   double gamma;
   gamma = GAMMA;

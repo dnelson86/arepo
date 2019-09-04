@@ -26,31 +26,27 @@
  *                void subfind_distribute_particles(MPI_Comm Communicator)
  *                void subfind_reorder_P(int *Id, int Nstart, int N)
  *                void subfind_reorder_PS(int *Id, int Nstart, int N)
- * 
- * 
+ *
+ *
  * \par Major modifications and contributions:
- * 
+ *
  * - DD.MM.YYYY Description
  * - 15.05.2018 Prepared file for public release -- Rainer Weinberger
  */
 
-
+#include <math.h>
 #include <mpi.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <math.h>
 
-
+#include "../fof/fof.h"
 #include "../main/allvars.h"
 #include "../main/proto.h"
-#include "../fof/fof.h"
 #include "subfind.h"
-
 
 #ifdef SUBFIND
 static struct group_properties *send_Group;
-
 
 /*! \brief Distributes groups equally on MPI tasks.
  *
@@ -89,7 +85,7 @@ void subfind_distribute_groups(void)
         }
     }
 
-  send_Group = (struct group_properties *) mymalloc_movable(&send_Group, "send_Group", nexport * sizeof(struct group_properties));
+  send_Group = (struct group_properties *)mymalloc_movable(&send_Group, "send_Group", nexport * sizeof(struct group_properties));
 
   for(i = 0; i < NTask; i++)
     Send_count[i] = 0;
@@ -112,10 +108,11 @@ void subfind_distribute_groups(void)
   if(Ngroups + nimport > MaxNgroups)
     {
 #ifdef VERBOSE
-      printf("SUBFIND: Task=%d: (Ngroups=%d) + (nimport=%d) > (MaxNgroups=%d). Will increase MaxNgroups.\n", ThisTask, Ngroups, nimport, MaxNgroups);
+      printf("SUBFIND: Task=%d: (Ngroups=%d) + (nimport=%d) > (MaxNgroups=%d). Will increase MaxNgroups.\n", ThisTask, Ngroups,
+             nimport, MaxNgroups);
 #endif /* #ifdef VERBOSE */
       MaxNgroups = Ngroups + nimport;
-      Group = (struct group_properties *) myrealloc_movable(Group, sizeof(struct group_properties) * MaxNgroups);
+      Group      = (struct group_properties *)myrealloc_movable(Group, sizeof(struct group_properties) * MaxNgroups);
     }
 
   for(ngrp = 1; ngrp < (1 << PTask); ngrp++)
@@ -127,10 +124,10 @@ void subfind_distribute_groups(void)
           if(Send_count[recvTask] > 0 || Recv_count[recvTask] > 0)
             {
               /* get the group info */
-              MPI_Sendrecv(&send_Group[Send_offset[recvTask]],
-                           Send_count[recvTask] * sizeof(struct group_properties), MPI_BYTE,
-                           recvTask, TAG_DENS_A,
-                           &Group[Ngroups + Recv_offset[recvTask]], Recv_count[recvTask] * sizeof(struct group_properties), MPI_BYTE, recvTask, TAG_DENS_A, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
+              MPI_Sendrecv(&send_Group[Send_offset[recvTask]], Send_count[recvTask] * sizeof(struct group_properties), MPI_BYTE,
+                           recvTask, TAG_DENS_A, &Group[Ngroups + Recv_offset[recvTask]],
+                           Recv_count[recvTask] * sizeof(struct group_properties), MPI_BYTE, recvTask, TAG_DENS_A, MPI_COMM_WORLD,
+                           MPI_STATUS_IGNORE);
             }
         }
     }
@@ -140,10 +137,8 @@ void subfind_distribute_groups(void)
   myfree_movable(send_Group);
 }
 
-
 static struct particle_data *partBuf;
 static struct subfind_data *subBuf;
-
 
 /* \brief Distributes particles on MPI tasks.
  *
@@ -200,8 +195,8 @@ void subfind_distribute_particles(MPI_Comm Communicator)
   load = (NumPart + nimport - nexport);
   MPI_Allreduce(&load, &max_load, 1, MPI_INT, MPI_MAX, Communicator);
 
-  partBuf = (struct particle_data *) mymalloc_movable(&partBuf, "partBuf", nexport * sizeof(struct particle_data));
-  subBuf = (struct subfind_data *) mymalloc_movable(&subBuf, "subBuf", nexport * sizeof(struct subfind_data));
+  partBuf = (struct particle_data *)mymalloc_movable(&partBuf, "partBuf", nexport * sizeof(struct particle_data));
+  subBuf  = (struct subfind_data *)mymalloc_movable(&subBuf, "subBuf", nexport * sizeof(struct subfind_data));
 
   for(i = 0; i < CommNTask; i++)
     Send_count[i] = 0;
@@ -213,16 +208,15 @@ void subfind_distribute_particles(MPI_Comm Communicator)
       if(target != CommThisTask)
         {
           partBuf[Send_offset[target] + Send_count[target]] = P[n];
-          subBuf[Send_offset[target] + Send_count[target]] = PS[n];
+          subBuf[Send_offset[target] + Send_count[target]]  = PS[n];
 
-          P[n] = P[NumPart - 1];
+          P[n]  = P[NumPart - 1];
           PS[n] = PS[NumPart - 1];
 
           Send_count[target]++;
           NumPart--;
           n--;
         }
-
     }
 
   /* do resize */
@@ -230,7 +224,7 @@ void subfind_distribute_particles(MPI_Comm Communicator)
     {
       All.MaxPart = max_load / (1.0 - 2 * ALLOC_TOLERANCE);
       reallocate_memory_maxpart();
-      PS = (struct subfind_data *) myrealloc_movable(PS, All.MaxPart * sizeof(struct subfind_data));
+      PS = (struct subfind_data *)myrealloc_movable(PS, All.MaxPart * sizeof(struct subfind_data));
     }
 
   for(i = 0; i < CommNTask; i++)
@@ -238,8 +232,8 @@ void subfind_distribute_particles(MPI_Comm Communicator)
 
 #ifndef NO_ISEND_IRECV_IN_DOMAIN
 
-  MPI_Request *requests = (MPI_Request *) mymalloc("requests", 8 * CommNTask * sizeof(MPI_Request));
-  int n_requests = 0;
+  MPI_Request *requests = (MPI_Request *)mymalloc("requests", 8 * CommNTask * sizeof(MPI_Request));
+  int n_requests        = 0;
 
   for(ngrp = 1; ngrp < (1 << PTask); ngrp++)
     {
@@ -249,15 +243,17 @@ void subfind_distribute_particles(MPI_Comm Communicator)
         {
           if(Recv_count[target] > 0)
             {
-              MPI_Irecv(P + Recv_offset[target], Recv_count[target] * sizeof(struct particle_data), MPI_BYTE, target, TAG_PDATA, Communicator, &requests[n_requests++]);
-              MPI_Irecv(PS + Recv_offset[target], Recv_count[target] * sizeof(struct subfind_data), MPI_BYTE, target, TAG_KEY, Communicator, &requests[n_requests++]);
+              MPI_Irecv(P + Recv_offset[target], Recv_count[target] * sizeof(struct particle_data), MPI_BYTE, target, TAG_PDATA,
+                        Communicator, &requests[n_requests++]);
+              MPI_Irecv(PS + Recv_offset[target], Recv_count[target] * sizeof(struct subfind_data), MPI_BYTE, target, TAG_KEY,
+                        Communicator, &requests[n_requests++]);
             }
         }
     }
 
-  MPI_Barrier(Communicator);    /* not really necessary, but this will guarantee that all receives are
-                                   posted before the sends, which helps the stability of MPI on
-                                   bluegene, and perhaps some mpich1-clusters */
+  MPI_Barrier(Communicator); /* not really necessary, but this will guarantee that all receives are
+                                posted before the sends, which helps the stability of MPI on
+                                bluegene, and perhaps some mpich1-clusters */
 
   for(ngrp = 1; ngrp < (1 << PTask); ngrp++)
     {
@@ -267,8 +263,10 @@ void subfind_distribute_particles(MPI_Comm Communicator)
         {
           if(Send_count[target] > 0)
             {
-              MPI_Isend(partBuf + Send_offset[target], Send_count[target] * sizeof(struct particle_data), MPI_BYTE, target, TAG_PDATA, Communicator, &requests[n_requests++]);
-              MPI_Isend(subBuf + Send_offset[target], Send_count[target] * sizeof(struct subfind_data), MPI_BYTE, target, TAG_KEY, Communicator, &requests[n_requests++]);
+              MPI_Isend(partBuf + Send_offset[target], Send_count[target] * sizeof(struct particle_data), MPI_BYTE, target, TAG_PDATA,
+                        Communicator, &requests[n_requests++]);
+              MPI_Isend(subBuf + Send_offset[target], Send_count[target] * sizeof(struct subfind_data), MPI_BYTE, target, TAG_KEY,
+                        Communicator, &requests[n_requests++]);
             }
         }
     }
@@ -276,7 +274,7 @@ void subfind_distribute_particles(MPI_Comm Communicator)
   MPI_Waitall(n_requests, requests, MPI_STATUSES_IGNORE);
   myfree(requests);
 
-#else /* #ifndef NO_ISEND_IRECV_IN_DOMAIN */
+#else  /* #ifndef NO_ISEND_IRECV_IN_DOMAIN */
   for(ngrp = 1; ngrp < (1 << PTask); ngrp++)
     {
       target = CommThisTask ^ ngrp;
@@ -285,11 +283,13 @@ void subfind_distribute_particles(MPI_Comm Communicator)
         {
           if(Send_count[target] > 0 || Recv_count[target] > 0)
             {
-              MPI_Sendrecv(partBuf + Send_offset[target], Send_count[target] * sizeof(struct particle_data), MPI_BYTE, target, TAG_PDATA,
-                           P + Recv_offset[target], Recv_count[target] * sizeof(struct particle_data), MPI_BYTE, target, TAG_PDATA, Communicator, MPI_STATUS_IGNORE);
+              MPI_Sendrecv(partBuf + Send_offset[target], Send_count[target] * sizeof(struct particle_data), MPI_BYTE, target,
+                           TAG_PDATA, P + Recv_offset[target], Recv_count[target] * sizeof(struct particle_data), MPI_BYTE, target,
+                           TAG_PDATA, Communicator, MPI_STATUS_IGNORE);
 
               MPI_Sendrecv(subBuf + Send_offset[target], Send_count[target] * sizeof(struct subfind_data), MPI_BYTE, target, TAG_KEY,
-                           PS + Recv_offset[target], Recv_count[target] * sizeof(struct subfind_data), MPI_BYTE, target, TAG_KEY, Communicator, MPI_STATUS_IGNORE);
+                           PS + Recv_offset[target], Recv_count[target] * sizeof(struct subfind_data), MPI_BYTE, target, TAG_KEY,
+                           Communicator, MPI_STATUS_IGNORE);
             }
         }
     }
@@ -304,12 +304,12 @@ void subfind_distribute_particles(MPI_Comm Communicator)
   struct fof_local_sort_data *mp;
   int *Id;
 
-  mp = (struct fof_local_sort_data *) mymalloc("mp", sizeof(struct fof_local_sort_data) * (NumPart));
-  Id = (int *) mymalloc("Id", sizeof(int) * (NumPart));
+  mp = (struct fof_local_sort_data *)mymalloc("mp", sizeof(struct fof_local_sort_data) * (NumPart));
+  Id = (int *)mymalloc("Id", sizeof(int) * (NumPart));
 
   for(i = 0; i < NumPart; i++)
     {
-      mp[i].index = i;
+      mp[i].index       = i;
       mp[i].targetindex = PS[i].TargetIndex;
     }
 
@@ -329,7 +329,6 @@ void subfind_distribute_particles(MPI_Comm Communicator)
   myfree(mp);
 }
 
-
 /*! \brief Reorders elements in the P array.
  *
  * \param[in] Id Array containing ordering.
@@ -348,23 +347,23 @@ void subfind_reorder_P(int *Id, int Nstart, int N)
     {
       if(Id[i] != i)
         {
-          Psource = P[i];
+          Psource  = P[i];
           idsource = Id[i];
 
           dest = Id[i];
 
           do
             {
-              Psave = P[dest];
+              Psave  = P[dest];
               idsave = Id[dest];
 
-              P[dest] = Psource;
+              P[dest]  = Psource;
               Id[dest] = idsource;
 
               if(dest == i)
                 break;
 
-              Psource = Psave;
+              Psource  = Psave;
               idsource = idsave;
 
               dest = idsource;
@@ -373,7 +372,6 @@ void subfind_reorder_P(int *Id, int Nstart, int N)
         }
     }
 }
-
 
 /*! \brief Reorders elements in the PS array.
  *
@@ -396,7 +394,7 @@ void subfind_reorder_PS(int *Id, int Nstart, int N)
           PSsource = PS[i];
 
           idsource = Id[i];
-          dest = Id[i];
+          dest     = Id[i];
 
           do
             {
@@ -418,7 +416,5 @@ void subfind_reorder_PS(int *Id, int Nstart, int N)
         }
     }
 }
-
-
 
 #endif /* #ifdef SUBFIND */

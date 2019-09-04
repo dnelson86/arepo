@@ -29,13 +29,10 @@
  * - 27.05.2018 Prepared file for public release -- Rainer Weinberger
  */
 
-
 #ifndef FOF_H
 #define FOF_H
 
-
 #include "../main/allvars.h"
-
 
 extern int Ngroups, NgroupsExt, MaxNgroups, TotNgroups, Nsubgroups, TotNsubgroups;
 extern int Nids;
@@ -47,14 +44,11 @@ extern int fof_OldMaxPartSph;
 extern double LinkL;
 extern unsigned char *flag_node_inside_linkinglength;
 
-
-#define BITFLAG_INSIDE_LINKINGLENGTH    1
-
+#define BITFLAG_INSIDE_LINKINGLENGTH 1
 
 #ifndef FOF_SECONDARY_LINK_TARGET_TYPES
-#define FOF_SECONDARY_LINK_TARGET_TYPES   FOF_PRIMARY_LINK_TYPES
+#define FOF_SECONDARY_LINK_TARGET_TYPES FOF_PRIMARY_LINK_TYPES
 #endif
-
 
 extern struct group_properties
 {
@@ -78,7 +72,7 @@ extern struct group_properties
 #endif /* #ifdef USE_SFR */
 
 #ifdef SUBFIND
-  int TargetTask;               /* primary CPU responsible for this group */
+  int TargetTask; /* primary CPU responsible for this group */
   int Nsubs;
   int FirstSub;
   MyFloat M_Mean200, R_Mean200;
@@ -86,10 +80,14 @@ extern struct group_properties
   MyFloat M_Crit500, R_Crit500;
   MyFloat M_TopHat200, R_TopHat200;
 #ifdef SUBFIND_EXTENDED_PROPERTIES
-  MyFloat J_Mean200[3], JDM_Mean200[3], JGas_Mean200[3], JStars_Mean200[3], MassType_Mean200[NTYPES], CMFrac_Mean200, CMFracType_Mean200[NTYPES];
-  MyFloat J_Crit200[3], JDM_Crit200[3], JGas_Crit200[3], JStars_Crit200[3], MassType_Crit200[NTYPES], CMFrac_Crit200, CMFracType_Crit200[NTYPES];
-  MyFloat J_Crit500[3], JDM_Crit500[3], JGas_Crit500[3], JStars_Crit500[3], MassType_Crit500[NTYPES], CMFrac_Crit500, CMFracType_Crit500[NTYPES];
-  MyFloat J_TopHat200[3], JDM_TopHat200[3], JGas_TopHat200[3], JStars_TopHat200[3], MassType_TopHat200[NTYPES], CMFrac_TopHat200, CMFracType_TopHat200[NTYPES];
+  MyFloat J_Mean200[3], JDM_Mean200[3], JGas_Mean200[3], JStars_Mean200[3], MassType_Mean200[NTYPES], CMFrac_Mean200,
+      CMFracType_Mean200[NTYPES];
+  MyFloat J_Crit200[3], JDM_Crit200[3], JGas_Crit200[3], JStars_Crit200[3], MassType_Crit200[NTYPES], CMFrac_Crit200,
+      CMFracType_Crit200[NTYPES];
+  MyFloat J_Crit500[3], JDM_Crit500[3], JGas_Crit500[3], JStars_Crit500[3], MassType_Crit500[NTYPES], CMFrac_Crit500,
+      CMFracType_Crit500[NTYPES];
+  MyFloat J_TopHat200[3], JDM_TopHat200[3], JGas_TopHat200[3], JStars_TopHat200[3], MassType_TopHat200[NTYPES], CMFrac_TopHat200,
+      CMFracType_TopHat200[NTYPES];
   int LenType_Mean200[NTYPES], LenType_Crit200[NTYPES], LenType_Crit500[NTYPES], LenType_TopHat200[NTYPES];
   MyFloat J[3], JDM[3], JGas[3], JStars[3], CMFrac, CMFracType[NTYPES];
   MyFloat Ekin, Epot, Ethr;
@@ -100,8 +98,7 @@ extern struct group_properties
 #endif /* #ifdef SUBFIND_EXTENDED_PROPERTIES */
 #endif /* #ifdef SUBFIND */
 
-} *Group;
-
+} * Group;
 
 struct data_aux_sort
 {
@@ -111,7 +108,7 @@ struct data_aux_sort
   int Type;
 #ifdef FOF_FUZZ_SORT_BY_NEAREST_GROUP
   peanokey key;
-#else /* #ifdef FOF_FUZZ_SORT_BY_NEAREST_GROUP */
+#else  /* #ifdef FOF_FUZZ_SORT_BY_NEAREST_GROUP */
   MyIDType ID;
 #endif /* #ifdef FOF_FUZZ_SORT_BY_NEAREST_GROUP #else */
 #if defined(RECOMPUTE_POTENTIAL_IN_SNAPSHOT)
@@ -123,15 +120,12 @@ struct data_aux_sort
 #endif /* #ifdef SUBFIND */
 };
 
-
 extern struct fof_particle_list
 {
   MyIDType MinID;
   int MinIDTask;
   int Pindex;
-}
- *FOF_PList;
-
+} * FOF_PList;
 
 extern struct fof_group_list
 {
@@ -140,9 +134,7 @@ extern struct fof_group_list
   int LocCount;
   int ExtCount;
   int GrNr;
-}
- *FOF_GList;
-
+} * FOF_GList;
 
 extern struct id_list
 {
@@ -153,22 +145,18 @@ extern struct id_list
   int SubNr;
   MyFloat BindingEgy;
 #endif /* #ifdef SUBFIND */
-}
- *ID_list;
-
+} * ID_list;
 
 extern struct bit_flags
 {
-  unsigned char Nonlocal:2, MinIDChanged:2, Marked:2, Changed:2;
-} *Flags;
-
+  unsigned char Nonlocal : 2, MinIDChanged : 2, Marked : 2, Changed : 2;
+} * Flags;
 
 struct fof_local_sort_data
 {
   int targetindex;
   int index;
 };
-
 
 extern struct fof_subfind_header
 {
@@ -186,9 +174,7 @@ extern struct fof_subfind_header
   double Omega0;
   double OmegaLambda;
   int flag_doubleprecision;
-}
-catalogue_header;
-
+} catalogue_header;
 
 enum fof_subfind_iofields
 {
@@ -327,7 +313,6 @@ enum fof_subfind_iofields
   IO_FOF_LASTENTRY
 };
 
-
 int fof_subfind_blockpresent(enum fof_subfind_iofields blocknr);
 int fof_subfind_get_datatype(enum fof_subfind_iofields blocknr);
 int fof_subfind_get_bytes_per_blockelement(enum fof_subfind_iofields blocknr);
@@ -337,6 +322,5 @@ void fof_subfind_get_Tab_IO_Label(enum fof_subfind_iofields blocknr, char *label
 int fof_subfind_get_dataset_group(enum fof_subfind_iofields blocknr);
 void fof_subfind_fill_write_buffer(enum fof_subfind_iofields blocknr, int *startindex, int pc);
 int fof_subfind_get_values_per_blockelement(enum fof_subfind_iofields blocknr);
-
 
 #endif /* #ifndef FOF_H */

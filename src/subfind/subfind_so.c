@@ -28,46 +28,38 @@
  *                double subfind_overdensity(void)
  *                static int subfind_overdensity_evaluate(int target, int mode,
  *                  int threadid)
- * 
- * 
+ *
+ *
  * \par Major modifications and contributions:
- * 
+ *
  * - DD.MM.YYYY Description
  * - 14.05.2018 Prepared file for public release -- Rainer Weinberger
  */
 
-
+#include <gsl/gsl_math.h>
+#include <math.h>
 #include <mpi.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <math.h>
-#include <gsl/gsl_math.h>
 #include <sys/stat.h>
 #include <sys/types.h>
-
 
 #include "../main/allvars.h"
 #include "../main/proto.h"
 
-
 #ifdef SUBFIND
-
 
 #include "../fof/fof.h"
 #include "subfind.h"
 
-
 static double *R200, *M200;
-
 
 static char *Todo;
 static MyFloat *Left, *Right;
 static int mainstep;
 
-
 static int subfind_overdensity_evaluate(int target, int mode, int threadid);
-
 
 #ifdef SUBFIND_EXTENDED_PROPERTIES
 /*! \brief Structure for angular momentum properties.
@@ -87,10 +79,8 @@ static struct Angular_Momentum
   double Epot;
   double Ethr;
   double N200;
-}
- *AngMom;
+} * AngMom;
 #endif /* #ifdef SUBFIND_EXTENDED_PROPERTIES */
-
 
 /*! \brief Local data structure for collecting particle/cell data that is sent
  *         to other processors if needed. Type called data_in and static
@@ -107,13 +97,12 @@ typedef struct
   int TaskOfGr;
   int LocGrIndex;
   struct Angular_Momentum AngMomIn;
-#endif                          /* #ifdef SUBFIND_EXTENDED_PROPERTIES */
+#endif /* #ifdef SUBFIND_EXTENDED_PROPERTIES */
 
   int Firstnode;
 } data_in;
 
 static data_in *DataIn, *DataGet;
-
 
 /*! \brief Routine that fills the relevant group data into the input
  *         structure defined above. Needed by generic_comm_helpers2.
@@ -124,24 +113,23 @@ static data_in *DataIn, *DataGet;
  *
  *  \return void
  */
-static void particle2in(data_in * in, int i, int firstnode)
+static void particle2in(data_in *in, int i, int firstnode)
 {
   in->Pos[0] = Group[i].Pos[0];
   in->Pos[1] = Group[i].Pos[1];
   in->Pos[2] = Group[i].Pos[2];
-  in->R200 = R200[i];
+  in->R200   = R200[i];
 
 #ifdef SUBFIND_EXTENDED_PROPERTIES
-  in->GrNr = Group[i].GrNr;
-  in->TaskOfGr = ThisTask;
+  in->GrNr       = Group[i].GrNr;
+  in->TaskOfGr   = ThisTask;
   in->LocGrIndex = i;
-  in->M200 = M200[i];
-  in->AngMomIn = AngMom[i];
+  in->M200       = M200[i];
+  in->AngMomIn   = AngMom[i];
 #endif /* #ifdef SUBFIND_EXTENDED_PROPERTIES */
 
   in->Firstnode = firstnode;
 }
-
 
 /*! \brief Local data structure that holds results acquired on remote
  *         processors. Type called data_out and static pointers DataResult and
@@ -153,12 +141,11 @@ typedef struct
 
 #ifdef SUBFIND_EXTENDED_PROPERTIES
   struct Angular_Momentum AngMomOut;
-#endif                          /* #ifdef SUBFIND_EXTENDED_PROPERTIES */
+#endif /* #ifdef SUBFIND_EXTENDED_PROPERTIES */
 
 } data_out;
 
 static data_out *DataResult, *DataOut;
-
 
 /*! \brief Routine to store or combine result data. Needed by
  *         generic_comm_helpers2.
@@ -171,9 +158,9 @@ static data_out *DataResult, *DataOut;
  *
  *  \return void
  */
-static void out2particle(data_out * out, int i, int mode)
+static void out2particle(data_out *out, int i, int mode)
 {
-  if(mode == MODE_LOCAL_PARTICLES)      /* initial store */
+  if(mode == MODE_LOCAL_PARTICLES) /* initial store */
     {
       if(mainstep == 0)
         M200[i] = out->Mass;
@@ -185,7 +172,7 @@ static void out2particle(data_out * out, int i, int mode)
           for(int k = 0; k < NTYPES; k++)
             {
               AngMom[i].MassType[k] = out->AngMomOut.MassType[k];
-              AngMom[i].LenType[k] = out->AngMomOut.LenType[k];
+              AngMom[i].LenType[k]  = out->AngMomOut.LenType[k];
             }
           AngMom[i].N200 = out->AngMomOut.N200;
         }
@@ -193,9 +180,9 @@ static void out2particle(data_out * out, int i, int mode)
         {
           for(int k = 0; k < 3; k++)
             {
-              AngMom[i].Jtot[k] = out->AngMomOut.Jtot[k];
-              AngMom[i].Jdm[k] = out->AngMomOut.Jdm[k];
-              AngMom[i].Jgas[k] = out->AngMomOut.Jgas[k];
+              AngMom[i].Jtot[k]   = out->AngMomOut.Jtot[k];
+              AngMom[i].Jdm[k]    = out->AngMomOut.Jdm[k];
+              AngMom[i].Jgas[k]   = out->AngMomOut.Jgas[k];
               AngMom[i].Jstars[k] = out->AngMomOut.Jstars[k];
             }
           AngMom[i].Ekin = out->AngMomOut.Ekin;
@@ -209,7 +196,7 @@ static void out2particle(data_out * out, int i, int mode)
         }
 #endif /* #ifdef SUBFIND_EXTENDED_PROPERTIES */
     }
-  else                          /* combine */
+  else /* combine */
     {
       if(mainstep == 0)
         M200[i] += out->Mass;
@@ -247,9 +234,7 @@ static void out2particle(data_out * out, int i, int mode)
     }
 }
 
-
 #include "../utils/generic_comm_helpers2.h"
-
 
 /*! \brief Routine that defines what to do with local particles.
  *
@@ -286,7 +271,6 @@ static void kernel_local(void)
   }
 }
 
-
 /*! \brief Routine that defines what to do with imported particles.
  *
  *  Calls the *_evaluate function in MODE_IMPORTED_PARTICLES.
@@ -313,7 +297,6 @@ static void kernel_imported(void)
   }
 }
 
-
 /*! \brief Main routine executing the spherical overdensity algorithm.
  *
  *  \return Time needed for calculation.
@@ -325,13 +308,13 @@ double subfind_overdensity(void)
   double t0, t1, overdensity, Deltas[4], rhoback, z, omegaz, x, DeltaMean200, DeltaCrit200, DeltaCrit500, DeltaTopHat;
   double tstart = second();
 
-  Left = (MyFloat *) mymalloc("Left", sizeof(MyFloat) * Ngroups);
-  Right = (MyFloat *) mymalloc("Right", sizeof(MyFloat) * Ngroups);
-  R200 = (double *) mymalloc("R200", sizeof(double) * Ngroups);
-  M200 = (double *) mymalloc("M200", sizeof(double) * Ngroups);
+  Left  = (MyFloat *)mymalloc("Left", sizeof(MyFloat) * Ngroups);
+  Right = (MyFloat *)mymalloc("Right", sizeof(MyFloat) * Ngroups);
+  R200  = (double *)mymalloc("R200", sizeof(double) * Ngroups);
+  M200  = (double *)mymalloc("M200", sizeof(double) * Ngroups);
 #ifdef SUBFIND_EXTENDED_PROPERTIES
-  AngMom = (struct Angular_Momentum *) mymalloc("AngMom", sizeof(struct Angular_Momentum) * Ngroups);
-  Paux = (struct paux_data *) mymalloc("Paux", sizeof(struct paux_data) * NumPart);
+  AngMom = (struct Angular_Momentum *)mymalloc("AngMom", sizeof(struct Angular_Momentum) * Ngroups);
+  Paux   = (struct paux_data *)mymalloc("Paux", sizeof(struct paux_data) * NumPart);
 #endif /* #ifdef SUBFIND_EXTENDED_PROPERTIES */
 
   Todo = mymalloc("Todo", sizeof(char) * Ngroups);
@@ -343,28 +326,29 @@ double subfind_overdensity(void)
 
   rhoback = 3 * All.Omega0 * All.Hubble * All.Hubble / (8 * M_PI * All.G);
 
-  omegaz = All.Omega0 * pow(1 + z, 3) / (All.Omega0 * pow(1 + z, 3) + (1 - All.Omega0 - All.OmegaLambda) * pow(1 + z, 2) + All.OmegaLambda);
+  omegaz =
+      All.Omega0 * pow(1 + z, 3) / (All.Omega0 * pow(1 + z, 3) + (1 - All.Omega0 - All.OmegaLambda) * pow(1 + z, 2) + All.OmegaLambda);
 
   DeltaMean200 = 200.0;
   DeltaCrit200 = 200.0 / omegaz;
   DeltaCrit500 = 500.0 / omegaz;
 
-  x = omegaz - 1;
+  x           = omegaz - 1;
   DeltaTopHat = 18 * M_PI * M_PI + 82 * x - 39 * x * x;
   DeltaTopHat /= omegaz;
 
-  Deltas[0] = DeltaMean200;     /* standard fixed overdensity with respect to background */
-  Deltas[1] = DeltaTopHat;      /* tophat overdensity with respect to background */
-  Deltas[2] = DeltaCrit200;     /* overdensity of 200 relative to critical, expressed relative to background density */
-  Deltas[3] = DeltaCrit500;     /* overdensity of 500 relative to critical, expressed relative to background density */
+  Deltas[0] = DeltaMean200; /* standard fixed overdensity with respect to background */
+  Deltas[1] = DeltaTopHat;  /* tophat overdensity with respect to background */
+  Deltas[2] = DeltaCrit200; /* overdensity of 200 relative to critical, expressed relative to background density */
+  Deltas[3] = DeltaCrit500; /* overdensity of 500 relative to critical, expressed relative to background density */
 
   generic_set_MaxNexport();
 
-  for(rep = 0; rep < 4; rep++)  /* repeat for all four overdensity values */
+  for(rep = 0; rep < 4; rep++) /* repeat for all four overdensity values */
     {
 #ifdef SUBFIND_EXTENDED_PROPERTIES
       int mainstepmax = 3;
-#else /* #ifdef SUBFIND_EXTENDED_PROPERTIES */
+#else  /* #ifdef SUBFIND_EXTENDED_PROPERTIES */
       int mainstepmax = 1;
 #endif /* #ifdef SUBFIND_EXTENDED_PROPERTIES #else */
       for(mainstep = 0; mainstep < mainstepmax; mainstep++)
@@ -378,7 +362,7 @@ double subfind_overdensity(void)
                       double rguess = pow(All.G * Group[i].Mass / (100 * All.Hubble * All.Hubble), 1.0 / 3);
 
                       Right[i] = 3 * rguess;
-                      Left[i] = 0;
+                      Left[i]  = 0;
                     }
                   Todo[i] = 1;
                 }
@@ -423,8 +407,9 @@ double subfind_overdensity(void)
 
                               if(iter >= MAXITER - 10)
                                 {
-                                  printf("gr=%d task=%d  R200=%g Left=%g Right=%g Menclosed=%g Right-Left=%g\n   pos=(%g|%g|%g)\n", i, ThisTask,
-                                         R200[i], Left[i], Right[i], M200[i], Right[i] - Left[i], Group[i].Pos[0], Group[i].Pos[1], Group[i].Pos[2]);
+                                  printf("gr=%d task=%d  R200=%g Left=%g Right=%g Menclosed=%g Right-Left=%g\n   pos=(%g|%g|%g)\n", i,
+                                         ThisTask, R200[i], Left[i], Right[i], M200[i], Right[i] - Left[i], Group[i].Pos[0],
+                                         Group[i].Pos[1], Group[i].Pos[2]);
                                   myflush(stdout);
                                 }
                             }
@@ -446,14 +431,15 @@ double subfind_overdensity(void)
                   iter++;
 
                   if(iter > 0)
-                    mpi_printf("SUBFIND: SO iteration %2d: need to repeat for %12lld halo centers. (took %g sec)\n", iter, ntot, timediff(t0, t1));
+                    mpi_printf("SUBFIND: SO iteration %2d: need to repeat for %12lld halo centers. (took %g sec)\n", iter, ntot,
+                               timediff(t0, t1));
 
                   if(iter > MAXITER)
                     terminate("failed to converge in SO iteration");
                 }
             }
           while(ntot > 0);
-        }                       /* end of mainstep loop */
+        } /* end of mainstep loop */
 
 #ifdef SUBFIND_EXTENDED_PROPERTIES
       double *egypot = mymalloc("egypot", Ngroups * sizeof(double));
@@ -505,100 +491,100 @@ double subfind_overdensity(void)
 #endif /* #ifdef SUBFIND_EXTENDED_PROPERTIES */
             }
 
-          switch (rep)
+          switch(rep)
             {
-            case 0:
-              Group[i].M_Mean200 = M200[i];
-              Group[i].R_Mean200 = R200[i];
+              case 0:
+                Group[i].M_Mean200 = M200[i];
+                Group[i].R_Mean200 = R200[i];
 #ifdef SUBFIND_EXTENDED_PROPERTIES
-              Group[i].Ekin_Mean200 = AngMom[i].Ekin;
-              Group[i].Ethr_Mean200 = AngMom[i].Ethr;
-              Group[i].Epot_Mean200 = AngMom[i].Epot;
-              Group[i].CMFrac_Mean200 = AngMom[i].CMFrac;
-              for(int k = 0; k < NTYPES; k++)
-                {
-                  Group[i].MassType_Mean200[k] = AngMom[i].MassType[k];
-                  Group[i].LenType_Mean200[k] = AngMom[i].LenType[k];
-                  Group[i].CMFracType_Mean200[k] = AngMom[i].CMFracType[k];
-                }
-              for(int k = 0; k < 3; k++)
-                {
-                  Group[i].J_Mean200[k] = AngMom[i].Jtot[k];
-                  Group[i].JDM_Mean200[k] = AngMom[i].Jdm[k];
-                  Group[i].JGas_Mean200[k] = AngMom[i].Jgas[k];
-                  Group[i].JStars_Mean200[k] = AngMom[i].Jstars[k];
-                }
+                Group[i].Ekin_Mean200   = AngMom[i].Ekin;
+                Group[i].Ethr_Mean200   = AngMom[i].Ethr;
+                Group[i].Epot_Mean200   = AngMom[i].Epot;
+                Group[i].CMFrac_Mean200 = AngMom[i].CMFrac;
+                for(int k = 0; k < NTYPES; k++)
+                  {
+                    Group[i].MassType_Mean200[k]   = AngMom[i].MassType[k];
+                    Group[i].LenType_Mean200[k]    = AngMom[i].LenType[k];
+                    Group[i].CMFracType_Mean200[k] = AngMom[i].CMFracType[k];
+                  }
+                for(int k = 0; k < 3; k++)
+                  {
+                    Group[i].J_Mean200[k]      = AngMom[i].Jtot[k];
+                    Group[i].JDM_Mean200[k]    = AngMom[i].Jdm[k];
+                    Group[i].JGas_Mean200[k]   = AngMom[i].Jgas[k];
+                    Group[i].JStars_Mean200[k] = AngMom[i].Jstars[k];
+                  }
 #endif /* #ifdef SUBFIND_EXTENDED_PROPERTIES */
-              break;
-            case 1:
-              Group[i].M_TopHat200 = M200[i];
-              Group[i].R_TopHat200 = R200[i];
+                break;
+              case 1:
+                Group[i].M_TopHat200 = M200[i];
+                Group[i].R_TopHat200 = R200[i];
 #ifdef SUBFIND_EXTENDED_PROPERTIES
-              Group[i].Ekin_TopHat200 = AngMom[i].Ekin;
-              Group[i].Ethr_TopHat200 = AngMom[i].Ethr;
-              Group[i].Epot_TopHat200 = AngMom[i].Epot;
-              Group[i].CMFrac_TopHat200 = AngMom[i].CMFrac;
-              for(int k = 0; k < NTYPES; k++)
-                {
-                  Group[i].MassType_TopHat200[k] = AngMom[i].MassType[k];
-                  Group[i].LenType_TopHat200[k] = AngMom[i].LenType[k];
-                  Group[i].CMFracType_TopHat200[k] = AngMom[i].CMFracType[k];
-                }
-              for(int k = 0; k < 3; k++)
-                {
-                  Group[i].J_TopHat200[k] = AngMom[i].Jtot[k];
-                  Group[i].JDM_TopHat200[k] = AngMom[i].Jdm[k];
-                  Group[i].JGas_TopHat200[k] = AngMom[i].Jgas[k];
-                  Group[i].JStars_TopHat200[k] = AngMom[i].Jstars[k];
-                }
+                Group[i].Ekin_TopHat200   = AngMom[i].Ekin;
+                Group[i].Ethr_TopHat200   = AngMom[i].Ethr;
+                Group[i].Epot_TopHat200   = AngMom[i].Epot;
+                Group[i].CMFrac_TopHat200 = AngMom[i].CMFrac;
+                for(int k = 0; k < NTYPES; k++)
+                  {
+                    Group[i].MassType_TopHat200[k]   = AngMom[i].MassType[k];
+                    Group[i].LenType_TopHat200[k]    = AngMom[i].LenType[k];
+                    Group[i].CMFracType_TopHat200[k] = AngMom[i].CMFracType[k];
+                  }
+                for(int k = 0; k < 3; k++)
+                  {
+                    Group[i].J_TopHat200[k]      = AngMom[i].Jtot[k];
+                    Group[i].JDM_TopHat200[k]    = AngMom[i].Jdm[k];
+                    Group[i].JGas_TopHat200[k]   = AngMom[i].Jgas[k];
+                    Group[i].JStars_TopHat200[k] = AngMom[i].Jstars[k];
+                  }
 #endif /* #ifdef SUBFIND_EXTENDED_PROPERTIES */
-              break;
-            case 2:
-              Group[i].M_Crit200 = M200[i];
-              Group[i].R_Crit200 = R200[i];
+                break;
+              case 2:
+                Group[i].M_Crit200 = M200[i];
+                Group[i].R_Crit200 = R200[i];
 #ifdef SUBFIND_EXTENDED_PROPERTIES
-              Group[i].Ekin_Crit200 = AngMom[i].Ekin;
-              Group[i].Ethr_Crit200 = AngMom[i].Ethr;
-              Group[i].Epot_Crit200 = AngMom[i].Epot;
-              Group[i].CMFrac_Crit200 = AngMom[i].CMFrac;
-              for(int k = 0; k < NTYPES; k++)
-                {
-                  Group[i].MassType_Crit200[k] = AngMom[i].MassType[k];
-                  Group[i].LenType_Crit200[k] = AngMom[i].LenType[k];
-                  Group[i].CMFracType_Crit200[k] = AngMom[i].CMFracType[k];
-                }
-              for(int k = 0; k < 3; k++)
-                {
-                  Group[i].J_Crit200[k] = AngMom[i].Jtot[k];
-                  Group[i].JDM_Crit200[k] = AngMom[i].Jdm[k];
-                  Group[i].JGas_Crit200[k] = AngMom[i].Jgas[k];
-                  Group[i].JStars_Crit200[k] = AngMom[i].Jstars[k];
-                }
+                Group[i].Ekin_Crit200   = AngMom[i].Ekin;
+                Group[i].Ethr_Crit200   = AngMom[i].Ethr;
+                Group[i].Epot_Crit200   = AngMom[i].Epot;
+                Group[i].CMFrac_Crit200 = AngMom[i].CMFrac;
+                for(int k = 0; k < NTYPES; k++)
+                  {
+                    Group[i].MassType_Crit200[k]   = AngMom[i].MassType[k];
+                    Group[i].LenType_Crit200[k]    = AngMom[i].LenType[k];
+                    Group[i].CMFracType_Crit200[k] = AngMom[i].CMFracType[k];
+                  }
+                for(int k = 0; k < 3; k++)
+                  {
+                    Group[i].J_Crit200[k]      = AngMom[i].Jtot[k];
+                    Group[i].JDM_Crit200[k]    = AngMom[i].Jdm[k];
+                    Group[i].JGas_Crit200[k]   = AngMom[i].Jgas[k];
+                    Group[i].JStars_Crit200[k] = AngMom[i].Jstars[k];
+                  }
 #endif /* #ifdef SUBFIND_EXTENDED_PROPERTIES */
-              break;
-            case 3:
-              Group[i].M_Crit500 = M200[i];
-              Group[i].R_Crit500 = R200[i];
+                break;
+              case 3:
+                Group[i].M_Crit500 = M200[i];
+                Group[i].R_Crit500 = R200[i];
 #ifdef SUBFIND_EXTENDED_PROPERTIES
-              Group[i].Ekin_Crit500 = AngMom[i].Ekin;
-              Group[i].Ethr_Crit500 = AngMom[i].Ethr;
-              Group[i].Epot_Crit500 = AngMom[i].Epot;
-              Group[i].CMFrac_Crit500 = AngMom[i].CMFrac;
-              for(int k = 0; k < NTYPES; k++)
-                {
-                  Group[i].MassType_Crit500[k] = AngMom[i].MassType[k];
-                  Group[i].LenType_Crit500[k] = AngMom[i].LenType[k];
-                  Group[i].CMFracType_Crit500[k] = AngMom[i].CMFracType[k];
-                }
-              for(int k = 0; k < 3; k++)
-                {
-                  Group[i].J_Crit500[k] = AngMom[i].Jtot[k];
-                  Group[i].JDM_Crit500[k] = AngMom[i].Jdm[k];
-                  Group[i].JGas_Crit500[k] = AngMom[i].Jgas[k];
-                  Group[i].JStars_Crit500[k] = AngMom[i].Jstars[k];
-                }
+                Group[i].Ekin_Crit500   = AngMom[i].Ekin;
+                Group[i].Ethr_Crit500   = AngMom[i].Ethr;
+                Group[i].Epot_Crit500   = AngMom[i].Epot;
+                Group[i].CMFrac_Crit500 = AngMom[i].CMFrac;
+                for(int k = 0; k < NTYPES; k++)
+                  {
+                    Group[i].MassType_Crit500[k]   = AngMom[i].MassType[k];
+                    Group[i].LenType_Crit500[k]    = AngMom[i].LenType[k];
+                    Group[i].CMFracType_Crit500[k] = AngMom[i].CMFracType[k];
+                  }
+                for(int k = 0; k < 3; k++)
+                  {
+                    Group[i].J_Crit500[k]      = AngMom[i].Jtot[k];
+                    Group[i].JDM_Crit500[k]    = AngMom[i].Jdm[k];
+                    Group[i].JGas_Crit500[k]   = AngMom[i].Jgas[k];
+                    Group[i].JStars_Crit500[k] = AngMom[i].Jstars[k];
+                  }
 #endif /* #ifdef SUBFIND_EXTENDED_PROPERTIES */
-              break;
+                break;
             }
         }
     }
@@ -616,7 +602,6 @@ double subfind_overdensity(void)
   double tend = second();
   return timediff(tstart, tend);
 }
-
 
 /*! \brief Evaluate function of subfind_overdensity.
  *
@@ -644,7 +629,7 @@ static int subfind_overdensity_evaluate(int target, int mode, int threadid)
       particle2in(&local, target, 0);
       in = &local;
 
-      numnodes = 1;
+      numnodes  = 1;
       firstnode = NULL;
     }
   else
@@ -654,7 +639,7 @@ static int subfind_overdensity_evaluate(int target, int mode, int threadid)
       generic_get_numnodes(target, &numnodes, &firstnode);
     }
 
-  pos = in->Pos;
+  pos  = in->Pos;
   hsml = in->R200;
   mass = 0;
 
@@ -666,16 +651,16 @@ static int subfind_overdensity_evaluate(int target, int mode, int threadid)
 
   for(int i = 0; i < 3; i++)
     {
-      Pmom[i] = 0;
-      Jtot[i] = 0;
-      Jdm[i] = 0;
-      Jgas[i] = 0;
+      Pmom[i]   = 0;
+      Jtot[i]   = 0;
+      Jdm[i]    = 0;
+      Jgas[i]   = 0;
       Jstars[i] = 0;
     }
   for(int i = 0; i < NTYPES; i++)
     {
-      MassType[i] = 0;
-      LenType[i] = 0;
+      MassType[i]   = 0;
+      LenType[i]    = 0;
       CMFracType[i] = 0;
     }
 
@@ -691,10 +676,10 @@ static int subfind_overdensity_evaluate(int target, int mode, int threadid)
       Mtot = in->M200;
       for(int i = 0; i < 3; i++)
         {
-          Pmom[i] = in->AngMomIn.Pmom[i];
-          Jtot[i] = in->AngMomIn.Jtot[i];
-          Jdm[i] = in->AngMomIn.Jdm[i];
-          Jgas[i] = in->AngMomIn.Jgas[i];
+          Pmom[i]   = in->AngMomIn.Pmom[i];
+          Jtot[i]   = in->AngMomIn.Jtot[i];
+          Jdm[i]    = in->AngMomIn.Jdm[i];
+          Jgas[i]   = in->AngMomIn.Jgas[i];
           Jstars[i] = in->AngMomIn.Jstars[i];
         }
       for(int i = 0; i < NTYPES; i++)
@@ -706,23 +691,23 @@ static int subfind_overdensity_evaluate(int target, int mode, int threadid)
     {
       if(mode == MODE_LOCAL_PARTICLES)
         {
-          no = Tree_MaxPart;    /* root node */
+          no = Tree_MaxPart; /* root node */
         }
       else
         {
           no = firstnode[k];
-          no = Nodes[no].u.d.nextnode;  /* open it */
+          no = Nodes[no].u.d.nextnode; /* open it */
         }
 
       while(no >= 0)
         {
           if(no < Tree_MaxPart) /* single particle */
             {
-              p = no;
+              p  = no;
               no = Nextnode[no];
 
               dist = hsml;
-              dx = FOF_NEAREST_LONG_X(Tree_Pos_list[3 * p + 0] - pos[0]);
+              dx   = FOF_NEAREST_LONG_X(Tree_Pos_list[3 * p + 0] - pos[0]);
               if(dx > dist)
                 continue;
               dy = FOF_NEAREST_LONG_Y(Tree_Pos_list[3 * p + 1] - pos[1]);
@@ -767,13 +752,13 @@ static int subfind_overdensity_evaluate(int target, int mode, int threadid)
                       if(NumPaux >= NumPart)
                         terminate("NumPaux >= NumPart");
 
-                      Paux[NumPaux].Pos[0] = NEAREST_X(P[p].Pos[0] - pos[0]);
-                      Paux[NumPaux].Pos[1] = NEAREST_Y(P[p].Pos[1] - pos[1]);
-                      Paux[NumPaux].Pos[2] = NEAREST_Z(P[p].Pos[2] - pos[2]);
-                      Paux[NumPaux].Mass = P[p].Mass;
-                      Paux[NumPaux].TaskOfGr = in->TaskOfGr;
-                      Paux[NumPaux].LocGrIndex = in->LocGrIndex;
-                      Paux[NumPaux].Type = P[p].Type;
+                      Paux[NumPaux].Pos[0]        = NEAREST_X(P[p].Pos[0] - pos[0]);
+                      Paux[NumPaux].Pos[1]        = NEAREST_Y(P[p].Pos[1] - pos[1]);
+                      Paux[NumPaux].Pos[2]        = NEAREST_Z(P[p].Pos[2] - pos[2]);
+                      Paux[NumPaux].Mass          = P[p].Mass;
+                      Paux[NumPaux].TaskOfGr      = in->TaskOfGr;
+                      Paux[NumPaux].LocGrIndex    = in->LocGrIndex;
+                      Paux[NumPaux].Type          = P[p].Type;
                       Paux[NumPaux].SofteningType = P[p].SofteningType;
                       NumPaux++;
                     }
@@ -786,7 +771,7 @@ static int subfind_overdensity_evaluate(int target, int mode, int threadid)
                   Pos_pbc[2] = NEAREST_Z(P[p].Pos[2] - pos[2]) * All.cf_atime;
 
                   for(int i = 0; i < 3; i++)
-                    Vel_centre[i] = (Pmom[i] / Mtot);   // units: km/s
+                    Vel_centre[i] = (Pmom[i] / Mtot);  // units: km/s
 
                   for(int i = 0; i < 3; i++)
                     Vel_tot[i] = P[p].Vel[i] / All.cf_atime - Vel_centre[i] + All.cf_Hrate * Pos_pbc[i];
@@ -797,13 +782,13 @@ static int subfind_overdensity_evaluate(int target, int mode, int threadid)
                   Jtot[1] += P[p].Mass * (Pos_pbc[2] * Vel_tot[0] - Pos_pbc[0] * Vel_tot[2]);
                   Jtot[2] += P[p].Mass * (Pos_pbc[0] * Vel_tot[1] - Pos_pbc[1] * Vel_tot[0]);
 
-                  if(ptype == 1)        // dm illustris
+                  if(ptype == 1)  // dm illustris
                     {
                       Jdm[0] += P[p].Mass * (Pos_pbc[1] * Vel_tot[2] - Pos_pbc[2] * Vel_tot[1]);
                       Jdm[1] += P[p].Mass * (Pos_pbc[2] * Vel_tot[0] - Pos_pbc[0] * Vel_tot[2]);
                       Jdm[2] += P[p].Mass * (Pos_pbc[0] * Vel_tot[1] - Pos_pbc[1] * Vel_tot[0]);
                     }
-                  if(ptype == 0)        // gas
+                  if(ptype == 0)  // gas
                     {
                       etherm += P[p].Mass * PS[p].Utherm;
 
@@ -811,13 +796,12 @@ static int subfind_overdensity_evaluate(int target, int mode, int threadid)
                       Jgas[1] += P[p].Mass * (Pos_pbc[2] * Vel_tot[0] - Pos_pbc[0] * Vel_tot[2]);
                       Jgas[2] += P[p].Mass * (Pos_pbc[0] * Vel_tot[1] - Pos_pbc[1] * Vel_tot[0]);
                     }
-                  if(ptype == 4)        // stars
+                  if(ptype == 4)  // stars
                     {
                       Jstars[0] += P[p].Mass * (Pos_pbc[1] * Vel_tot[2] - Pos_pbc[2] * Vel_tot[1]);
                       Jstars[1] += P[p].Mass * (Pos_pbc[2] * Vel_tot[0] - Pos_pbc[0] * Vel_tot[2]);
                       Jstars[2] += P[p].Mass * (Pos_pbc[0] * Vel_tot[1] - Pos_pbc[1] * Vel_tot[0]);
                     }
-
                 }
               else if(mainstep == 2)
                 {
@@ -841,34 +825,35 @@ static int subfind_overdensity_evaluate(int target, int mode, int threadid)
                   if((Jtot[0] * jpart[0] + Jtot[1] * jpart[1] + Jtot[2] * jpart[2]) < 0.)
                     CMFrac += P[p].Mass / Mtot;
 
-                  if(ptype == 1)        // dm
+                  if(ptype == 1)  // dm
                     if((Jdm[0] * jpart[0] + Jdm[1] * jpart[1] + Jdm[2] * jpart[2]) < 0.)
                       CMFracType[1] += P[p].Mass / MassType[1];
 
-                  if(ptype == 0)        // gas
+                  if(ptype == 0)  // gas
                     if((Jgas[0] * jpart[0] + Jgas[1] * jpart[1] + Jgas[2] * jpart[2]) < 0.)
                       CMFracType[0] += P[p].Mass / MassType[0];
 
-                  if(ptype == 4)        // stars
+                  if(ptype == 4)  // stars
                     if((Jstars[0] * jpart[0] + Jstars[1] * jpart[1] + Jstars[2] * jpart[2]) < 0.)
                       CMFracType[4] += P[p].Mass / MassType[4];
                 }
 #endif /* #ifdef SUBFIND_EXTENDED_PROPERTIES */
             }
-          else if(no < Tree_MaxPart + Tree_MaxNodes)    /* internal node */
+          else if(no < Tree_MaxPart + Tree_MaxNodes) /* internal node */
             {
               if(mode == MODE_IMPORTED_PARTICLES)
                 {
-                  if(no < Tree_FirstNonTopLevelNode)    /* we reached a top-level node again, which means that we are done with the branch */
+                  if(no <
+                     Tree_FirstNonTopLevelNode) /* we reached a top-level node again, which means that we are done with the branch */
                     break;
                 }
 
               current = &Nodes[no];
 
-              no = current->u.d.sibling;        /* in case the node can be discarded */
+              no = current->u.d.sibling; /* in case the node can be discarded */
 
               dist = hsml + 0.5 * current->len;
-              dx = FOF_NEAREST_LONG_X(current->center[0] - pos[0]);
+              dx   = FOF_NEAREST_LONG_X(current->center[0] - pos[0]);
               if(dx > dist)
                 continue;
               dy = FOF_NEAREST_LONG_Y(current->center[1] - pos[1]);
@@ -883,7 +868,7 @@ static int subfind_overdensity_evaluate(int target, int mode, int threadid)
                 continue;
 
 #ifndef SUBFIND_EXTENDED_PROPERTIES
-              if(no >= Tree_FirstNonTopLevelNode)       /* only do this for fully local nodes */
+              if(no >= Tree_FirstNonTopLevelNode) /* only do this for fully local nodes */
                 {
                   /* test whether the node is contained within the sphere, which gives  short-cut if we only need the mass */
                   dist = hsml - FACT2 * current->len;
@@ -896,15 +881,15 @@ static int subfind_overdensity_evaluate(int target, int mode, int threadid)
                 }
 #endif /* #ifndef SUBFIND_EXTENDED_PROPERTIES */
 
-              no = current->u.d.nextnode;       /* ok, we need to open the node */
+              no = current->u.d.nextnode; /* ok, we need to open the node */
             }
-          else if(no >= Tree_ImportedNodeOffset)        /* point from imported nodelist */
+          else if(no >= Tree_ImportedNodeOffset) /* point from imported nodelist */
             {
               int n = no - Tree_ImportedNodeOffset;
-              no = Nextnode[no - Tree_MaxNodes];
+              no    = Nextnode[no - Tree_MaxNodes];
 
               dist = hsml;
-              dx = FOF_NEAREST_LONG_X(Tree_Points[n].Pos[0] - pos[0]);
+              dx   = FOF_NEAREST_LONG_X(Tree_Points[n].Pos[0] - pos[0]);
               if(dx > dist)
                 continue;
               dy = FOF_NEAREST_LONG_Y(Tree_Points[n].Pos[1] - pos[1]);
@@ -918,7 +903,7 @@ static int subfind_overdensity_evaluate(int target, int mode, int threadid)
 
               mass += Tree_Points[n].Mass;
             }
-          else                  /* pseudo particle */
+          else /* pseudo particle */
             {
               if(mode == MODE_IMPORTED_PARTICLES)
                 terminate("mode == MODE_IMPORTED_PARTICLES");
@@ -941,7 +926,7 @@ static int subfind_overdensity_evaluate(int target, int mode, int threadid)
       for(int k = 0; k < NTYPES; k++)
         {
           out.AngMomOut.MassType[k] = MassType[k];
-          out.AngMomOut.LenType[k] = LenType[k];
+          out.AngMomOut.LenType[k]  = LenType[k];
         }
 
       out.AngMomOut.N200 = N200;
@@ -950,9 +935,9 @@ static int subfind_overdensity_evaluate(int target, int mode, int threadid)
     {
       for(int k = 0; k < 3; k++)
         {
-          out.AngMomOut.Jtot[k] = Jtot[k];
-          out.AngMomOut.Jdm[k] = Jdm[k];
-          out.AngMomOut.Jgas[k] = Jgas[k];
+          out.AngMomOut.Jtot[k]   = Jtot[k];
+          out.AngMomOut.Jdm[k]    = Jdm[k];
+          out.AngMomOut.Jgas[k]   = Jgas[k];
           out.AngMomOut.Jstars[k] = Jstars[k];
         }
 
@@ -975,6 +960,5 @@ static int subfind_overdensity_evaluate(int target, int mode, int threadid)
 
   return 0;
 }
-
 
 #endif /* #ifdef SUBFIND */

@@ -20,24 +20,22 @@
  * \file        src/cooling/cooling_vars.h
  * \date        05/2018
  * \brief       Variables for cooling.
- * \details     
- * 
- * 
+ * \details
+ *
+ *
  * \par Major modifications and contributions:
- * 
+ *
  * - DD.MM.YYYY Description
  * - 27.05.2018 Prepared file for public release -- Rainer Weinberger
  */
 
-
-#define NCOOLTAB       2000
-#define SMALLNUM       1.0e-60
-#define COOLLIM        0.1
-#define HEATLIM        20.0
-#define eV_to_K        11606.0
-#define eV_to_erg      1.60184e-12
-#define MAX_TABLESIZE  250      /* Max # of lines in TREECOOL */
-
+#define NCOOLTAB 2000
+#define SMALLNUM 1.0e-60
+#define COOLLIM 0.1
+#define HEATLIM 20.0
+#define eV_to_K 11606.0
+#define eV_to_erg 1.60184e-12
+#define MAX_TABLESIZE 250 /* Max # of lines in TREECOOL */
 
 /* data for gas state */
 typedef struct
@@ -48,10 +46,9 @@ typedef struct
   double nH0, nHp, nHep, nHe0, nHepp;
   double XH, yhelium;
   double mhboltz;
-  double ethmin;                /* minimum internal energy for neutral gas */
+  double ethmin; /* minimum internal energy for neutral gas */
   double mu;
 } GasState;
-
 
 /* tabulated rates */
 typedef struct
@@ -61,15 +58,13 @@ typedef struct
   double GammaeH0, GammaeHe0, GammaeHep;
 } RateTable;
 
-
 /* photo-ionization/heating rate table */
 typedef struct
 {
-  float variable;               /* logz for UVB */
-  float gH0, gHe, gHep;         /* photo-ionization rates */
-  float eH0, eHe, eHep;         /* photo-heating rates */
+  float variable;       /* logz for UVB */
+  float gH0, gHe, gHep; /* photo-ionization rates */
+  float eH0, eHe, eHep; /* photo-heating rates */
 } PhotoTable;
-
 
 /* current interpolated photo-ionization/heating rates */
 typedef struct
@@ -77,7 +72,6 @@ typedef struct
   char J_UV;
   double gJH0, gJHep, gJHe0, epsH0, epsHep, epsHe0;
 } PhotoCurrent;
-
 
 /* cooling data */
 typedef struct

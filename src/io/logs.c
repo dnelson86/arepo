@@ -27,47 +27,41 @@
  *                void init_cpu_log(void)
  *                void write_cpu_log(void)
  *                void put_symbol(char *string, double t0, double t1, char c)
- * 
- * 
+ *
+ *
  * \par Major modifications and contributions:
- * 
+ *
  * - DD.MM.YYYY Description
  * - 07.05.2018 Prepared file for public release -- Rainer Weinberger
  */
 
-
+#include <ctype.h>
+#include <math.h>
 #include <mpi.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <math.h>
-#include <unistd.h>
-#include <ctype.h>
 #include <sys/stat.h>
-
+#include <unistd.h>
 
 #include "../main/allvars.h"
 #include "../main/proto.h"
 #include "../mesh/voronoi/voronoi.h"
 
-
-#define CPU_STRING_LEN     120
-
+#define CPU_STRING_LEN 120
 
 /*! \brief Contains informations about the used CPU timers like it's name,
  * symbols etc.
  */
 struct timer_d Timer_data[CPU_LAST + 1];
 
-
 enum timers TimerStack[TIMER_STACK_DEPTH];
 int TimerStackPos = 0;
-
 
 /*! \brief Opens files for logging.
  *
  *   This function opens various log-files that report on the status and
- *   performance of the simulation. Upon restart, the code will append to 
+ *   performance of the simulation. Upon restart, the code will append to
  *   these files.
  *
  *   \return void
@@ -92,7 +86,7 @@ void open_logfiles(void)
     terminate("error in opening file '%s'\n", buf);
 #endif /* #ifdef DETAILEDTIMINGS */
 
-  if(ThisTask != 0)             /* only the root processors writes to the log files */
+  if(ThisTask != 0) /* only the root processors writes to the log files */
     return;
 
   sprintf(buf, "%s%s", All.OutputDir, "cpu.txt");
@@ -211,14 +205,13 @@ void open_logfiles(void)
 #endif /* #ifdef OUTPUT_CPU_CSV */
 }
 
-
 /*! \brief Closes the global log-files.
  *
  *  \return void
  */
 void close_logfiles(void)
 {
-  if(ThisTask != 0)             /* only the root processors writes to the log files */
+  if(ThisTask != 0) /* only the root processors writes to the log files */
     return;
 
   fclose(FdCPU);
@@ -236,7 +229,6 @@ void close_logfiles(void)
   fclose(FdSfr);
 #endif /* #ifdef USE_SFR */
 }
-
 
 /*! \brief Writes log messages in log-files.
  *
@@ -280,15 +272,19 @@ void output_log_messages(void)
           z = 1.0 / (All.Time) - 1;
 
           if(write_logs)
-            fprintf(FdInfo, "\nSync-Point %d, TimeBin=%d, Time: %g, Redshift: %g, Systemstep: %g, Dloga: %g, Nsync-grv: %10llu, Nsync-hyd: %10llu\n",
-                    All.NumCurrentTiStep, All.HighestActiveTimeBin, All.Time, z, All.TimeStep, log(All.Time) - log(All.Time - All.TimeStep), All.GlobalNSynchronizedGravity,
-                    All.GlobalNSynchronizedHydro);
+            fprintf(FdInfo,
+                    "\nSync-Point %d, TimeBin=%d, Time: %g, Redshift: %g, Systemstep: %g, Dloga: %g, Nsync-grv: %10llu, Nsync-hyd: "
+                    "%10llu\n",
+                    All.NumCurrentTiStep, All.HighestActiveTimeBin, All.Time, z, All.TimeStep,
+                    log(All.Time) - log(All.Time - All.TimeStep), All.GlobalNSynchronizedGravity, All.GlobalNSynchronizedHydro);
 
-          printf("\n\nSync-Point %d, Time: %g, Redshift: %g, Systemstep: %g, Dloga: %g, Nsync-grv: %10llu, Nsync-hyd: %10llu\n", All.NumCurrentTiStep,
-                 All.Time, z, All.TimeStep, log(All.Time) - log(All.Time - All.TimeStep), All.GlobalNSynchronizedGravity, All.GlobalNSynchronizedHydro);
+          printf("\n\nSync-Point %d, Time: %g, Redshift: %g, Systemstep: %g, Dloga: %g, Nsync-grv: %10llu, Nsync-hyd: %10llu\n",
+                 All.NumCurrentTiStep, All.Time, z, All.TimeStep, log(All.Time) - log(All.Time - All.TimeStep),
+                 All.GlobalNSynchronizedGravity, All.GlobalNSynchronizedHydro);
 
           if(write_logs)
-            fprintf(FdTimebin, "\nSync-Point %d, Time: %g, Redshift: %g, Systemstep: %g, Dloga: %g\n", All.NumCurrentTiStep, All.Time, z, All.TimeStep, log(All.Time) - log(All.Time - All.TimeStep));
+            fprintf(FdTimebin, "\nSync-Point %d, Time: %g, Redshift: %g, Systemstep: %g, Dloga: %g\n", All.NumCurrentTiStep, All.Time,
+                    z, All.TimeStep, log(All.Time) - log(All.Time - All.TimeStep));
 
           myflush(FdInfo);
         }
@@ -296,10 +292,11 @@ void output_log_messages(void)
         {
           if(write_logs)
             fprintf(FdInfo, "\nSync-Point %d, TimeBin=%d, Time: %g, Systemstep: %g, Nsync-grv: %10llu, Nsync-hyd: %10llu\n",
-                    All.NumCurrentTiStep, All.HighestActiveTimeBin, All.Time, All.TimeStep, All.GlobalNSynchronizedGravity, All.GlobalNSynchronizedHydro);
+                    All.NumCurrentTiStep, All.HighestActiveTimeBin, All.Time, All.TimeStep, All.GlobalNSynchronizedGravity,
+                    All.GlobalNSynchronizedHydro);
 
-          printf("\n\nSync-Point %d, Time: %g, Systemstep: %g, Nsync-grv: %10llu, Nsync-hyd: %10llu\n", All.NumCurrentTiStep,
-                 All.Time, All.TimeStep, All.GlobalNSynchronizedGravity, All.GlobalNSynchronizedHydro);
+          printf("\n\nSync-Point %d, Time: %g, Systemstep: %g, Nsync-grv: %10llu, Nsync-hyd: %10llu\n", All.NumCurrentTiStep, All.Time,
+                 All.TimeStep, All.GlobalNSynchronizedGravity, All.GlobalNSynchronizedHydro);
 
           if(write_logs)
             fprintf(FdTimebin, "\nSync-Point %d, Time: %g, Systemstep: %g\n", All.NumCurrentTiStep, All.Time, All.TimeStep);
@@ -310,7 +307,7 @@ void output_log_messages(void)
       for(i = 1, tot_cumulative_grav[0] = tot_count_grav[0], tot_cumulative_sph[0] = tot_count_sph[0]; i < TIMEBINS; i++)
         {
           tot_cumulative_grav[i] = tot_count_grav[i] + tot_cumulative_grav[i - 1];
-          tot_cumulative_sph[i] = tot_count_sph[i] + tot_cumulative_sph[i - 1];
+          tot_cumulative_sph[i]  = tot_count_sph[i] + tot_cumulative_sph[i - 1];
         }
 
       for(i = 0; i < TIMEBINS; i++)
@@ -347,16 +344,20 @@ void output_log_messages(void)
       char dustString[13];
       sprintf(dustString, "%s", "");
       if(write_logs)
-        fprintf(FdTimebin, "Occupied timebins: gravity      hydro     %s     %s     dt              cumul-grav   cumul-sph A D    avg-time  cpu-frac\n", tracerString, dustString);
+        fprintf(FdTimebin,
+                "Occupied timebins: gravity      hydro     %s     %s     dt              cumul-grav   cumul-sph A D    avg-time  "
+                "cpu-frac\n",
+                tracerString, dustString);
 
       for(i = TIMEBINS - 1, tot_grav = tot_sph = 0; i >= 0; i--)
         {
           int binUsed = 0;
 
-#if (defined(SELFGRAVITY) || defined(EXTERNALGRAVITY) || defined(EXACT_GRAVITY_FOR_PARTICLE_TYPE)) && !defined(MESHRELAX)
+#if(defined(SELFGRAVITY) || defined(EXTERNALGRAVITY) || defined(EXACT_GRAVITY_FOR_PARTICLE_TYPE)) && !defined(MESHRELAX)
           if(tot_count_grav[i] > 0)
             binUsed = 1;
-#endif /* #if (defined(SELFGRAVITY) || defined(EXTERNALGRAVITY) || defined(EXACT_GRAVITY_FOR_PARTICLE_TYPE)) && !defined(MESHRELAX) */
+#endif /* #if (defined(SELFGRAVITY) || defined(EXTERNALGRAVITY) || defined(EXACT_GRAVITY_FOR_PARTICLE_TYPE)) && !defined(MESHRELAX) \
+        */
 
           if(tot_count_sph[i] > 0)
             binUsed = 1;
@@ -366,14 +367,14 @@ void output_log_messages(void)
           if(binUsed)
             {
               if(write_logs)
-                fprintf(FdTimebin,
-                        " %c  bin=%2d      %10llu  %10llu  %s  %s  %16.12f       %10llu  %10llu %c %c  %10.2f    %5.1f%%\n",
-                        TimeBinSynchronized[i] ? 'X' : ' ',
-                        i, tot_count_grav[i], tot_count_sph[i], tracerString, dustString,
-                        i > 0 ? (((integertime) 1) << i) * All.Timebase_interval : 0.0,
-                        tot_cumulative_grav[i], tot_cumulative_sph[i],
+                fprintf(FdTimebin, " %c  bin=%2d      %10llu  %10llu  %s  %s  %16.12f       %10llu  %10llu %c %c  %10.2f    %5.1f%%\n",
+                        TimeBinSynchronized[i] ? 'X' : ' ', i, tot_count_grav[i], tot_count_sph[i], tracerString, dustString,
+                        i > 0 ? (((integertime)1) << i) * All.Timebase_interval : 0.0, tot_cumulative_grav[i], tot_cumulative_sph[i],
                         (i == All.HighestActiveTimeBin) ? '<' : ' ',
-                        (All.HighestActiveTimeBin >= All.SmallestTimeBinWithDomainDecomposition && i == All.HighestActiveTimeBin) ? '*' : ' ', avg_CPU_TimeBin[i], 100.0 * frac_CPU_TimeBin[i]);
+                        (All.HighestActiveTimeBin >= All.SmallestTimeBinWithDomainDecomposition && i == All.HighestActiveTimeBin)
+                            ? '*'
+                            : ' ',
+                        avg_CPU_TimeBin[i], 100.0 * frac_CPU_TimeBin[i]);
 
               if(TimeBinSynchronized[i])
                 {
@@ -417,7 +418,6 @@ void output_log_messages(void)
   TIMER_STOP(CPU_LOGS);
 }
 
-
 /*! \brief Initializes cpu log file.
  *
  *  \return void
@@ -428,7 +428,6 @@ void init_cpu_log(void)
 
 #define TIMER_STRUCT
 #include "../utils/timer.h"
-
 
   for(i = 0; i < CPU_LAST; i++)
     {
@@ -441,9 +440,8 @@ void init_cpu_log(void)
   for(i = 0; i < CPU_LAST; i++)
     {
       All.CPU_Sum[i] = 0.;
-      CPU_Step[i] = 0.;
+      CPU_Step[i]    = 0.;
     }
-
 
   TimerStackPos = 0;
   TimerStack[0] = CPU_MISC;
@@ -451,9 +449,8 @@ void init_cpu_log(void)
   CPUThisRun = 0.;
 
   WallclockTime = second();
-  StartOfRun = second();
+  StartOfRun    = second();
 }
-
 
 /*! \brief Write the FdBalance and FdCPU files.
  *
@@ -470,9 +467,9 @@ void write_cpu_log(void)
   int write_logs = 1;
   double max_CPU_Step[CPU_LAST], avg_CPU_Step[CPU_LAST], summed_CPU_Step[CPU_LAST];
   double t0, t1, tsum;
-  double avg_total = 0;
+  double avg_total   = 0;
   double local_total = 0;
-  double max_total = 0;
+  double max_total   = 0;
   int i;
 
   TIMER_START(CPU_LOGS);
@@ -488,7 +485,6 @@ void write_cpu_log(void)
 
   if(ThisTask == 0)
     {
-
       /* sum up cpu items into groups */
       for(i = 0; i < CPU_LAST; i++)
         {
@@ -534,7 +530,8 @@ void write_cpu_log(void)
 
       if(write_logs)
         {
-          fprintf(FdBalance, "Step=%7d  sec=%10.3f Nsync-grv=%10llu Nsync-hyd=%10llu  %s\n", All.NumCurrentTiStep, max_total, All.GlobalNSynchronizedGravity, All.GlobalNSynchronizedHydro, cpu_String);
+          fprintf(FdBalance, "Step=%7d  sec=%10.3f Nsync-grv=%10llu Nsync-hyd=%10llu  %s\n", All.NumCurrentTiStep, max_total,
+                  All.GlobalNSynchronizedGravity, All.GlobalNSynchronizedHydro, cpu_String);
         }
 
       myflush(FdBalance);
@@ -542,7 +539,8 @@ void write_cpu_log(void)
       if(All.CPU_TimeBinCountMeasurements[All.HighestActiveTimeBin] == NUMBER_OF_MEASUREMENTS_TO_RECORD)
         {
           All.CPU_TimeBinCountMeasurements[All.HighestActiveTimeBin]--;
-          memmove(&All.CPU_TimeBinMeasurements[All.HighestActiveTimeBin][0], &All.CPU_TimeBinMeasurements[All.HighestActiveTimeBin][1], (NUMBER_OF_MEASUREMENTS_TO_RECORD - 1) * sizeof(double));
+          memmove(&All.CPU_TimeBinMeasurements[All.HighestActiveTimeBin][0], &All.CPU_TimeBinMeasurements[All.HighestActiveTimeBin][1],
+                  (NUMBER_OF_MEASUREMENTS_TO_RECORD - 1) * sizeof(double));
         }
 
       All.CPU_TimeBinMeasurements[All.HighestActiveTimeBin][All.CPU_TimeBinCountMeasurements[All.HighestActiveTimeBin]++] = max_total;
@@ -550,18 +548,19 @@ void write_cpu_log(void)
       if(write_logs)
         {
 #ifdef OUTPUT_CPU_CSV
-          fprintf(FdCPUCSV, "%d, %g, %d, %d, %d, ", All.NumCurrentTiStep, All.Time, NTask, All.MultipleDomains, All.HighestActiveTimeBin);
+          fprintf(FdCPUCSV, "%d, %g, %d, %d, %d, ", All.NumCurrentTiStep, All.Time, NTask, All.MultipleDomains,
+                  All.HighestActiveTimeBin);
 #endif /* #ifdef OUTPUT_CPU_CSV */
-          fprintf(FdCPU, "Step %d, Time: %g, CPUs: %d, MultiDomains: %d, HighestActiveTimeBin: %d\n", All.NumCurrentTiStep, All.Time, NTask, All.MultipleDomains, All.HighestActiveTimeBin);
+          fprintf(FdCPU, "Step %d, Time: %g, CPUs: %d, MultiDomains: %d, HighestActiveTimeBin: %d\n", All.NumCurrentTiStep, All.Time,
+                  NTask, All.MultipleDomains, All.HighestActiveTimeBin);
 
           fprintf(FdCPU, "                          diff               cumulative\n");
 
           for(i = 0; i < CPU_LAST; i++)
             {
-              fprintf(FdCPU, "%*s%*s%10.2f  %5.1f%% %10.2f  %*s%5.1f%%\n", 2 * Timer_data[i].depth, "",
-                      -20 + 2 * Timer_data[i].depth,
-                      Timer_data[i].longname, summed_CPU_Step[i],
-                      summed_CPU_Step[i] / summed_CPU_Step[CPU_ALL] * 100., All.CPU_Sum[i], 5 * Timer_data[i].depth, "", All.CPU_Sum[i] / All.CPU_Sum[CPU_ALL] * 100.);
+              fprintf(FdCPU, "%*s%*s%10.2f  %5.1f%% %10.2f  %*s%5.1f%%\n", 2 * Timer_data[i].depth, "", -20 + 2 * Timer_data[i].depth,
+                      Timer_data[i].longname, summed_CPU_Step[i], summed_CPU_Step[i] / summed_CPU_Step[CPU_ALL] * 100., All.CPU_Sum[i],
+                      5 * Timer_data[i].depth, "", All.CPU_Sum[i] / All.CPU_Sum[CPU_ALL] * 100.);
 
 #ifdef OUTPUT_CPU_CSV
               fprintf(FdCPUCSV, "%f, %f, %f, ", summed_CPU_Step[i], All.CPU_Sum[i], All.CPU_Sum[i] / All.CPU_Sum[CPU_ALL] * 100.);
@@ -589,10 +588,9 @@ void write_cpu_log(void)
   TIMER_STOP(CPU_LOGS);
 }
 
-
 /*! \brief Fill the cpu balance string representing the cpu usage in a
  *         graphical way.
- * 
+ *
  *  This function fills a fraction, specified by the parameters t0 and t1,
  *  of the array string with the debug symbol given by c.
  *
@@ -609,8 +607,8 @@ void put_symbol(char *string, double t0, double t1, char c)
 {
   int i, j;
 
-  i = (int) (t0 * CPU_STRING_LEN + 0.5);
-  j = (int) (t1 * CPU_STRING_LEN);
+  i = (int)(t0 * CPU_STRING_LEN + 0.5);
+  j = (int)(t1 * CPU_STRING_LEN);
 
   if(i < 0)
     i = 0;

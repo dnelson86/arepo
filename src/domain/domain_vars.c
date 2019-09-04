@@ -25,31 +25,28 @@
  *                void domain_allocate_lists(void)
  *                void domain_free_lists(void)
  *
- * 
+ *
  * \par Major modifications and contributions:
- * 
+ *
  * - DD.MM.YYYY Description
  * - 05.05.2018 Prepared file for public release -- Rainer Weinberger
  */
 
-
+#include <math.h>
 #include <mpi.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <strings.h>
-#include <math.h>
-
 
 #include "../main/allvars.h"
 #include "../main/proto.h"
-#include "domain.h"
 #include "../mesh/voronoi/voronoi.h"
-
+#include "domain.h"
 
 struct domain_peano_hilbert_data *mp;
 
-struct local_topnode_data *topNodes, *branchNodes;      /*!< points to the root node of the top-level tree */
+struct local_topnode_data *topNodes, *branchNodes; /*!< points to the root node of the top-level tree */
 
 double totgravcost, totpartcount, gravcost, totsphcost, sphcost;
 
@@ -71,7 +68,6 @@ int *list_loadsph;
 double *list_work;
 double *list_worksph;
 
-
 /*! \brief Allocates lists needed for communication in domain decomposition.
  *
  *  These lists are holding information about other tasks (number of particles,
@@ -81,20 +77,20 @@ double *list_worksph;
  */
 void domain_allocate_lists(void)
 {
-  Key = (peanokey *) mymalloc_movable(&Key, "domain_key", (sizeof(peanokey) * All.MaxPart));
-  toGo = (int *) mymalloc_movable(&toGo, "toGo", (sizeof(int) * NTask));
-  toGoSph = (int *) mymalloc_movable(&toGoSph, "toGoSph", (sizeof(int) * NTask));
-  toGet = (int *) mymalloc_movable(&toGet, "toGet", (sizeof(int) * NTask));
-  toGetSph = (int *) mymalloc_movable(&toGetSph, "toGetSph", (sizeof(int) * NTask));
-  list_NumPart = (int *) mymalloc_movable(&list_NumPart, "list_NumPart", (sizeof(int) * NTask));
-  list_NumGas = (int *) mymalloc_movable(&list_NumGas, "list_NumGas", (sizeof(int) * NTask));
-  list_load = (int *) mymalloc_movable(&list_load, "list_load", (sizeof(int) * NTask));
-  list_loadsph = (int *) mymalloc_movable(&list_loadsph, "list_loadsph", (sizeof(int) * NTask));
-  list_work = (double *) mymalloc_movable(&list_work, "list_work", (sizeof(double) * NTask));
-  list_worksph = (double *) mymalloc_movable(&list_worksph, "list_worksph", (sizeof(double) * NTask));
-  DomainLeaveNode = (struct domain_cost_data *) mymalloc_movable(&DomainLeaveNode, "DomainLeaveNode", (MaxTopNodes * sizeof(struct domain_cost_data)));
+  Key             = (peanokey *)mymalloc_movable(&Key, "domain_key", (sizeof(peanokey) * All.MaxPart));
+  toGo            = (int *)mymalloc_movable(&toGo, "toGo", (sizeof(int) * NTask));
+  toGoSph         = (int *)mymalloc_movable(&toGoSph, "toGoSph", (sizeof(int) * NTask));
+  toGet           = (int *)mymalloc_movable(&toGet, "toGet", (sizeof(int) * NTask));
+  toGetSph        = (int *)mymalloc_movable(&toGetSph, "toGetSph", (sizeof(int) * NTask));
+  list_NumPart    = (int *)mymalloc_movable(&list_NumPart, "list_NumPart", (sizeof(int) * NTask));
+  list_NumGas     = (int *)mymalloc_movable(&list_NumGas, "list_NumGas", (sizeof(int) * NTask));
+  list_load       = (int *)mymalloc_movable(&list_load, "list_load", (sizeof(int) * NTask));
+  list_loadsph    = (int *)mymalloc_movable(&list_loadsph, "list_loadsph", (sizeof(int) * NTask));
+  list_work       = (double *)mymalloc_movable(&list_work, "list_work", (sizeof(double) * NTask));
+  list_worksph    = (double *)mymalloc_movable(&list_worksph, "list_worksph", (sizeof(double) * NTask));
+  DomainLeaveNode = (struct domain_cost_data *)mymalloc_movable(&DomainLeaveNode, "DomainLeaveNode",
+                                                                (MaxTopNodes * sizeof(struct domain_cost_data)));
 }
-
 
 /*! \brief Frees lists needed for communication in domain decomposition.
  *
