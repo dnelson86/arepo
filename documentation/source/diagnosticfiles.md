@@ -2,18 +2,18 @@
 Diagnostic output
 *****************
 
-Arepo will not only output the simulation snapshot and reduced data via 
-the halo-finder files, but also a number of (mostly ascii) diagnostic log-
-files which contain important information about the code performance and 
-runtime behavior. 
+Arepo will not only output the simulation snapshot and reduced data
+via the halo-finder files, but also a number of (mostly ascii)
+diagnostic log- files which contain important information about the
+code performance and runtime behavior.
 
-In practice, to quickly check the performance of large
-production runs, it is useful to check the ``timebins.txt``
-and ``cpu.txt`` files. The former will give information how many simulation
-elements are on which timestep, i.e. characteristics of the system 
-simulated, the latter provides information about the computational 
-time spent in each part of the code, which can be influenced to some 
-degree by the values of the code parameters.
+In practice, to quickly check the performance of large production
+runs, it is useful to check the ``timebins.txt`` and ``cpu.txt``
+files. The former will give information how many simulation elements
+are evolved with which timestep sizes, i.e. characteristics of the
+system simulated, the latter provides information about the
+computational time spent in each part of the code, which can be
+influenced to some degree by the values of the code parameters.
 
 For ongoing simulations, these can be checked via
 
@@ -26,16 +26,16 @@ For ongoing simulations, these can be checked via
 stdout 
 ======
 
-The standard output contains general information about the simulation status 
-and many of the main routines will print general information in it.
-The output itself is mainly relevant for reconstructing what the simulation 
-did, which is needed e.g. for debugging purposes.
+The standard output contains general information about the simulation
+status and many of the main routines will print general information in
+it.  The output itself is mainly relevant for reconstructing what the
+simulation did, which is needed e.g. for debugging purposes.
 
 balance.txt 
 ===========
 
-Output of fractional cpu time used in each individual step, optimized to be 
-machine readable (while cpu.txt is more human readable).
+Output of fractional cpu time used in each individual step, optimized
+to be machine readable (while cpu.txt is more human readable).
 
 Symbol key
 
@@ -103,21 +103,24 @@ example:
 cpu.txt 
 =======
 
-Each sync-point, such a block is written. This file
-reports the result of the different timers built into Arepo. Each 
-computationally expensive operation has a different timer attached to it and 
-this way allows to closely monitor what the computational time is spent on. 
-Some of the timers (e.g. treegrav) have sub-timers for individual operations.
-This is denoted by the indentation hierarchy in the first column.
-The distribution of these timings is highly problem dependent, but it is 
-possible to identify inefficient parts of the overall algorithm and optimize
-only the most time-consuming parts of the code. There is the option 
-``OUTPUT_CPU_CSV`` which also returns this data as a ``cpu.csv`` file.
+For each sync-point, such a block is written. This file reports
+measurements of the different timers built into Arepo. Each
+computationally expensive operation has a different timer attached to
+it, thus allowing to closely monitor where the computational time is
+spent.  Some of the timers (e.g. treegrav) have sub-timers for
+individual operations.  This is denoted by the indentation hierarchy
+in the first column.  The fraction of time spent in different code
+parts, as well as the absolute amount, is highly problem
+dependent. The timers make it possible to identify inefficient parts
+of the overall algorithm and concentrate on the most time-consuming
+parts of the code. There is also the option ``OUTPUT_CPU_CSV`` which
+returns thes same data as a more easily machine-readable ``cpu.csv``
+file.
 
-The different columns are:
-name; wallclock time (in s) this step; percentage this step; wallclock time 
-(in s) cumulative; percentage up to this step. A typical block of cpu.txt looks
-the following (here a gravity-only, tree-only run):
+The different columns are: name; wallclock time (in s) this step;
+percentage this step; wallclock time (in s) cumulative; percentage up
+to this step. A typical block of cpu.txt looks the following (here a
+gravity-only, tree-only run):
 
 .. code-block :: python
 
@@ -169,13 +172,13 @@ the following (here a gravity-only, tree-only run):
       misc                    0.00    0.0%       0.02         0.0%
 
 
-domain.txt  
+domain.txt
 ==========
 
-The load-balancing (cpu work and memory) both in gravity and hydro calculation
-are reported for each timebin individually. Reported every sync-point.
-Ideally balanced runs have the value 1, the higher the value, the more 
-imbalanced the simulation.
+The load-balancing (cpu work and memory) both for gravity and hydro
+calculations is reported for each timebin individually. Reported every
+sync-point.  Ideally balanced runs have a value 1, the higher the
+value, the more imbalanced the simulation.
 
 .. code-block :: python
 
@@ -195,15 +198,15 @@ imbalanced the simulation.
     --------------------------------------------------------------------
     -----------------
 
-energy.txt  
+energy.txt
 ==========
 
-In specified intervals (in simulation time, specified by the parameter 
-`TimeBetStatistics`) the total energy and its components are computed and 
-written into `energy.txt`. This file also contains the cumulative energy 
-that had to be injected into the system to ensure positivity in thermal energy.
-All output in code units. Note: this only works with up to 6 particle types.
-The columns are
+In specified intervals (in simulation time, specified by the parameter
+`TimeBetStatistics`) the total energy and its components are computed
+and written into the file `energy.txt`. This file also contains the
+cumulative energy that had to be injected into the system to ensure
+positivity in thermal energy.  All output is in code units. Note: this
+only works with up to 6 particle types.  The columns are
 
 .. code-block :: python
 
@@ -249,11 +252,11 @@ Two example lines:
     4203e+07 0 0 0 0 0 0 0 0 1.76774e+06 0 0 0 503.306 3047.89 0 0 65.75
     86 0 7.71477
 
-info.txt  
+info.txt
 ========
 
-Every sync-point, the time-bins, time, timestep and number of active particles
-are written into this file, e.g.
+Every sync-point, the time-bins, time, timestep and number of active
+particles are written into this file, e.g.
 
 .. code-block :: python
 
@@ -264,14 +267,15 @@ are written into this file, e.g.
 memory.txt 
 ==========
 
-Arepo internally uses an own memory manager. This means that one large chunk of
-memory is reserved initially for Arepo (specified by the parameter 
-`MaxMemSize`) and allocation for individual arrays is handled internally. 
-The reason for introducing this was to avoid memory fragmentation during 
-runtime on some machines, but also to have detailed information about how much
-memory Arepo actually needs and to terminate if this exceeds a pre-defined 
-threshold. ``memory.txt`` reports this internal memory usage, and how much memory 
-is actually needed by the simulation. 
+Arepo uses its own internal memory manager. This means that one large
+chunk of memory is reserved initially for Arepo (specified by the
+parameter `MaxMemSize`), and the allocation for individual arrays is
+then handled internally from this pool.  The reason for introducing
+this was to avoid memory fragmentation during runtime on some
+machines, but also to have detailed information about how much memory
+Arepo actually needs and to terminate if this exceeds a pre-defined
+threshold. ``memory.txt`` reports this internal memory usage, and how
+much memory is actually needed by the simulation.
 
 .. code-block :: python
 
@@ -461,13 +465,15 @@ is actually needed by the simulation.
 sfr.txt 
 =======
 
-In case ``USE_SFR`` is active, Arepo will create a ``sfr.txt`` file, which reports
-the stars created in every call of the star-formation routine. 
+In case ``USE_SFR`` is active, Arepo will create a ``sfr.txt`` file,
+which reports the stars created in every call of the star-formation
+routine.
 
 The individual columns are:
 
  * time (code units or scale factor)
- * total stellar mass to be formed in timestepo prior to stochastic sampling (code units), 
+ * total stellar mass to be formed in timestepo prior to stochastic
+   sampling (code units),
  * instantaneous star formation rate of all cells (Msun/yr), 
  * instantaneous star formation rate of active cells (Msun/yr), 
  * total mass in stars formed in this timestep (after sampling) (code units), 
@@ -490,14 +496,16 @@ Example:
 timebins.txt 
 ============
 
-Arepo is optimized for time-integrating both hydrodynamical as well as 
-gravitational interactions on the largest possible timestep that is allowed by
-the timestep criterion and allowed by the binary hierarchy of time steps. 
-Each for each timestep, a linked list of particles on this particular 
-integration step exists, and their statistics are reported  in `timebins.txt`.
-In this file, the number of gas cells and collisionless particles in each 
-timebin (i.e. integration timestep) is reported for each sync-point, as well 
-as the cpu time and fraction spent on each timebin. A typical bock looks like
+Arepo is optimized for time-integrating both hydrodynamical as well as
+gravitational interactions on the largest possible timestep that is
+allowed by the timestep criterion and allowed by the binary hierarchy
+of time steps.  For each timestep, a linked list of particles on this
+particular integration step exists, and their statistics are reported
+in `timebins.txt`.  In this file, the number of gas cells and
+collisionless particles in each timebin (i.e. integration timestep) is
+reported for each sync-point, as well as the cpu time and the fraction
+of the total cost contributed by each timebin. A typical block looks
+like
 
 .. code-block :: python
 
@@ -516,12 +524,13 @@ as the cpu time and fraction spent on each timebin. A typical bock looks like
                    ------------------------
     Total active:          185         143  
 
-timings.txt  
+
+timings.txt
 ===========
 
-The performance of the gravitational tree algorithm is reported in 
-`timings.txt` for each sync-point. An example of a single sync-point looks 
-the following
+The performance of the gravitational tree algorithm is reported in
+`timings.txt` for each sync-point. An example of a single sync-point
+looks like the following
 
 .. code-block :: python
 
