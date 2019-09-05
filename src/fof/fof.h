@@ -62,9 +62,6 @@ extern struct group_properties
   MyDouble CM[3];
   MyFloat Vel[3];
   MyDouble Pos[3];
-#ifdef FOF_FUZZ_SORT_BY_NEAREST_GROUP
-  unsigned long long FuzzOffsetType[NTYPES];
-#endif /* #ifdef FOF_FUZZ_SORT_BY_NEAREST_GROUP */
 
   MyDouble FirstPos[3];
 #ifdef USE_SFR
@@ -106,11 +103,7 @@ struct data_aux_sort
   int TargetTask, TargetIndex;
   int GrNr;
   int Type;
-#ifdef FOF_FUZZ_SORT_BY_NEAREST_GROUP
-  peanokey key;
-#else  /* #ifdef FOF_FUZZ_SORT_BY_NEAREST_GROUP */
   MyIDType ID;
-#endif /* #ifdef FOF_FUZZ_SORT_BY_NEAREST_GROUP #else */
 #if defined(RECOMPUTE_POTENTIAL_IN_SNAPSHOT)
   MyIDType FileOrder;
 #endif /* #if defined(RECOMPUTE_POTENTIAL_IN_SNAPSHOT) */

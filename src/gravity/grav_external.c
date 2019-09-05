@@ -42,9 +42,9 @@
 #include <stdlib.h>
 #include <string.h>
 
-#include "../domain/domain.h"
 #include "../main/allvars.h"
 #include "../main/proto.h"
+#include "../domain/domain.h"
 
 #ifdef EXTERNALGRAVITY
 static void gravity_external_get_force(double pos[3], int type, MyIDType ID, double acc[3], double *pot, int *flag_set);

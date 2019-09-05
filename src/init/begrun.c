@@ -47,9 +47,9 @@
 #include <sys/types.h>
 #include <unistd.h>
 
-#include "../domain/domain.h"
 #include "../main/allvars.h"
 #include "../main/proto.h"
+#include "../domain/domain.h"
 #include "../mesh/voronoi/voronoi.h"
 
 #ifdef HAVE_HDF5

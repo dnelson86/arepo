@@ -48,9 +48,9 @@
 #include <stdlib.h>
 #include <string.h>
 
-#include "../domain/domain.h"
 #include "../main/allvars.h"
 #include "../main/proto.h"
+#include "../domain/domain.h"
 
 static double ThreadsCosttotal[NUM_THREADS]; /*!< The total cost of the particles/nodes processed by each thread */
 static int ThreadFirstExec[NUM_THREADS]; /*!< Keeps track, if a given thread executes the gravity_primary_loop() for the first time */

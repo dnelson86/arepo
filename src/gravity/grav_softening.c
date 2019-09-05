@@ -39,9 +39,9 @@
 #include <stdlib.h>
 #include <string.h>
 
-#include "../domain/domain.h"
 #include "../main/allvars.h"
 #include "../main/proto.h"
+#include "../domain/domain.h"
 
 /*! \brief Sets the (comoving) softening length of all particle
  *         types in the table All.SofteningTable[...].

@@ -74,10 +74,10 @@
 #include <time.h>
 #include <unistd.h>
 
-#include "../fof/fof.h"
-#include "../gitversion/version.h"
 #include "../main/allvars.h"
 #include "../main/proto.h"
+#include "../fof/fof.h"
+#include "../gitversion/version.h"
 #include "../mesh/voronoi/voronoi.h"
 
 #ifdef HAVE_HDF5

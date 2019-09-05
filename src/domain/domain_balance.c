@@ -49,10 +49,10 @@
 #include <string.h>
 #include <strings.h>
 
-#include "../domain/bsd_tree.h"
-#include "../domain/domain.h"
 #include "../main/allvars.h"
 #include "../main/proto.h"
+#include "../domain/bsd_tree.h"
+#include "../domain/domain.h"
 #include "../mesh/voronoi/voronoi.h"
 
 /* do some preparation work for use of red-black ordered binary tree based on BSD macros */

@@ -556,10 +556,6 @@ void special_particle_create_list();
 void special_particle_update_list();
 #endif /* #ifdef  EXACT_GRAVITY_FOR_PARTICLE_TYPE */
 
-#ifdef FOF_FUZZ_SORT_BY_NEAREST_GROUP
-void fof_assign_groups_to_fuzz(void);
-#endif /* #ifdef FOF_FUZZ_SORT_BY_NEAREST_GROUP */
-
 #ifdef HAVE_HDF5
 
 hid_t my_H5Fcreate(const char *fname, unsigned flags, hid_t fcpl_id, hid_t fapl_id);

@@ -42,10 +42,10 @@
 #include <sys/types.h>
 #include <unistd.h>
 
-#include "../domain/domain.h"
-#include "../fof/fof.h"
 #include "../main/allvars.h"
 #include "../main/proto.h"
+#include "../domain/domain.h"
+#include "../fof/fof.h"
 
 #ifdef SUBFIND
 #include "subfind.h"
@@ -119,11 +119,6 @@ void subfind(int num)
       }
     else
       PS[i].Utherm = 0;
-
-#ifdef FOF_FUZZ_SORT_BY_NEAREST_GROUP
-  for(i = 0; i < NumPart; i++)
-    PS[i].GroupNr = 0;
-#endif /* #ifdef FOF_FUZZ_SORT_BY_NEAREST_GROUP */
 
   SubTreeAllocFactor = All.TreeAllocFactor;
 
@@ -494,10 +489,6 @@ void subfind(int num)
   for(i = 0; i < NumPart; i++)
     if(PS[i].SubNr == TotNgroups + 1)
       PS[i].BindingEnergy = 0;
-
-#ifdef FOF_FUZZ_SORT_BY_NEAREST_GROUP
-  fof_assign_groups_to_fuzz();
-#endif /* #ifdef FOF_FUZZ_SORT_BY_NEAREST_GROUP */
 
   TIMER_STOP(CPU_SUBFIND);
   TIMER_START(CPU_SNAPSHOT);

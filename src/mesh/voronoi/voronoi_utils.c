@@ -36,6 +36,7 @@
  * - 23.05.2018 Prepared file for public release -- Rainer Weinberger
  */
 
+#include "../../main/allvars.h"
 #include "../../main/proto.h"
 
 

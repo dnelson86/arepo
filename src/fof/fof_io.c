@@ -63,10 +63,10 @@
 #include <sys/stat.h>
 #include <sys/types.h>
 
-#include "../domain/domain.h"
-#include "../gitversion/version.h"
 #include "../main/allvars.h"
 #include "../main/proto.h"
+#include "../domain/domain.h"
+#include "../gitversion/version.h"
 #include "../subfind/subfind.h"
 #include "fof.h"
 
@@ -601,10 +601,6 @@ void fof_subfind_fill_write_buffer(enum fof_subfind_iofields blocknr, int *start
   ip  = (int *)CommBuffer;
   idp = (MyIDType *)CommBuffer;
 
-#ifdef FOF_FUZZ_SORT_BY_NEAREST_GROUP
-  unsigned long long *llp = (unsigned long long *)CommBuffer;
-#endif /* #ifdef FOF_FUZZ_SORT_BY_NEAREST_GROUP */
-
   pindex = *startindex;
 
   for(n = 0; n < pc; pindex++, n++)
@@ -1120,10 +1116,6 @@ void fof_subfind_fill_write_buffer(enum fof_subfind_iofields blocknr, int *start
 #endif /* #ifdef SUBFIND */
             break;
           case IO_FOF_FUZZOFFTYPE:
-#ifdef FOF_FUZZ_SORT_BY_NEAREST_GROUP
-            for(k = 0; k < NTYPES; k++)
-              *llp++ = Group[pindex].FuzzOffsetType[k];
-#endif /* #ifdef FOF_FUZZ_SORT_BY_NEAREST_GROUP */
             break;
           case IO_SUB_LEN:
 #ifdef SUBFIND
@@ -2520,9 +2512,6 @@ int fof_subfind_blockpresent(enum fof_subfind_iofields blocknr)
         break;
 
       case IO_FOF_FUZZOFFTYPE:
-#ifdef FOF_FUZZ_SORT_BY_NEAREST_GROUP
-        present = 1;
-#endif /* #ifdef FOF_FUZZ_SORT_BY_NEAREST_GROUP */
         break;
 
       case IO_FOF_M_MEAN200:

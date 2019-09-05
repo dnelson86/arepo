@@ -41,10 +41,10 @@
 #include <string.h>
 #include <time.h>
 
-#include "../domain/bsd_tree.h"
-#include "../domain/domain.h"
 #include "../main/allvars.h"
 #include "../main/proto.h"
+#include "../domain/bsd_tree.h"
+#include "../domain/domain.h"
 
 /* \brief Structure of my tree nodes.
  */

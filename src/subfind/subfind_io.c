@@ -40,10 +40,10 @@
 #include <sys/types.h>
 #include <unistd.h>
 
-#include "../domain/domain.h"
-#include "../fof/fof.h"
 #include "../main/allvars.h"
 #include "../main/proto.h"
+#include "../domain/domain.h"
+#include "../fof/fof.h"
 
 #ifdef SUBFIND
 #include "subfind.h"

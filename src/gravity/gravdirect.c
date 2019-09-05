@@ -43,9 +43,9 @@
 #include <stdlib.h>
 #include <string.h>
 
-#include "../domain/domain.h"
 #include "../main/allvars.h"
 #include "../main/proto.h"
+#include "../domain/domain.h"
 
 #ifdef ALLOW_DIRECT_SUMMATION
 static int Nimport;

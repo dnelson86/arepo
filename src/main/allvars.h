@@ -1306,9 +1306,6 @@ extern struct subfind_data
   MyFloat SubfindVelDisp;   /* 3D DM velocity dispersion */
 #endif                      /* #ifdef SUBFIND_CALC_MORE */
 
-#ifdef FOF_FUZZ_SORT_BY_NEAREST_GROUP
-  int GroupNr;
-#endif /* #ifdef FOF_FUZZ_SORT_BY_NEAREST_GROUP */
 #endif /* #ifdef SUBFIND */
 } * PS;
 

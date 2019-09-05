@@ -49,9 +49,9 @@
 #include <sys/stat.h>
 #include <sys/types.h>
 
-#include "../domain/domain.h"
 #include "../main/allvars.h"
 #include "../main/proto.h"
+#include "../domain/domain.h"
 #include "../subfind/subfind.h"
 #include "fof.h"
 
@@ -350,11 +350,7 @@ void fof_prepare_output_order(void)
       aux_sort[i].DM_BindingEnergy = PS[i].BindingEnergy;
 #endif /* #ifdef SUBFIND */
       aux_sort[i].Type = P[i].Type;
-#ifdef FOF_FUZZ_SORT_BY_NEAREST_GROUP
-      aux_sort[i].key = PS[i].GroupNr;
-#else  /* #ifdef FOF_FUZZ_SORT_BY_NEAREST_GROUP */
       aux_sort[i].ID = P[i].ID;
-#endif /* #ifdef FOF_FUZZ_SORT_BY_NEAREST_GROUP #else */
 #if defined(RECOMPUTE_POTENTIAL_IN_SNAPSHOT)
       aux_sort[i].FileOrder = P[i].FileOrder;
 #endif /* #if defined(RECOMPUTE_POTENTIAL_IN_SNAPSHOT) */

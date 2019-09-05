@@ -73,9 +73,9 @@
 #include <string.h>
 #include <time.h>
 
-#include "../domain/domain.h"
 #include "../main/allvars.h"
 #include "../main/proto.h"
+#include "../domain/domain.h"
 
 static int *th_list;
 static unsigned char *level_list;

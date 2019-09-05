@@ -38,9 +38,9 @@
 
 #include <mpi.h>
 
-#include "../domain/domain.h"
 #include "../main/allvars.h"
 #include "../main/proto.h"
+#include "../domain/domain.h"
 #include "add_bggrid.h"
 
 #ifdef ADDBACKGROUNDGRID

@@ -40,9 +40,9 @@
 #include <stdlib.h>
 #include <string.h>
 
-#include "../fof/fof.h"
 #include "../main/allvars.h"
 #include "../main/proto.h"
+#include "../fof/fof.h"
 #include "subfind.h"
 
 #ifdef SUBFIND

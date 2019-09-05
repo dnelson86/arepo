@@ -64,9 +64,9 @@
 #include <sys/stat.h>
 #include <sys/types.h>
 
-#include "../domain/domain.h"
 #include "../main/allvars.h"
 #include "../main/proto.h"
+#include "../domain/domain.h"
 #include "../subfind/subfind.h"
 #include "fof.h"
 
@@ -166,19 +166,11 @@ int fof_compare_aux_sort_GrNr(const void *a, const void *b)
     return +1;
 #endif /* #ifdef SUBFIND */
 
-#if defined(FOF_FUZZ_SORT_BY_NEAREST_GROUP)
-  if(((struct data_aux_sort *)a)->key < ((struct data_aux_sort *)b)->key)
-    return -1;
-
-  if(((struct data_aux_sort *)a)->key > ((struct data_aux_sort *)b)->key)
-    return +1;
-#else  /* #if defined(FOF_FUZZ_SORT_BY_NEAREST_GROUP) */
   if(((struct data_aux_sort *)a)->ID < ((struct data_aux_sort *)b)->ID)
     return -1;
 
   if(((struct data_aux_sort *)a)->ID > ((struct data_aux_sort *)b)->ID)
     return +1;
-#endif /* #if defined(FOF_FUZZ_SORT_BY_NEAREST_GROUP) #else */
 
   return 0;
 }

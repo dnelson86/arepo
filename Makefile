@@ -231,7 +231,6 @@ ifeq (FOF,$(findstring FOF,$(CONFIGVARS)))
 OBJS    += fof/fof.o \
            fof/fof_distribute.o \
            fof/fof_findgroups.o \
-           fof/fof_fuzz.o \
            fof/fof_io.o \
            fof/fof_nearest.o \
            fof/fof_sort_kernels.o \

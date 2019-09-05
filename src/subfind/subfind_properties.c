@@ -218,10 +218,6 @@ void subfind_determine_sub_halo_properties(struct unbind_data *d, int num, struc
       if(SubThisTask == mincpu)
         {
           mostboundid = P[minindex].ID;
-#ifdef FOF_FUZZ_SORT_BY_NEAREST_GROUP
-          if(subnr == 0)
-            PS[minindex].GroupNr = grnr + 1;
-#endif /* #ifdef FOF_FUZZ_SORT_BY_NEAREST_GROUP */
         }
 
       MPI_Bcast(&mostboundid, sizeof(mostboundid), MPI_BYTE, mincpu, SubComm);
@@ -232,10 +228,6 @@ void subfind_determine_sub_halo_properties(struct unbind_data *d, int num, struc
         terminate("minindex == -1");
 
       mostboundid = P[minindex].ID;
-#ifdef FOF_FUZZ_SORT_BY_NEAREST_GROUP
-      if(subnr == 0)
-        PS[minindex].GroupNr = grnr + 1;
-#endif /* #ifdef FOF_FUZZ_SORT_BY_NEAREST_GROUP */
     }
 
   /* let's get bulk velocity and the center-of-mass */

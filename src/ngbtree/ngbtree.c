@@ -54,10 +54,10 @@
 #include <string.h>
 #include <time.h>
 
-#include "../domain/domain.h"
-#include "../gravity/forcetree.h"
 #include "../main/allvars.h"
 #include "../main/proto.h"
+#include "../domain/domain.h"
+#include "../gravity/forcetree.h"
 
 static void ngb_record_topnode_siblings(int no, int sib);
 static int ngb_treebuild_construct(int npart);

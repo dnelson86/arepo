@@ -753,11 +753,6 @@ void init_io_fields()
   init_snapshot_type(IO_SUBFINDVELDISP, SN_NO_SUBBOX);
 #endif /* #ifdef SAVE_HSML_IN_SNAPSHOT */
 
-#if defined(FOF_FUZZ_SORT_BY_NEAREST_GROUP) && (FOF_FUZZ_SORT_BY_NEAREST_GROUP == 1)
-  init_field(IO_GROUPNR, "GROU", "GroupNr", MEM_INT, FILE_INT, FILE_NONE, 1, A_PS, &PS[0].GroupNr, 0, ALL_TYPES);
-  init_units(IO_GROUPNR, 0, 0, 0, 0, 0, 0);
-#endif /* #if defined(FOF_FUZZ_SORT_BY_NEAREST_GROUP) && (FOF_FUZZ_SORT_BY_NEAREST_GROUP ==  1) */
-
 #if defined(REFINEMENT_HIGH_RES_GAS)
   init_field(IO_HIGHRESMASS, "HRGM", "HighResGasMass", MEM_MY_FLOAT, FILE_MY_IO_FLOAT, FILE_NONE, 1, A_SPHP, &SphP[0].HighResMass, 0,
              GAS_ONLY);

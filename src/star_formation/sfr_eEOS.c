@@ -42,9 +42,10 @@
 #include <stdlib.h>
 #include <string.h>
 
-#include "../gravity/forcetree.h"
 #include "../main/allvars.h"
 #include "../main/proto.h"
+#include "../gravity/forcetree.h"
+
 
 #ifdef USE_SFR
 

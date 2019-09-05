@@ -52,9 +52,9 @@
 #include <sys/stat.h>
 #include <sys/types.h>
 
-#include "../domain/domain.h"
 #include "../main/allvars.h"
 #include "../main/proto.h"
+#include "../domain/domain.h"
 #include "../subfind/subfind.h"
 #include "fof.h"
 

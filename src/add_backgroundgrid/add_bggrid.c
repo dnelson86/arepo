@@ -34,10 +34,10 @@
  * - 11.05.2018 Prepared file for public release -- Rainer Weinberger
  */
 
-#include "add_bggrid.h"
-#include "../domain/domain.h"
 #include "../main/allvars.h"
 #include "../main/proto.h"
+#include "add_bggrid.h"
+#include "../domain/domain.h"
 
 #ifdef ADDBACKGROUNDGRID
 
