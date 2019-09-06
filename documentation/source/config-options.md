@@ -860,13 +860,6 @@ Linking length for FoF in units of the mean inter-particle separation
 
 -----
 
-**FOF_FUZZ_SORT_BY_NEAREST_GROUP=0**
-
-Sort fuzz particles by nearest group and generate offset table in
-catalog (=1 writes nearest group number to snapshot).
-
------
-
 **FOF_STOREIDS**
 
 Normally, the snapshots produced with a FOF group catalogue are stored

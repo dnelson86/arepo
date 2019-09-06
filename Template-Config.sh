@@ -135,7 +135,6 @@
 #FOF_SECONDARY_LINK_TARGET_TYPES=  # should normally be set to a list of all dark matter types (in zoom runs), if not set defaults to FOF_PRIMARY_LINK_TYPES
 #FOF_GROUP_MIN_LEN=32          # Minimum number of particles in one group (default is 32)
 #FOF_LINKLENGTH=0.16           # Linkinglength for FoF (default=0.2)
-#FOF_FUZZ_SORT_BY_NEAREST_GROUP=0  # sort fuzz particles by nearest group and generate offset table in catalog (=1 writes nearest group number to snapshot)
 #FOF_STOREIDS                  # store IDs in group/subfind catalogue, do not order particles in snapshot files by group order
 
 #--------------------------------------- Subfind
