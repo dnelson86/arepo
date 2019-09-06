@@ -107,9 +107,9 @@
 #include <gsl/gsl_linalg.h>
 #include <gmp.h>
 
-
 #include "../../main/allvars.h"
 #include "../../main/proto.h"
+
 #include "voronoi.h"
 
 

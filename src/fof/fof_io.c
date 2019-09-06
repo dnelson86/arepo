@@ -65,6 +65,7 @@
 
 #include "../main/allvars.h"
 #include "../main/proto.h"
+
 #include "../domain/domain.h"
 #include "../gitversion/version.h"
 #include "../subfind/subfind.h"

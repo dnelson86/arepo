@@ -46,6 +46,7 @@
 
 #include "../main/allvars.h"
 #include "../main/proto.h"
+
 #include "../mesh/voronoi/voronoi.h"
 
 #define CPU_STRING_LEN 120

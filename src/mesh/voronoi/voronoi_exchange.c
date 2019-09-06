@@ -43,9 +43,9 @@
 #include <math.h>
 #include <gsl/gsl_math.h>
 
-
 #include "../../main/allvars.h"
 #include "../../main/proto.h"
+
 #include "voronoi.h"
 
 

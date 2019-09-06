@@ -43,6 +43,7 @@
 
 #include "../main/allvars.h"
 #include "../main/proto.h"
+
 #include "../domain/domain.h"
 #include "../fof/fof.h"
 #include "subfind.h"

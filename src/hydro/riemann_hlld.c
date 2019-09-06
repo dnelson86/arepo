@@ -69,6 +69,7 @@
 
 #include "../main/allvars.h"
 #include "../main/proto.h"
+
 #include "../mesh/voronoi/voronoi.h"
 
 #if defined(RIEMANN_HLLD)

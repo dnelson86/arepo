@@ -50,6 +50,7 @@
 
 #include "../main/allvars.h"
 #include "../main/proto.h"
+
 #include "../domain/domain.h"
 
 static double ThreadsCosttotal[NUM_THREADS]; /*!< The total cost of the particles/nodes processed by each thread */

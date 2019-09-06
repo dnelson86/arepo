@@ -45,6 +45,7 @@
 
 #include "../main/allvars.h"
 #include "../main/proto.h"
+
 #include "../gravity/forcetree.h"
 
 #ifdef USE_SFR

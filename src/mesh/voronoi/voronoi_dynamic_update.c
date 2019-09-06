@@ -40,9 +40,9 @@
 #include <string.h>
 #include <math.h>
 
-
 #include "../../main/allvars.h"
 #include "../../main/proto.h"
+
 #include "voronoi.h"
 
 

@@ -38,6 +38,7 @@
 
 #include "../main/allvars.h"
 #include "../main/proto.h"
+
 #include "../mesh/voronoi/voronoi.h"
 
 int N_Grad = 0;

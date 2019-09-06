@@ -44,10 +44,10 @@
  * - 11.05.2018 Prepared file for public release -- Rainer Weinberger
  */
 
+#include <gsl/gsl_linalg.h>
+
 #include "../main/allvars.h"
 #include "../main/proto.h"
-
-#include <gsl/gsl_linalg.h>
 
 /*! \brief Main routine to update the primitive hydrodynamics variables from
  *         the conserved ones.

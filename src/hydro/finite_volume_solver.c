@@ -96,6 +96,7 @@
 
 #include "../main/allvars.h"
 #include "../main/proto.h"
+
 #include "../mesh/voronoi/voronoi.h"
 
 /*! \brief Data needed for flux calculation.
