@@ -39,29 +39,25 @@
  *                void voronoi_1D_order(void)
  *                int voronoi_1D_compare_key(const void *a, const void *b)
  *                void voronoi_1D_reorder_gas(void)
- * 
+ *
  * \par Major modifications and contributions:
- * 
+ *
  * - DD.MM.YYYY Description
  * - 21.05.2018 Prepared file for public release -- Rainer Weinberger
  */
 
-
+#include <gmp.h>
+#include <math.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <math.h>
-#include <gmp.h>
-
 
 #include "../../main/allvars.h"
 #include "../../main/proto.h"
 
 #include "voronoi.h"
 
-
-#if defined (ONEDIMS) && !defined (ONEDIMS_SPHERICAL)   /* will only be compiled in 1D case */
-
+#if defined(ONEDIMS) && !defined(ONEDIMS_SPHERICAL) /* will only be compiled in 1D case */
 
 /*! \brief Output of Voroioi mesh to file.
  *
@@ -69,11 +65,10 @@
  *
  *  \return void
  */
-void write_voronoi_mesh(tessellation * T, char *fname, int writeTask, int lastTask)
+void write_voronoi_mesh(tessellation *T, char *fname, int writeTask, int lastTask)
 {
   terminate("write_voronoi_mesh not supported in 1d case!");
 }
-
 
 /*! \brief Initialises 1d tessellation and create all-enclosing segment.
  *
@@ -82,7 +77,7 @@ void write_voronoi_mesh(tessellation * T, char *fname, int writeTask, int lastTa
  *
  *  \return void
  */
-void initialize_and_create_first_tetra(tessellation * T)
+void initialize_and_create_first_tetra(tessellation *T)
 {
   char msg[200];
 
@@ -106,7 +101,6 @@ void initialize_and_create_first_tetra(tessellation * T)
   T->Nvf = 0;
   T->Ndt = 0;
 
-
   T->VF = mymalloc_movable(&T->VF, "VF", T->MaxNvf * sizeof(face));
 
   T->DP = mymalloc_movable(&T->DP, "DP", (T->MaxNdp + 5) * sizeof(point));
@@ -114,7 +108,6 @@ void initialize_and_create_first_tetra(tessellation * T)
 
   T->DT = mymalloc_movable(&T->DT, "DT", T->MaxNdt * sizeof(tetra));
 }
-
 
 /*! \brief Computes circumcircles in 1d.
  *
@@ -125,10 +118,7 @@ void initialize_and_create_first_tetra(tessellation * T)
  *
  *  \return void
  */
-void compute_circumcircles(tessellation * T)
-{
-}
-
+void compute_circumcircles(tessellation *T) {}
 
 /*! \brief Empty funciton in 1d case.
  *
@@ -137,10 +127,7 @@ void compute_circumcircles(tessellation * T)
  *
  * \return void
  */
-void set_integers_for_point(tessellation * T, int pp)
-{
-}
-
+void set_integers_for_point(tessellation *T, int pp) {}
 
 /*! \brief Empty funciton in 1d case.
  *
@@ -149,11 +136,7 @@ void set_integers_for_point(tessellation * T, int pp)
  *
  * \return 0
  */
-int insert_point(tessellation * T, int pp, int ttstart)
-{
-  return 0;
-}
-
+int insert_point(tessellation *T, int pp, int ttstart) { return 0; }
 
 /*! \brief Wrapper routine to search for ghost cells for boundary cells.
  *
@@ -161,11 +144,7 @@ int insert_point(tessellation * T, int pp, int ttstart)
  *
  *  \return 0
  */
-int voronoi_ghost_search(tessellation * T)
-{
-  return voronoi_ghost_search_alternative(T);
-}
-
+int voronoi_ghost_search(tessellation *T) { return voronoi_ghost_search_alternative(T); }
 
 /*! \brief Empty funciton in 1d case.
  *
@@ -174,11 +153,7 @@ int voronoi_ghost_search(tessellation * T)
  *
  * \return 0
  */
-int count_undecided_tetras(tessellation * T)
-{
-  return 0;
-}
-
+int count_undecided_tetras(tessellation *T) { return 0; }
 
 /*! \brief Searches for ghost cells in 1d Voronoi mesh.
  *
@@ -188,54 +163,53 @@ int count_undecided_tetras(tessellation * T)
  *
  *  \return 0
  */
-int voronoi_ghost_search_alternative(tessellation * T)
+int voronoi_ghost_search_alternative(tessellation *T)
 {
   double xl, xr;
   int index_l, index_r;
 
 #if defined(REFLECTIVE_X)
-  xl = -P[0].Pos[0];
+  xl      = -P[0].Pos[0];
   index_l = 0;
 
-  xr = boxSize_X + (boxSize_X - P[NumGas - 1].Pos[0]);
+  xr      = boxSize_X + (boxSize_X - P[NumGas - 1].Pos[0]);
   index_r = NumGas - 1;
-#else /* #if defined(REFLECTIVE_X) */
-  xl = P[NumGas - 1].Pos[0] - boxSize_X;
+#else  /* #if defined(REFLECTIVE_X) */
+  xl      = P[NumGas - 1].Pos[0] - boxSize_X;
   index_l = NumGas - 1;
 
-  xr = P[0].Pos[0] + boxSize_X;
+  xr      = P[0].Pos[0] + boxSize_X;
   index_r = 0;
 #endif /* #if defined(REFLECTIVE_X) #else */
 
   point *DP = T->DP;
 
-  DP[-1].x = xl;
-  DP[-1].y = 0;
-  DP[-1].z = 0;
-  DP[-1].task = ThisTask;
-  DP[-1].ID = P[index_l].ID;
-  DP[-1].index = index_l + NumGas;      /* this is a mirrored local point */
+  DP[-1].x     = xl;
+  DP[-1].y     = 0;
+  DP[-1].z     = 0;
+  DP[-1].task  = ThisTask;
+  DP[-1].ID    = P[index_l].ID;
+  DP[-1].index = index_l + NumGas; /* this is a mirrored local point */
 #if defined(REFLECTIVE_X)
   DP[-1].image_flags = REFL_X_FLAGS;
-#if (REFLECTIVE_X == 2)
+#if(REFLECTIVE_X == 2)
   DP[-1].image_flags |= OUTFLOW_X;
 #endif /* #if (REFLECTIVE_X == 2) */
 #endif /* #if defined(REFLECTIVE_X) */
-  DP[NumGas].x = xr;
-  DP[NumGas].y = 0;
-  DP[NumGas].z = 0;
-  DP[NumGas].task = ThisTask;
-  DP[NumGas].ID = P[index_r].ID;
-  DP[NumGas].index = index_r + NumGas;  /* this is a mirrored local point */
+  DP[NumGas].x     = xr;
+  DP[NumGas].y     = 0;
+  DP[NumGas].z     = 0;
+  DP[NumGas].task  = ThisTask;
+  DP[NumGas].ID    = P[index_r].ID;
+  DP[NumGas].index = index_r + NumGas; /* this is a mirrored local point */
 #if defined(REFLECTIVE_X)
   DP[NumGas].image_flags = REFL_X_FLAGS;
-#if (REFLECTIVE_X == 2)
+#if(REFLECTIVE_X == 2)
   DP[NumGas].image_flags |= OUTFLOW_X;
 #endif /* #if (REFLECTIVE_X == 2) */
 #endif /* #if defined(REFLECTIVE_X) */
   return 0;
 }
-
 
 /*! \brief Computes faces and volume of cells in 1d Voronoi mesh.
  *
@@ -249,9 +223,9 @@ void compute_voronoi_faces_and_volumes(void)
 
   tessellation *T = &Mesh;
 
-  T->Nvf = 0;
+  T->Nvf    = 0;
   point *DP = T->DP;
-  face *VF = T->VF;
+  face *VF  = T->VF;
 
   for(i = -1; i < NumGas; i++)
     {
@@ -260,8 +234,8 @@ void compute_voronoi_faces_and_volumes(void)
 
       VF[T->Nvf].cx = 0.5 * (DP[i].x + DP[i + 1].x);
 
-      VF[T->Nvf].cy = 0;
-      VF[T->Nvf].cz = 0;
+      VF[T->Nvf].cy   = 0;
+      VF[T->Nvf].cz   = 0;
       VF[T->Nvf].area = 1;
 
       T->Nvf++;
@@ -269,7 +243,7 @@ void compute_voronoi_faces_and_volumes(void)
 
   for(i = 0; i < NumGas; i++)
     {
-      SphP[i].Volume = VF[i + 1].cx - VF[i].cx;
+      SphP[i].Volume    = VF[i + 1].cx - VF[i].cx;
       SphP[i].Center[0] = 0.5 * (VF[i + 1].cx + VF[i].cx);
       SphP[i].Center[1] = 0;
       SphP[i].Center[2] = 0;
@@ -278,19 +252,15 @@ void compute_voronoi_faces_and_volumes(void)
     }
 }
 
-
 /*! \brief Data for 1d Voronoi mesh.
  */
 static struct voronoi_1D_data
 {
   double x;
   int index;
-}
- *mp;
-
+} * mp;
 
 static int *Id;
-
 
 /*! \brief Sort cells by their position and reorder in P and SphP array.
  *
@@ -304,17 +274,16 @@ void voronoi_1D_order(void)
 
   if(NumGas)
     {
-      mp = (struct voronoi_1D_data *) mymalloc("mp", sizeof(struct voronoi_1D_data) * NumGas);
-      Id = (int *) mymalloc("Id", sizeof(int) * NumGas);
+      mp = (struct voronoi_1D_data *)mymalloc("mp", sizeof(struct voronoi_1D_data) * NumGas);
+      Id = (int *)mymalloc("Id", sizeof(int) * NumGas);
 
       for(i = 0; i < NumGas; i++)
         {
           mp[i].index = i;
-          mp[i].x = P[i].Pos[0];
+          mp[i].x     = P[i].Pos[0];
         }
 
       mysort(mp, NumGas, sizeof(struct voronoi_1D_data), voronoi_1D_compare_key);
-
 
       for(i = 0; i < NumGas; i++)
         Id[mp[i].index] = i;
@@ -328,7 +297,6 @@ void voronoi_1D_order(void)
   mpi_printf("1D order done.\n");
 }
 
-
 /*! \brief Compare x value of voronoi_1D_data objects.
  *
  *  \param[in] a Pointer to first voronoi_1D_data object.
@@ -338,15 +306,14 @@ void voronoi_1D_order(void)
  */
 int voronoi_1D_compare_key(const void *a, const void *b)
 {
-  if(((struct voronoi_1D_data *) a)->x < (((struct voronoi_1D_data *) b)->x))
+  if(((struct voronoi_1D_data *)a)->x < (((struct voronoi_1D_data *)b)->x))
     return -1;
 
-  if(((struct voronoi_1D_data *) a)->x > (((struct voronoi_1D_data *) b)->x))
+  if(((struct voronoi_1D_data *)a)->x > (((struct voronoi_1D_data *)b)->x))
     return +1;
 
   return 0;
 }
-
 
 /*! \brief Order the gas cells according to the index given in the ID array.
  *
@@ -363,28 +330,28 @@ void voronoi_1D_reorder_gas(void)
     {
       if(Id[i] != i)
         {
-          Psource = P[i];
+          Psource    = P[i];
           SphPsource = SphP[i];
 
           idsource = Id[i];
-          dest = Id[i];
+          dest     = Id[i];
 
           do
             {
-              Psave = P[dest];
+              Psave    = P[dest];
               SphPsave = SphP[dest];
-              idsave = Id[dest];
+              idsave   = Id[dest];
 
-              P[dest] = Psource;
+              P[dest]    = Psource;
               SphP[dest] = SphPsource;
-              Id[dest] = idsource;
+              Id[dest]   = idsource;
 
               if(dest == i)
                 break;
 
-              Psource = Psave;
+              Psource    = Psave;
               SphPsource = SphPsave;
-              idsource = idsave;
+              idsource   = idsave;
 
               dest = idsource;
             }
@@ -392,6 +359,5 @@ void voronoi_1D_reorder_gas(void)
         }
     }
 }
-
 
 #endif /* #if defined (ONEDIMS) && !defined (ONEDIMS_SPHERICAL) */

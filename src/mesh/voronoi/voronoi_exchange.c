@@ -27,27 +27,25 @@
  *                void exchange_primitive_variables_and_gradients(void)
  *                int compare_primexch(const void *a, const void *b)
  *                void voronoi_update_ghost_velvertex(void)
- * 
- * 
+ *
+ *
  * \par Major modifications and contributions:
- * 
+ *
  * - DD.MM.YYYY Description
  * - 22.05.2018 Prepared file for public release -- Rainer Weinberger
  */
 
-
+#include <gsl/gsl_math.h>
+#include <math.h>
 #include <mpi.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <math.h>
-#include <gsl/gsl_math.h>
 
 #include "../../main/allvars.h"
 #include "../../main/proto.h"
 
 #include "voronoi.h"
-
 
 /*! \brief Auxiliary data structure for communication of primitive variables.
  *
@@ -55,8 +53,7 @@
 struct data_primexch_compare
 {
   int rank, task, index;
-} *SortPrimExch, *SortPrimExch2;
-
+} * SortPrimExch, *SortPrimExch2;
 
 /*! \brief Prepares exchange of primitive variables.
  *
@@ -73,7 +70,7 @@ void mesh_setup_exchange(void)
   struct indexexch
   {
     int task, index;
-  } *tmpIndexExch, *IndexExch;
+  } * tmpIndexExch, *IndexExch;
   int i, j, p, task, off, count;
   int ngrp, recvTask, place;
 
@@ -109,8 +106,8 @@ void mesh_setup_exchange(void)
         }
     }
 
-  IndexExch = (struct indexexch *) mymalloc("IndexExch", Mesh_nimport * sizeof(struct indexexch));
-  tmpIndexExch = (struct indexexch *) mymalloc("tmpIndexExch", Mesh_nexport * sizeof(struct indexexch));
+  IndexExch    = (struct indexexch *)mymalloc("IndexExch", Mesh_nimport * sizeof(struct indexexch));
+  tmpIndexExch = (struct indexexch *)mymalloc("tmpIndexExch", Mesh_nexport * sizeof(struct indexexch));
 
   /* prepare data for export */
   for(j = 0; j < NTask; j++)
@@ -126,9 +123,9 @@ void mesh_setup_exchange(void)
           if((task = ListExports[listp].origin) != ThisTask)
             {
               place = ListExports[listp].index;
-              off = Mesh_Send_offset[task] + Mesh_Send_count[task]++;
+              off   = Mesh_Send_offset[task] + Mesh_Send_count[task]++;
 
-              tmpIndexExch[off].task = ThisTask;
+              tmpIndexExch[off].task  = ThisTask;
               tmpIndexExch[off].index = place;
             }
           listp = ListExports[listp].nextexport;
@@ -145,9 +142,10 @@ void mesh_setup_exchange(void)
           if(Mesh_Send_count[recvTask] > 0 || Mesh_Recv_count[recvTask] > 0)
             {
               /* get the particles */
-              MPI_Sendrecv(&tmpIndexExch[Mesh_Send_offset[recvTask]], Mesh_Send_count[recvTask]
-                           * sizeof(struct indexexch), MPI_BYTE, recvTask, TAG_DENS_A,
-                           &IndexExch[Mesh_Recv_offset[recvTask]], Mesh_Recv_count[recvTask] * sizeof(struct indexexch), MPI_BYTE, recvTask, TAG_DENS_A, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
+              MPI_Sendrecv(&tmpIndexExch[Mesh_Send_offset[recvTask]], Mesh_Send_count[recvTask] * sizeof(struct indexexch), MPI_BYTE,
+                           recvTask, TAG_DENS_A, &IndexExch[Mesh_Recv_offset[recvTask]],
+                           Mesh_Recv_count[recvTask] * sizeof(struct indexexch), MPI_BYTE, recvTask, TAG_DENS_A, MPI_COMM_WORLD,
+                           MPI_STATUS_IGNORE);
             }
         }
     }
@@ -156,26 +154,26 @@ void mesh_setup_exchange(void)
 
   /* now we need to associate the imported data with the points stored in the DP[] array */
 
-  SortPrimExch = (struct data_primexch_compare *) mymalloc("SortPrimExch", Mesh_nimport * sizeof(struct data_primexch_compare));
+  SortPrimExch = (struct data_primexch_compare *)mymalloc("SortPrimExch", Mesh_nimport * sizeof(struct data_primexch_compare));
 
   for(i = 0; i < Mesh_nimport; i++)
     {
-      SortPrimExch[i].rank = i;
-      SortPrimExch[i].task = IndexExch[i].task;
+      SortPrimExch[i].rank  = i;
+      SortPrimExch[i].task  = IndexExch[i].task;
       SortPrimExch[i].index = IndexExch[i].index;
     }
 
   /* let sort the data according to task and index */
   mysort(SortPrimExch, Mesh_nimport, sizeof(struct data_primexch_compare), compare_primexch);
 
-  SortPrimExch2 = (struct data_primexch_compare *) mymalloc("SortPrimExch2", Mesh.Ndp * sizeof(struct data_primexch_compare));
+  SortPrimExch2 = (struct data_primexch_compare *)mymalloc("SortPrimExch2", Mesh.Ndp * sizeof(struct data_primexch_compare));
 
   for(i = 0, count = 0; i < Mesh.Ndp; i++)
     {
       if(Mesh.DP[i].task != ThisTask)
         {
-          SortPrimExch2[count].rank = i;
-          SortPrimExch2[count].task = Mesh.DP[i].task;
+          SortPrimExch2[count].rank  = i;
+          SortPrimExch2[count].task  = Mesh.DP[i].task;
           SortPrimExch2[count].index = Mesh.DP[i].index;
           count++;
         }
@@ -195,7 +193,8 @@ void mesh_setup_exchange(void)
       if(j >= Mesh_nimport)
         terminate("j >= Mesh_nimport");
 
-      Mesh.DP[SortPrimExch2[i].rank].index = SortPrimExch[j].rank;      /* note: this change is now permanent and available for next exchange */
+      Mesh.DP[SortPrimExch2[i].rank].index =
+          SortPrimExch[j].rank; /* note: this change is now permanent and available for next exchange */
     }
 
   myfree(SortPrimExch2);
@@ -203,12 +202,11 @@ void mesh_setup_exchange(void)
   myfree(IndexExch);
 
   /* allocate structures needed to exchange the actual information for ghost cells */
-  PrimExch = (struct primexch *) mymalloc_movable(&PrimExch, "PrimExch", Mesh_nimport * sizeof(struct primexch));
-  GradExch = (struct grad_data *) mymalloc_movable(&GradExch, "GradExch", Mesh_nimport * sizeof(struct grad_data));
+  PrimExch = (struct primexch *)mymalloc_movable(&PrimExch, "PrimExch", Mesh_nimport * sizeof(struct primexch));
+  GradExch = (struct grad_data *)mymalloc_movable(&GradExch, "GradExch", Mesh_nimport * sizeof(struct grad_data));
 
   TIMER_STOP(CPU_MESH_EXCHANGE);
 }
-
 
 /*! \brief Communicate primitive variables across MPI tasks.
  *
@@ -229,7 +227,7 @@ void exchange_primitive_variables(void)
   int i, j, p, task, off;
   int ngrp, recvTask, place;
 
-  tmpPrimExch = (struct primexch *) mymalloc("tmpPrimExch", Mesh_nexport * sizeof(struct primexch));
+  tmpPrimExch = (struct primexch *)mymalloc("tmpPrimExch", Mesh_nexport * sizeof(struct primexch));
 
   /* prepare data for export */
   for(j = 0; j < NTask; j++)
@@ -245,7 +243,7 @@ void exchange_primitive_variables(void)
           if((task = ListExports[listp].origin) != ThisTask)
             {
               place = ListExports[listp].index;
-              off = Mesh_Send_offset[task] + Mesh_Send_count[task]++;
+              off   = Mesh_Send_offset[task] + Mesh_Send_count[task]++;
 
               tmpPrimExch[off].Volume = SphP[place].Volume;
 
@@ -262,14 +260,14 @@ void exchange_primitive_variables(void)
 #endif /* #ifdef MHD_POWELL */
 #endif /* #ifdef MHD */
 
-              tmpPrimExch[off].OldMass = SphP[place].OldMass;
-              tmpPrimExch[off].SurfaceArea = SphP[place].SurfaceArea;
-              tmpPrimExch[off].ActiveArea = SphP[place].ActiveArea;
+              tmpPrimExch[off].OldMass      = SphP[place].OldMass;
+              tmpPrimExch[off].SurfaceArea  = SphP[place].SurfaceArea;
+              tmpPrimExch[off].ActiveArea   = SphP[place].ActiveArea;
               tmpPrimExch[off].TimeBinHydro = P[place].TimeBinHydro;
 
 #ifdef MAXSCALARS
               for(j = 0; j < N_Scalar; j++)
-                tmpPrimExch[off].Scalars[j] = *(MyFloat *) (((char *) (&SphP[place])) + scalar_elements[j].offset);
+                tmpPrimExch[off].Scalars[j] = *(MyFloat *)(((char *)(&SphP[place])) + scalar_elements[j].offset);
 #endif /* #ifdef MAXSCALARS */
 
               tmpPrimExch[off].TimeLastPrimUpdate = SphP[place].TimeLastPrimUpdate;
@@ -295,9 +293,10 @@ void exchange_primitive_variables(void)
           if(Mesh_Send_count[recvTask] > 0 || Mesh_Recv_count[recvTask] > 0)
             {
               /* get the particles */
-              MPI_Sendrecv(&tmpPrimExch[Mesh_Send_offset[recvTask]], Mesh_Send_count[recvTask]
-                           * sizeof(struct primexch), MPI_BYTE, recvTask, TAG_DENS_A,
-                           &PrimExch[Mesh_Recv_offset[recvTask]], Mesh_Recv_count[recvTask] * sizeof(struct primexch), MPI_BYTE, recvTask, TAG_DENS_A, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
+              MPI_Sendrecv(&tmpPrimExch[Mesh_Send_offset[recvTask]], Mesh_Send_count[recvTask] * sizeof(struct primexch), MPI_BYTE,
+                           recvTask, TAG_DENS_A, &PrimExch[Mesh_Recv_offset[recvTask]],
+                           Mesh_Recv_count[recvTask] * sizeof(struct primexch), MPI_BYTE, recvTask, TAG_DENS_A, MPI_COMM_WORLD,
+                           MPI_STATUS_IGNORE);
             }
         }
     }
@@ -306,7 +305,6 @@ void exchange_primitive_variables(void)
 
   TIMER_STOP(CPU_MESH_EXCHANGE);
 }
-
 
 /*! \brief Communicate primitive variables and gradients across MPI tasks.
  *
@@ -328,8 +326,8 @@ void exchange_primitive_variables_and_gradients(void)
   int i, j, p, task, off;
   int ngrp, recvTask, place;
 
-  tmpPrimExch = (struct primexch *) mymalloc("tmpPrimExch", Mesh_nexport * sizeof(struct primexch));
-  tmpGradExch = (struct grad_data *) mymalloc("tmpGradExch", Mesh_nexport * sizeof(struct grad_data));
+  tmpPrimExch = (struct primexch *)mymalloc("tmpPrimExch", Mesh_nexport * sizeof(struct primexch));
+  tmpGradExch = (struct grad_data *)mymalloc("tmpGradExch", Mesh_nexport * sizeof(struct grad_data));
 
   /* prepare data for export */
   for(j = 0; j < NTask; j++)
@@ -339,7 +337,8 @@ void exchange_primitive_variables_and_gradients(void)
     {
       p = List_InMesh[i];
 
-      /* in case previous steps already lowered the Mass, update OldMass to yield together with metallicity vector conservative estimate of metal mass of each species contained in cell */
+      /* in case previous steps already lowered the Mass, update OldMass to yield together with metallicity vector conservative
+       * estimate of metal mass of each species contained in cell */
       if(P[p].Mass < SphP[p].OldMass)
         SphP[p].OldMass = P[p].Mass;
 
@@ -349,10 +348,10 @@ void exchange_primitive_variables_and_gradients(void)
           if((task = ListExports[listp].origin) != ThisTask)
             {
               place = ListExports[listp].index;
-              off = Mesh_Send_offset[task] + Mesh_Send_count[task]++;
+              off   = Mesh_Send_offset[task] + Mesh_Send_count[task]++;
 
-              tmpPrimExch[off].Volume = SphP[place].Volume;
-              tmpPrimExch[off].Density = SphP[place].Density;
+              tmpPrimExch[off].Volume   = SphP[place].Volume;
+              tmpPrimExch[off].Density  = SphP[place].Density;
               tmpPrimExch[off].Pressure = SphP[place].Pressure;
 
 #ifdef MHD
@@ -364,23 +363,23 @@ void exchange_primitive_variables_and_gradients(void)
 #endif /* #ifdef MHD_POWELL */
 #endif /* #ifdef MHD */
 
-              tmpPrimExch[off].OldMass = SphP[place].OldMass;
+              tmpPrimExch[off].OldMass     = SphP[place].OldMass;
               tmpPrimExch[off].SurfaceArea = SphP[place].SurfaceArea;
-              tmpPrimExch[off].ActiveArea = SphP[place].ActiveArea;
+              tmpPrimExch[off].ActiveArea  = SphP[place].ActiveArea;
 
               tmpPrimExch[off].TimeBinHydro = P[place].TimeBinHydro;
 
 #ifdef MAXSCALARS
               for(j = 0; j < N_Scalar; j++)
-                tmpPrimExch[off].Scalars[j] = *(MyFloat *) (((char *) (&SphP[place])) + scalar_elements[j].offset);
+                tmpPrimExch[off].Scalars[j] = *(MyFloat *)(((char *)(&SphP[place])) + scalar_elements[j].offset);
 #endif /* #ifdef MAXSCALARS */
 
               tmpPrimExch[off].TimeLastPrimUpdate = SphP[place].TimeLastPrimUpdate;
 
               for(j = 0; j < 3; j++)
                 {
-                  tmpPrimExch[off].VelGas[j] = P[place].Vel[j];
-                  tmpPrimExch[off].Center[j] = SphP[place].Center[j];
+                  tmpPrimExch[off].VelGas[j]    = P[place].Vel[j];
+                  tmpPrimExch[off].Center[j]    = SphP[place].Center[j];
                   tmpPrimExch[off].VelVertex[j] = SphP[place].VelVertex[j];
                 }
 
@@ -402,13 +401,15 @@ void exchange_primitive_variables_and_gradients(void)
           if(Mesh_Send_count[recvTask] > 0 || Mesh_Recv_count[recvTask] > 0)
             {
               /* exchange the data */
-              MPI_Sendrecv(&tmpPrimExch[Mesh_Send_offset[recvTask]], Mesh_Send_count[recvTask]
-                           * sizeof(struct primexch), MPI_BYTE, recvTask, TAG_DENS_A,
-                           &PrimExch[Mesh_Recv_offset[recvTask]], Mesh_Recv_count[recvTask] * sizeof(struct primexch), MPI_BYTE, recvTask, TAG_DENS_A, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
+              MPI_Sendrecv(&tmpPrimExch[Mesh_Send_offset[recvTask]], Mesh_Send_count[recvTask] * sizeof(struct primexch), MPI_BYTE,
+                           recvTask, TAG_DENS_A, &PrimExch[Mesh_Recv_offset[recvTask]],
+                           Mesh_Recv_count[recvTask] * sizeof(struct primexch), MPI_BYTE, recvTask, TAG_DENS_A, MPI_COMM_WORLD,
+                           MPI_STATUS_IGNORE);
 
-              MPI_Sendrecv(&tmpGradExch[Mesh_Send_offset[recvTask]], Mesh_Send_count[recvTask]
-                           * sizeof(struct grad_data), MPI_BYTE, recvTask, TAG_HYDRO_A,
-                           &GradExch[Mesh_Recv_offset[recvTask]], Mesh_Recv_count[recvTask] * sizeof(struct grad_data), MPI_BYTE, recvTask, TAG_HYDRO_A, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
+              MPI_Sendrecv(&tmpGradExch[Mesh_Send_offset[recvTask]], Mesh_Send_count[recvTask] * sizeof(struct grad_data), MPI_BYTE,
+                           recvTask, TAG_HYDRO_A, &GradExch[Mesh_Recv_offset[recvTask]],
+                           Mesh_Recv_count[recvTask] * sizeof(struct grad_data), MPI_BYTE, recvTask, TAG_HYDRO_A, MPI_COMM_WORLD,
+                           MPI_STATUS_IGNORE);
             }
         }
     }
@@ -420,7 +421,6 @@ void exchange_primitive_variables_and_gradients(void)
 
   /* note: because the sequence is the same as before, we don't have to do the sorts again */
 }
-
 
 /*! \brief Compare two data primexch compare objects.
  *
@@ -435,21 +435,20 @@ void exchange_primitive_variables_and_gradients(void)
  */
 int compare_primexch(const void *a, const void *b)
 {
-  if(((struct data_primexch_compare *) a)->task < ((struct data_primexch_compare *) b)->task)
+  if(((struct data_primexch_compare *)a)->task < ((struct data_primexch_compare *)b)->task)
     return -1;
 
-  if(((struct data_primexch_compare *) a)->task > ((struct data_primexch_compare *) b)->task)
+  if(((struct data_primexch_compare *)a)->task > ((struct data_primexch_compare *)b)->task)
     return +1;
 
-  if(((struct data_primexch_compare *) a)->index < ((struct data_primexch_compare *) b)->index)
+  if(((struct data_primexch_compare *)a)->index < ((struct data_primexch_compare *)b)->index)
     return -1;
 
-  if(((struct data_primexch_compare *) a)->index > ((struct data_primexch_compare *) b)->index)
+  if(((struct data_primexch_compare *)a)->index > ((struct data_primexch_compare *)b)->index)
     return +1;
 
   return 0;
 }
-
 
 /*! \brief Communicates vertex velocity divergence data across MPI tasks.
  *
@@ -466,10 +465,9 @@ void voronoi_update_ghost_velvertex(void)
   struct velvertex_data
   {
     MyFloat VelVertex[3];
-  }
-   *tmpVelVertexExch, *tmpVelVertexRecv;
+  } * tmpVelVertexExch, *tmpVelVertexRecv;
 
-  tmpVelVertexExch = (struct velvertex_data *) mymalloc("tmpVelVertexExch", Mesh_nexport * sizeof(struct velvertex_data));
+  tmpVelVertexExch = (struct velvertex_data *)mymalloc("tmpVelVertexExch", Mesh_nexport * sizeof(struct velvertex_data));
 
   /* prepare data for export */
   for(j = 0; j < NTask; j++)
@@ -485,7 +483,7 @@ void voronoi_update_ghost_velvertex(void)
           if((task = ListExports[listp].origin) != ThisTask)
             {
               place = ListExports[listp].index;
-              off = Mesh_Send_offset[task] + Mesh_Send_count[task]++;
+              off   = Mesh_Send_offset[task] + Mesh_Send_count[task]++;
 
               for(j = 0; j < 3; j++)
                 {
@@ -505,12 +503,13 @@ void voronoi_update_ghost_velvertex(void)
         {
           if(Mesh_Send_count[recvTask] > 0 || Mesh_Recv_count[recvTask] > 0)
             {
-              tmpVelVertexRecv = (struct velvertex_data *) mymalloc("tmpVelVertexRecv", Mesh_Recv_count[recvTask] * sizeof(struct velvertex_data));
+              tmpVelVertexRecv =
+                  (struct velvertex_data *)mymalloc("tmpVelVertexRecv", Mesh_Recv_count[recvTask] * sizeof(struct velvertex_data));
 
               /* get the values */
-              MPI_Sendrecv(&tmpVelVertexExch[Mesh_Send_offset[recvTask]],
-                           Mesh_Send_count[recvTask] * sizeof(struct velvertex_data), MPI_BYTE,
-                           recvTask, TAG_DENS_A, tmpVelVertexRecv, Mesh_Recv_count[recvTask] * sizeof(struct velvertex_data), MPI_BYTE, recvTask, TAG_DENS_A, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
+              MPI_Sendrecv(&tmpVelVertexExch[Mesh_Send_offset[recvTask]], Mesh_Send_count[recvTask] * sizeof(struct velvertex_data),
+                           MPI_BYTE, recvTask, TAG_DENS_A, tmpVelVertexRecv, Mesh_Recv_count[recvTask] * sizeof(struct velvertex_data),
+                           MPI_BYTE, recvTask, TAG_DENS_A, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
 
               for(i = 0; i < Mesh_Recv_count[recvTask]; i++)
                 {

@@ -38,35 +38,30 @@
  *                  maxdist, int target, int origin, int mode, int thread_id,
  *                  int numnodes, int *firstnode)
  *                int count_undecided_tetras(tessellation * T)
- * 
+ *
  * \par Major modifications and contributions:
- * 
+ *
  * - DD.MM.YYYY Description
  * - 24.05.2018 Prepared file for public release -- Rainer Weinberger
  */
 
-
+#include <gsl/gsl_math.h>
+#include <math.h>
 #include <mpi.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <math.h>
-#include <gsl/gsl_math.h>
 
 #include "../../main/allvars.h"
 #include "../../main/proto.h"
 
 #include "voronoi.h"
 
-
 #if !defined(ONEDIMS)
-
 
 static void voronoi_pick_up_additional_DP_points(void);
 
-
 static tessellation *T;
-
 
 /*! \brief Local data structure for collecting particle/cell data that is sent
  *         to other processors if needed. Type called data_in and static
@@ -83,11 +78,10 @@ typedef struct
 
 #ifdef EXTENDED_GHOST_SEARCH
   unsigned char BitFlagList[NODELISTLENGTH];
-#endif                          /* #ifdef EXTENDED_GHOST_SEARCH */
+#endif /* #ifdef EXTENDED_GHOST_SEARCH */
 } data_in;
 
 static data_in *DataGet, *DataIn;
-
 
 /*! \brief Routine that fills the relevant particle/cell data into the input
  *         structure defined above. Needed by generic_comm_helpers2.
@@ -98,10 +92,10 @@ static data_in *DataGet, *DataIn;
  *
  *  \return void
  */
-static void particle2in(data_in * in, int i, int firstnode)
+static void particle2in(data_in *in, int i, int firstnode)
 {
-  point *DP = T->DP;
-  tetra *DT = T->DT;
+  point *DP         = T->DP;
+  tetra *DT         = T->DT;
   tetra_center *DTC = T->DTC;
 
   int k, q;
@@ -118,7 +112,7 @@ static void particle2in(data_in * in, int i, int firstnode)
                 break;
               }
           }
-#else /* #ifndef DOUBLE_STENCIL */
+#else  /* #ifndef DOUBLE_STENCIL */
       if(DP[DT[i].p[k]].flag_primary_triangle && DT[i].p[k] >= 0)
         {
           q = DT[i].p[k];
@@ -145,18 +139,16 @@ static void particle2in(data_in * in, int i, int firstnode)
   in->Firstnode = firstnode;
 }
 
-
 /*! \brief Local data structure that holds results acquired on remote
  *         processors. Type called data_out and static pointers DataResult and
  *         DataOut needed by generic_comm_helpers2.
  */
 typedef struct
 {
-  int Count;                    /* counts how many have been found */
+  int Count; /* counts how many have been found */
 } data_out;
 
 static data_out *DataResult, *DataOut;
-
 
 /*! \brief Routine to store or combine result data. Needed by
  *         generic_comm_helpers2.
@@ -169,16 +161,14 @@ static data_out *DataResult, *DataOut;
  *
  *  \return void
  */
-static void out2particle(data_out * out, int i, int mode)
+static void out2particle(data_out *out, int i, int mode)
 {
   if(mode == MODE_LOCAL_PARTICLES || mode == MODE_IMPORTED_PARTICLES)
     if(out->Count)
       T->DTF[i] -= (T->DTF[i] & 2);
 }
 
-
 #include "../../utils/generic_comm_helpers2.h"
-
 
 #ifdef EXTENDED_GHOST_SEARCH
 /*! Data structure for extended ghost search.
@@ -186,15 +176,13 @@ static void out2particle(data_out * out, int i, int mode)
 static struct data_nodelist_special
 {
   unsigned char BitFlagList[NODELISTLENGTH];
-} *DataNodeListSpecial;
+} * DataNodeListSpecial;
 #endif /* #ifdef EXTENDED_GHOST_SEARCH */
-
 
 static point *DP_Buffer;
 static int MaxN_DP_Buffer, N_DP_Buffer;
 static int NadditionalPoints;
 static int *send_count_new;
-
 
 /*! \brief Routine that defines what to do with local particles.
  *
@@ -223,14 +211,14 @@ static void kernel_local(void)
         if(i >= T->Ndt)
           break;
 
-        if((T->DTF[i] & 2) == 0)        /* DT that is not flagged as tested ok */
+        if((T->DTF[i] & 2) == 0) /* DT that is not flagged as tested ok */
           {
-            T->DTF[i] |= 2;     /* if we find a particle, need to clear this flag again! */
+            T->DTF[i] |= 2; /* if we find a particle, need to clear this flag again! */
 
             point *DP = T->DP;
             tetra *DT = T->DT;
 
-            if(DT[i].t[0] < 0)  /* deleted ? */
+            if(DT[i].t[0] < 0) /* deleted ? */
               continue;
 
             if(DT[i].p[0] == DPinfinity || DT[i].p[1] == DPinfinity || DT[i].p[2] == DPinfinity)
@@ -255,12 +243,12 @@ static void kernel_local(void)
                     }
               }
 
-            if(j == (NUMDIMS + 1))      /* this triangle does not have a local point. No need to test it */
+            if(j == (NUMDIMS + 1)) /* this triangle does not have a local point. No need to test it */
               continue;
 
             if(q == -1)
               terminate("q==-1");
-#else /* #ifndef DOUBLE_STENCIL */
+#else  /* #ifndef DOUBLE_STENCIL */
             /* here comes the check for a double stencil */
             for(j = 0, q = -1; j < (NUMDIMS + 1); j++)
               {
@@ -271,7 +259,9 @@ static void kernel_local(void)
                   }
               }
 
-            if(j == (NUMDIMS + 1))      /* this triangle does not have a point which is not at least neighbor to a primary point. No need to test it */
+            if(j ==
+               (NUMDIMS +
+                1)) /* this triangle does not have a point which is not at least neighbor to a primary point. No need to test it */
               continue;
 
             if(q == -1)
@@ -282,7 +272,6 @@ static void kernel_local(void)
       }
   }
 }
-
 
 /*! \brief Routine that defines what to do with imported particles.
  *
@@ -309,14 +298,13 @@ static void kernel_imported(void)
   }
 }
 
-
 /*! \brief Main routine to perform ghost search.
  *
  *  \param[in, out] TT Pointer to tessellation.
  *
  *  \return Number of additional points.
  */
-int voronoi_ghost_search(tessellation * TT)
+int voronoi_ghost_search(tessellation *TT)
 {
   T = TT;
   int j, ndone, ndone_flag;
@@ -325,10 +313,10 @@ int voronoi_ghost_search(tessellation * TT)
 
   /* allocate buffers to arrange communication */
 
-  send_count_new = (int *) mymalloc_movable(&send_count_new, "send_count_new", NTask * sizeof(int));
+  send_count_new = (int *)mymalloc_movable(&send_count_new, "send_count_new", NTask * sizeof(int));
 
   MaxN_DP_Buffer = T->Indi.AllocFacN_DP_Buffer;
-  DP_Buffer = (point *) mymalloc_movable(&DP_Buffer, "DP_Buffer", MaxN_DP_Buffer * sizeof(point));
+  DP_Buffer      = (point *)mymalloc_movable(&DP_Buffer, "DP_Buffer", MaxN_DP_Buffer * sizeof(point));
 
 #ifdef DOUBLE_STENCIL
   {
@@ -349,7 +337,7 @@ int voronoi_ghost_search(tessellation * TT)
                   break;
           }
 
-        if(j != (NUMDIMS + 1))  /* this triangle does have a local point, so mark all its points */
+        if(j != (NUMDIMS + 1)) /* this triangle does have a local point, so mark all its points */
           {
             for(j = 0; j < (NUMDIMS + 1); j++)
               DP[DT[i].p[j]].flag_primary_triangle = 1;
@@ -400,7 +388,6 @@ int voronoi_ghost_search(tessellation * TT)
   return NadditionalPoints;
 }
 
-
 /*! \brief Gets additional Delaunay points.
  *
  *  \return void
@@ -436,7 +423,7 @@ static void voronoi_pick_up_additional_DP_points(void)
   MPI_Alltoall(Send_count, 1, MPI_INT, Recv_count, 1, MPI_INT, MPI_COMM_WORLD);
 
   Recv_offset[0] = 0;
-  nimport = Recv_count[0];
+  nimport        = Recv_count[0];
 
   for(int j = 1; j < NTask; j++)
     {
@@ -469,9 +456,9 @@ static void voronoi_pick_up_additional_DP_points(void)
           if(Send_count[recvTask] > 0 || Recv_count[recvTask] > 0)
             {
               /* get the particles */
-              MPI_Sendrecv(&DP_Buffer[Send_offset[recvTask]], Send_count[recvTask] * sizeof(point),
-                           MPI_BYTE, recvTask, TAG_DENS_B,
-                           &T->DP[T->Ndp + Recv_offset[recvTask]], Recv_count[recvTask] * sizeof(point), MPI_BYTE, recvTask, TAG_DENS_B, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
+              MPI_Sendrecv(&DP_Buffer[Send_offset[recvTask]], Send_count[recvTask] * sizeof(point), MPI_BYTE, recvTask, TAG_DENS_B,
+                           &T->DP[T->Ndp + Recv_offset[recvTask]], Recv_count[recvTask] * sizeof(point), MPI_BYTE, recvTask,
+                           TAG_DENS_B, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
             }
         }
     }
@@ -482,7 +469,6 @@ static void voronoi_pick_up_additional_DP_points(void)
   if(N_DP_Buffer > Largest_N_DP_Buffer)
     Largest_N_DP_Buffer = N_DP_Buffer;
 }
-
 
 /*! \brief Evaluate function for voronoi_ghost_search.
  *
@@ -496,7 +482,7 @@ static void voronoi_pick_up_additional_DP_points(void)
  *
  *  \return 0
  */
-int voronoi_ghost_search_evaluate(tessellation * T, int target, int mode, int q, int thread_id)
+int voronoi_ghost_search_evaluate(tessellation *T, int target, int mode, int q, int thread_id)
 {
   int origin, numnodes, *firstnode;
   int numngb;
@@ -506,33 +492,33 @@ int voronoi_ghost_search_evaluate(tessellation * T, int target, int mode, int q,
 
   if(mode == MODE_LOCAL_PARTICLES)
     {
-      pos[0] = T->DTC[target].cx;
-      pos[1] = T->DTC[target].cy;
-      pos[2] = T->DTC[target].cz;
+      pos[0]    = T->DTC[target].cx;
+      pos[1]    = T->DTC[target].cy;
+      pos[2]    = T->DTC[target].cz;
       refpos[0] = T->DP[q].x;
       refpos[1] = T->DP[q].y;
       refpos[2] = T->DP[q].z;
 #ifndef DOUBLE_STENCIL
       maxdist = SphP[T->DP[q].index].Hsml;
-#else /* #ifndef DOUBLE_STENCIL */
+#else  /* #ifndef DOUBLE_STENCIL */
       maxdist = T->DP[q].Hsml;
 #endif /* #ifndef DOUBLE_STENCIL #else */
       origin = ThisTask;
 
-      numnodes = 1;
+      numnodes  = 1;
       firstnode = NULL;
     }
   else
     {
       /* note: we do not use a pointer here to VoroDataGet[target].Pos, because VoroDataGet may be moved in a realloc operation */
-      pos[0] = DataGet[target].Pos[0];
-      pos[1] = DataGet[target].Pos[1];
-      pos[2] = DataGet[target].Pos[2];
+      pos[0]    = DataGet[target].Pos[0];
+      pos[1]    = DataGet[target].Pos[1];
+      pos[2]    = DataGet[target].Pos[2];
       refpos[0] = DataGet[target].RefPos[0];
       refpos[1] = DataGet[target].RefPos[1];
       refpos[2] = DataGet[target].RefPos[2];
-      maxdist = DataGet[target].MaxDist;
-      origin = DataGet[target].Origin;
+      maxdist   = DataGet[target].MaxDist;
+      origin    = DataGet[target].Origin;
 
       generic_get_numnodes(target, &numnodes, &firstnode);
     }
@@ -545,7 +531,9 @@ int voronoi_ghost_search_evaluate(tessellation * T, int target, int mode, int q,
 
   if(mode == MODE_LOCAL_PARTICLES)
     if(maxdist < 2 * h)
-      T->DTF[target] -= (T->DTF[target] & 2);   /* since we restrict the search radius, we are not guaranteed to search the full circumcircle of the triangle */
+      T->DTF[target] -=
+          (T->DTF[target] &
+           2); /* since we restrict the search radius, we are not guaranteed to search the full circumcircle of the triangle */
 
   numngb = ngb_treefind_ghost_search(T, pos, refpos, h, maxdist, target, origin, mode, thread_id, numnodes, firstnode);
 
@@ -559,8 +547,7 @@ int voronoi_ghost_search_evaluate(tessellation * T, int target, int mode, int q,
   return 0;
 }
 
-
-#ifdef EXTENDED_GHOST_SEARCH    /* this allowes for mirrored images in a full 3x3 grid in terms of the principal domain */
+#ifdef EXTENDED_GHOST_SEARCH /* this allowes for mirrored images in a full 3x3 grid in terms of the principal domain */
 /*! \brief Tree-search algorithm for ghost cells in EXTENDED_GHOST_SEARCH mode.
  *
  *  \param[in] T Pointer to tessellation.
@@ -578,8 +565,8 @@ int voronoi_ghost_search_evaluate(tessellation * T, int target, int mode, int q,
  *
  *  \return Number of points found.
  */
-int ngb_treefind_ghost_search(tessellation * T, MyDouble searchcenter[3], MyDouble refpos[3],
-                              MyFloat hsml, MyFloat maxdist, int target, int origin, int *startnode, int bitflags, int mode, int *nexport, int *nsend_local)
+int ngb_treefind_ghost_search(tessellation *T, MyDouble searchcenter[3], MyDouble refpos[3], MyFloat hsml, MyFloat maxdist, int target,
+                              int origin, int *startnode, int bitflags, int mode, int *nexport, int *nsend_local)
 {
   int i, numngb, no, p, task, nexport_save, ndp_save, nadditionalpoints_save;
   int image_flag;
@@ -593,10 +580,10 @@ int ngb_treefind_ghost_search(tessellation * T, MyDouble searchcenter[3], MyDoub
   MyFloat refsearch_min[3], refsearch_max[3];
 
   nadditionalpoints_save = NadditionalPoints;
-  ndp_save = T->Ndp;
-  nexport_save = *nexport;
+  ndp_save               = T->Ndp;
+  nexport_save           = *nexport;
 
-  numngb = 0;
+  numngb      = 0;
   mindistance = 1.0e70;
 
   int repx, repy, repz = 0;
@@ -645,7 +632,7 @@ int ngb_treefind_ghost_search(tessellation * T, MyDouble searchcenter[3], MyDoub
         repz_A = repz_B = 0;
     }
 
-  hsml2 = hsml * hsml;
+  hsml2    = hsml * hsml;
   maxdist2 = maxdist * maxdist;
 
   for(repx = repx_A; repx <= repx_B; repx++)
@@ -654,9 +641,9 @@ int ngb_treefind_ghost_search(tessellation * T, MyDouble searchcenter[3], MyDoub
       for(repz = repz_A; repz <= repz_B; repz++)
 #endif /* #if !defined(TWODIMS) */
         {
-          image_flag = 0;       /* for each coordinate there are three possibilities.
-                                   We encodee them to basis three, i.e. x*3^0 + y*3^1 + z*3^2
-                                 */
+          image_flag = 0; /* for each coordinate there are three possibilities.
+                             We encodee them to basis three, i.e. x*3^0 + y*3^1 + z*3^2
+                           */
           if(repx == 0)
             {
               newcenter[0] = searchcenter[0];
@@ -667,20 +654,20 @@ int ngb_treefind_ghost_search(tessellation * T, MyDouble searchcenter[3], MyDoub
 #ifndef REFLECTIVE_X
               newcenter[0] = searchcenter[0] - boxSize_X;
               newrefpos[0] = refpos[0] - boxSize_X;
-#else /* #ifndef REFLECTIVE_X */
-              newcenter[0] = -searchcenter[0];
-              newrefpos[0] = -refpos[0];
+#else  /* #ifndef REFLECTIVE_X */
+            newcenter[0] = -searchcenter[0];
+            newrefpos[0] = -refpos[0];
 #endif /* #ifndef REFLECTIVE_X #else */
               image_flag += 1;
             }
-          else                  /* repx == 1 */
+          else /* repx == 1 */
             {
 #ifndef REFLECTIVE_X
               newcenter[0] = searchcenter[0] + boxSize_X;
               newrefpos[0] = refpos[0] + boxSize_X;
-#else /* #ifndef REFLECTIVE_X */
-              newcenter[0] = -searchcenter[0] + 2 * boxSize_X;
-              newrefpos[0] = -refpos[0] + 2 * boxSize_X;
+#else  /* #ifndef REFLECTIVE_X */
+            newcenter[0] = -searchcenter[0] + 2 * boxSize_X;
+            newrefpos[0] = -refpos[0] + 2 * boxSize_X;
 #endif /* #ifndef REFLECTIVE_X #else */
               image_flag += 2;
             }
@@ -695,20 +682,20 @@ int ngb_treefind_ghost_search(tessellation * T, MyDouble searchcenter[3], MyDoub
 #ifndef REFLECTIVE_Y
               newcenter[1] = searchcenter[1] - boxSize_Y;
               newrefpos[1] = refpos[1] - boxSize_Y;
-#else /* #ifndef REFLECTIVE_Y */
-              newcenter[1] = -searchcenter[1];
-              newrefpos[1] = -refpos[1];
+#else  /* #ifndef REFLECTIVE_Y */
+            newcenter[1] = -searchcenter[1];
+            newrefpos[1] = -refpos[1];
 #endif /* #ifndef REFLECTIVE_Y #else */
               image_flag += 1 * 3;
             }
-          else                  /*  repy == 1 */
+          else /*  repy == 1 */
             {
 #ifndef REFLECTIVE_Y
               newcenter[1] = searchcenter[1] + boxSize_Y;
               newrefpos[1] = refpos[1] + boxSize_Y;
-#else /* #ifndef REFLECTIVE_Y */
-              newcenter[1] = -searchcenter[1] + 2 * boxSize_Y;
-              newrefpos[1] = -refpos[1] + 2 * boxSize_Y;
+#else  /* #ifndef REFLECTIVE_Y */
+            newcenter[1] = -searchcenter[1] + 2 * boxSize_Y;
+            newrefpos[1] = -refpos[1] + 2 * boxSize_Y;
 #endif /* #ifndef REFLECTIVE_Y #else */
               image_flag += 2 * 3;
             }
@@ -724,18 +711,18 @@ int ngb_treefind_ghost_search(tessellation * T, MyDouble searchcenter[3], MyDoub
 #ifndef REFLECTIVE_Z
               newcenter[2] = searchcenter[2] - boxSize_Z;
               newrefpos[2] = refpos[2] - boxSize_Z;
-#else /* #ifndef REFLECTIVE_Z */
+#else  /* #ifndef REFLECTIVE_Z */
               newcenter[2] = -searchcenter[2];
               newrefpos[2] = -refpos[2];
 #endif /* #ifndef REFLECTIVE_Z #else */
               image_flag += 1 * 9;
             }
-          else                  /* repz == 1 */
+          else /* repz == 1 */
             {
 #ifndef REFLECTIVE_Z
               newcenter[2] = searchcenter[1] + boxSize_Z;
               newrefpos[2] = refpos[1] + boxSize_Z;
-#else /* #ifndef REFLECTIVE_Z */
+#else  /* #ifndef REFLECTIVE_Z */
               newcenter[2] = -searchcenter[2] + 2 * boxSize_Z;
               newrefpos[2] = -refpos[2] + 2 * boxSize_Z;
 #endif /* #ifndef REFLECTIVE_Z #else */
@@ -745,8 +732,8 @@ int ngb_treefind_ghost_search(tessellation * T, MyDouble searchcenter[3], MyDoub
 
           for(i = 0; i < 3; i++)
             {
-              search_min[i] = newcenter[i] - hsml;
-              search_max[i] = newcenter[i] + hsml;
+              search_min[i]    = newcenter[i] - hsml;
+              search_max[i]    = newcenter[i] + hsml;
               refsearch_min[i] = newrefpos[i] - maxdist;
               refsearch_max[i] = newrefpos[i] + maxdist;
             }
@@ -758,22 +745,22 @@ int ngb_treefind_ghost_search(tessellation * T, MyDouble searchcenter[3], MyDoub
                 terminate("problem");
               }
 
-          no = *startnode;
+          no    = *startnode;
           count = 0;
 
           while(no >= 0)
             {
               count++;
-              if(no < Ngb_MaxPart)      /* single particle */
+              if(no < Ngb_MaxPart) /* single particle */
                 {
-                  p = no;
+                  p  = no;
                   no = Ngb_Nextnode[no];
 
                   if(P[p].Type > 0)
                     continue;
 
                   if(P[p].Mass == 0 && P[p].ID == 0)
-                    continue;   /* skip cells that have been swallowed or dissolved */
+                    continue; /* skip cells that have been swallowed or dissolved */
 
                   dx = P[p].Pos[0] - newcenter[0];
                   dy = P[p].Pos[1] - newcenter[1];
@@ -797,8 +784,8 @@ int ngb_treefind_ghost_search(tessellation * T, MyDouble searchcenter[3], MyDoub
 
                   if(Ngb_Marker[p] != Ngb_MarkerValue)
                     {
-                      Ngb_Marker[p] = Ngb_MarkerValue;
-                      List_P[p].firstexport = -1;
+                      Ngb_Marker[p]           = Ngb_MarkerValue;
+                      List_P[p].firstexport   = -1;
                       List_P[p].currentexport = -1;
                     }
 
@@ -819,21 +806,21 @@ int ngb_treefind_ghost_search(tessellation * T, MyDouble searchcenter[3], MyDoub
                             }
 
                           if(listp >= 0)
-                            if((ListExports[listp].image_bits & (1 << image_flag)))     /* already in list */
+                            if((ListExports[listp].image_bits & (1 << image_flag))) /* already in list */
                               continue;
                         }
                       else
                         {
-                          if((ListExports[List_P[p].currentexport].image_bits & (1 << image_flag)))     /* already in list */
+                          if((ListExports[List_P[p].currentexport].image_bits & (1 << image_flag))) /* already in list */
                             continue;
                         }
                     }
 
                   /* here we have found a new closest particle that has not been inserted yet */
 
-                  numngb = 1;
-                  mindistance = thisdistance;
-                  min_p = p;
+                  numngb        = 1;
+                  mindistance   = thisdistance;
+                  min_p         = p;
                   min_imageflag = image_flag;
 
                   /* determine the point coordinates in min_x, min_y, min_z */
@@ -843,16 +830,16 @@ int ngb_treefind_ghost_search(tessellation * T, MyDouble searchcenter[3], MyDoub
                     {
 #ifndef REFLECTIVE_X
                       min_x = P[p].Pos[0] + boxSize_X;
-#else /* #ifndef REFLECTIVE_X */
-                      min_x = -P[p].Pos[0];
+#else  /* #ifndef REFLECTIVE_X */
+                    min_x = -P[p].Pos[0];
 #endif /* #ifndef REFLECTIVE_X #else */
                     }
                   else if(repx == 1)
                     {
 #ifndef REFLECTIVE_X
                       min_x = P[p].Pos[0] - boxSize_X;
-#else /* #ifndef REFLECTIVE_X */
-                      min_x = -P[p].Pos[0] + 2 * boxSize_X;
+#else  /* #ifndef REFLECTIVE_X */
+                    min_x = -P[p].Pos[0] + 2 * boxSize_X;
 #endif /* #ifndef REFLECTIVE_X #else */
                     }
 
@@ -862,19 +849,18 @@ int ngb_treefind_ghost_search(tessellation * T, MyDouble searchcenter[3], MyDoub
                     {
 #ifndef REFLECTIVE_Y
                       min_y = P[p].Pos[1] + boxSize_Y;
-#else /* #ifndef REFLECTIVE_Y */
-                      min_y = -P[p].Pos[1];
+#else  /* #ifndef REFLECTIVE_Y */
+                    min_y = -P[p].Pos[1];
 #endif /* #ifndef REFLECTIVE_Y #else */
                     }
                   else if(repy == 1)
                     {
 #ifndef REFLECTIVE_Y
                       min_y = P[p].Pos[1] - boxSize_Y;
-#else /* #ifndef REFLECTIVE_Y */
-                      min_y = -P[p].Pos[1] + 2 * boxSize_Y;
+#else  /* #ifndef REFLECTIVE_Y */
+                    min_y = -P[p].Pos[1] + 2 * boxSize_Y;
 #endif /* #ifndef REFLECTIVE_Y #else */
                     }
-
 
                   if(repz == 0)
                     min_z = P[p].Pos[2];
@@ -883,7 +869,7 @@ int ngb_treefind_ghost_search(tessellation * T, MyDouble searchcenter[3], MyDoub
                     {
 #ifndef REFLECTIVE_Z
                       min_z = P[p].Pos[2] + boxSize_Z;
-#else /* #ifndef REFLECTIVE_Z */
+#else  /* #ifndef REFLECTIVE_Z */
                       min_z = -P[p].Pos[2];
 #endif /* #ifndef REFLECTIVE_Z #else */
                     }
@@ -891,24 +877,25 @@ int ngb_treefind_ghost_search(tessellation * T, MyDouble searchcenter[3], MyDoub
                     {
 #ifndef REFLECTIVE_Z
                       min_z = P[p].Pos[2] - boxSize_Z;
-#else /* #ifndef REFLECTIVE_Z */
+#else  /* #ifndef REFLECTIVE_Z */
                       min_z = -P[p].Pos[2] + 2 * boxSize_Z;
 #endif /* #ifndef REFLECTIVE_Z #else */
                     }
 #endif /* #if !defined(TWODIMS) */
                 }
-              else if(no < Ngb_MaxPart + Ngb_MaxNodes)  /* internal node */
+              else if(no < Ngb_MaxPart + Ngb_MaxNodes) /* internal node */
                 {
                   if(mode == 1)
                     {
-                      if(no < Ngb_FirstNonTopLevelNode) /* we reached a top-level node again, which means that we are done with the branch */
+                      if(no < Ngb_FirstNonTopLevelNode) /* we reached a top-level node again, which means that we are done with the
+                                                           branch */
                         {
                           break;
                         }
                     }
 
                   current = &Ngb_Nodes[no];
-                  no = current->u.d.sibling;    /* in case the node can be discarded */
+                  no      = current->u.d.sibling; /* in case the node can be discarded */
 
                   if(search_min[0] > current->u.d.range_max[0])
                     continue;
@@ -937,18 +924,18 @@ int ngb_treefind_ghost_search(tessellation * T, MyDouble searchcenter[3], MyDoub
                   if(refsearch_max[2] < current->u.d.range_min[2])
                     continue;
 
-                  no = current->u.d.nextnode;   /* ok, we need to open the node */
+                  no = current->u.d.nextnode; /* ok, we need to open the node */
                 }
-              else              /* pseudo particle */
+              else /* pseudo particle */
                 {
                   if(mode == 1)
                     terminate("mode == 1");
 
-                  if(target >= 0)       /* if no target is given, export will not occur */
+                  if(target >= 0) /* if no target is given, export will not occur */
                     {
                       if(Exportflag[task = DomainTask[no - (Ngb_MaxPart + Ngb_MaxNodes)]] != target)
                         {
-                          Exportflag[task] = target;
+                          Exportflag[task]      = target;
                           Exportnodecount[task] = NODELISTLENGTH;
                         }
 
@@ -956,28 +943,30 @@ int ngb_treefind_ghost_search(tessellation * T, MyDouble searchcenter[3], MyDoub
                         {
                           if(*nexport >= All.BunchSize)
                             {
-                              T->Ndp = ndp_save;
+                              T->Ndp            = ndp_save;
                               NadditionalPoints = nadditionalpoints_save;
-                              *nexport = nexport_save;
+                              *nexport          = nexport_save;
                               if(nexport_save == 0)
-                                terminate("nexport_save == 0"); /* in this case, the buffer is too small to process even a single particle */
+                                terminate(
+                                    "nexport_save == 0"); /* in this case, the buffer is too small to process even a single particle */
                               for(task = 0; task < NTask; task++)
                                 nsend_local[task] = 0;
                               for(no = 0; no < nexport_save; no++)
                                 nsend_local[DataIndexTable[no].Task]++;
                               return -1;
                             }
-                          Exportnodecount[task] = 0;
-                          Exportindex[task] = *nexport;
-                          DataIndexTable[*nexport].Task = task;
-                          DataIndexTable[*nexport].Index = target;
+                          Exportnodecount[task]             = 0;
+                          Exportindex[task]                 = *nexport;
+                          DataIndexTable[*nexport].Task     = task;
+                          DataIndexTable[*nexport].Index    = target;
                           DataIndexTable[*nexport].IndexGet = *nexport;
-                          *nexport = *nexport + 1;
+                          *nexport                          = *nexport + 1;
                           nsend_local[task]++;
                         }
 
                       DataNodeListSpecial[Exportindex[task]].BitFlagList[Exportnodecount[task]] = image_flag;
-                      DataNodeListSpecial[Exportindex[task]].NodeList[Exportnodecount[task]++] = Ngb_DomainNodeIndex[no - (Ngb_MaxPart + Ngb_MaxNodes)];
+                      DataNodeListSpecial[Exportindex[task]].NodeList[Exportnodecount[task]++] =
+                          Ngb_DomainNodeIndex[no - (Ngb_MaxPart + Ngb_MaxNodes)];
 
                       if(Exportnodecount[task] < NODELISTLENGTH)
                         DataNodeListSpecial[Exportindex[task]].NodeList[Exportnodecount[task]] = -1;
@@ -999,8 +988,8 @@ int ngb_treefind_ghost_search(tessellation * T, MyDouble searchcenter[3], MyDoub
 
       if(Ngb_Marker[p] != Ngb_MarkerValue)
         {
-          Ngb_Marker[p] = Ngb_MarkerValue;
-          List_P[p].firstexport = -1;
+          Ngb_Marker[p]           = Ngb_MarkerValue;
+          List_P[p].firstexport   = -1;
           List_P[p].currentexport = -1;
         }
 
@@ -1024,7 +1013,8 @@ int ngb_treefind_ghost_search(tessellation * T, MyDouble searchcenter[3], MyDoub
                           T->Indi.AllocFacNinlist *= ALLOC_INCREASE_FACTOR;
                           MaxNinlist = T->Indi.AllocFacNinlist;
 #ifdef VERBOSE
-                          printf("Task=%d: increase memory allocation, MaxNinlist=%d Indi.AllocFacNinlist=%g\n", ThisTask, MaxNinlist, T->Indi.AllocFacNinlist);
+                          printf("Task=%d: increase memory allocation, MaxNinlist=%d Indi.AllocFacNinlist=%g\n", ThisTask, MaxNinlist,
+                                 T->Indi.AllocFacNinlist);
 #endif /* #ifdef VERBOSE */
                           ListExports = myrealloc_movable(ListExports, MaxNinlist * sizeof(struct list_export_data));
 
@@ -1032,12 +1022,12 @@ int ngb_treefind_ghost_search(tessellation * T, MyDouble searchcenter[3], MyDoub
                             terminate("Ninlist >= MaxNinlist");
                         }
 
-                      List_P[p].currentexport = Ninlist++;
+                      List_P[p].currentexport                         = Ninlist++;
                       ListExports[List_P[p].currentexport].image_bits = 0;
                       ListExports[List_P[p].currentexport].nextexport = -1;
-                      ListExports[List_P[p].currentexport].origin = origin;
-                      ListExports[List_P[p].currentexport].index = p;
-                      ListExports[listp].nextexport = List_P[p].currentexport;
+                      ListExports[List_P[p].currentexport].origin     = origin;
+                      ListExports[List_P[p].currentexport].index      = p;
+                      ListExports[listp].nextexport                   = List_P[p].currentexport;
                       break;
                     }
                   listp = ListExports[listp].nextexport;
@@ -1053,7 +1043,8 @@ int ngb_treefind_ghost_search(tessellation * T, MyDouble searchcenter[3], MyDoub
               T->Indi.AllocFacNinlist *= ALLOC_INCREASE_FACTOR;
               MaxNinlist = T->Indi.AllocFacNinlist;
 #ifdef VERBOSE
-              printf("Task=%d: increase memory allocation, MaxNinlist=%d Indi.AllocFacNinlist=%g\n", ThisTask, MaxNinlist, T->Indi.AllocFacNinlist);
+              printf("Task=%d: increase memory allocation, MaxNinlist=%d Indi.AllocFacNinlist=%g\n", ThisTask, MaxNinlist,
+                     T->Indi.AllocFacNinlist);
 #endif /* #ifdef VERBOSE */
               ListExports = myrealloc_movable(ListExports, MaxNinlist * sizeof(struct list_export_data));
 
@@ -1066,8 +1057,8 @@ int ngb_treefind_ghost_search(tessellation * T, MyDouble searchcenter[3], MyDoub
           List_P[p].currentexport = List_P[p].firstexport = Ninlist++;
           ListExports[List_P[p].currentexport].image_bits = 0;
           ListExports[List_P[p].currentexport].nextexport = -1;
-          ListExports[List_P[p].currentexport].origin = origin;
-          ListExports[List_P[p].currentexport].index = p;
+          ListExports[List_P[p].currentexport].origin     = origin;
+          ListExports[List_P[p].currentexport].index      = p;
         }
 
       if((ListExports[List_P[p].currentexport].image_bits & (1 << image_flag)))
@@ -1100,23 +1091,23 @@ int ngb_treefind_ghost_search(tessellation * T, MyDouble searchcenter[3], MyDoub
           SphP[p].ActiveArea = 0;
 
           point *dp = &T->DP[T->Ndp];
-          dp->x = min_x;
-          dp->y = min_y;
-          dp->z = min_z;
-          dp->task = ThisTask;
-          dp->ID = P[p].ID;
+          dp->x     = min_x;
+          dp->y     = min_y;
+          dp->z     = min_z;
+          dp->task  = ThisTask;
+          dp->ID    = P[p].ID;
           if(image_flag)
-            dp->index = p + NumGas;     /* this is a replicated/mirrored local point */
+            dp->index = p + NumGas; /* this is a replicated/mirrored local point */
           else
-            dp->index = p;      /* this is actually a local point that wasn't made part of the mesh yet */
+            dp->index = p; /* this is actually a local point that wasn't made part of the mesh yet */
           dp->originalindex = p;
-          dp->timebin = P[p].TimeBinHydro;
-          dp->image_flags = (1 << image_flag);
+          dp->timebin       = P[p].TimeBinHydro;
+          dp->image_flags   = (1 << image_flag);
 
 #ifdef DOUBLE_STENCIL
-          dp->Hsml = SphP[p].Hsml;
+          dp->Hsml             = SphP[p].Hsml;
           dp->first_connection = -1;
-          dp->last_connection = -1;
+          dp->last_connection  = -1;
 #endif /* #ifdef DOUBLE_STENCIL */
           T->Ndp++;
           NadditionalPoints++;
@@ -1131,9 +1122,10 @@ int ngb_treefind_ghost_search(tessellation * T, MyDouble searchcenter[3], MyDoub
               T->Indi.AllocFacN_DP_Buffer *= ALLOC_INCREASE_FACTOR;
               MaxN_DP_Buffer = T->Indi.AllocFacN_DP_Buffer;
 #ifdef VERBOSE
-              printf("Task=%d: increase memory allocation, MaxN_DP_Buffer=%d Indi.AllocFacN_DP_Buffer=%g\n", ThisTask, MaxN_DP_Buffer, T->Indi.AllocFacN_DP_Buffer);
+              printf("Task=%d: increase memory allocation, MaxN_DP_Buffer=%d Indi.AllocFacN_DP_Buffer=%g\n", ThisTask, MaxN_DP_Buffer,
+                     T->Indi.AllocFacN_DP_Buffer);
 #endif /* #ifdef VERBOSE */
-              DP_Buffer = (point *) myrealloc_movable(DP_Buffer, MaxN_DP_Buffer * sizeof(point));
+              DP_Buffer = (point *)myrealloc_movable(DP_Buffer, MaxN_DP_Buffer * sizeof(point));
 
               if(N_DP_Buffer >= MaxN_DP_Buffer)
                 terminate("(N_DP_Buffer >= MaxN_DP_Buffer");
@@ -1141,19 +1133,19 @@ int ngb_treefind_ghost_search(tessellation * T, MyDouble searchcenter[3], MyDoub
 
           SphP[p].ActiveArea = 0;
 
-          DP_Buffer[N_DP_Buffer].x = min_x;
-          DP_Buffer[N_DP_Buffer].y = min_y;
-          DP_Buffer[N_DP_Buffer].z = min_z;
-          DP_Buffer[N_DP_Buffer].ID = P[p].ID;
-          DP_Buffer[N_DP_Buffer].task = ThisTask;
-          DP_Buffer[N_DP_Buffer].index = p;
+          DP_Buffer[N_DP_Buffer].x             = min_x;
+          DP_Buffer[N_DP_Buffer].y             = min_y;
+          DP_Buffer[N_DP_Buffer].z             = min_z;
+          DP_Buffer[N_DP_Buffer].ID            = P[p].ID;
+          DP_Buffer[N_DP_Buffer].task          = ThisTask;
+          DP_Buffer[N_DP_Buffer].index         = p;
           DP_Buffer[N_DP_Buffer].originalindex = p;
-          DP_Buffer[N_DP_Buffer].timebin = P[p].TimeBinHydro;
-          DP_Buffer[N_DP_Buffer].image_flags = (1 << image_flag);
+          DP_Buffer[N_DP_Buffer].timebin       = P[p].TimeBinHydro;
+          DP_Buffer[N_DP_Buffer].image_flags   = (1 << image_flag);
 #ifdef DOUBLE_STENCIL
-          DP_Buffer[N_DP_Buffer].Hsml = SphP[p].Hsml;
+          DP_Buffer[N_DP_Buffer].Hsml             = SphP[p].Hsml;
           DP_Buffer[N_DP_Buffer].first_connection = -1;
-          DP_Buffer[N_DP_Buffer].last_connection = -1;
+          DP_Buffer[N_DP_Buffer].last_connection  = -1;
 #endif /* #ifdef DOUBLE_STENCIL */
           send_count_new[origin]++;
           N_DP_Buffer++;
@@ -1164,7 +1156,6 @@ int ngb_treefind_ghost_search(tessellation * T, MyDouble searchcenter[3], MyDoub
 }
 
 #else /* #ifdef EXTENDED_GHOST_SEARCH */
-
 
 /*! \brief Tree-search algorithm for ghost cells without EXTENDED_GHOST_SEARCH.
  *
@@ -1182,8 +1173,8 @@ int ngb_treefind_ghost_search(tessellation * T, MyDouble searchcenter[3], MyDoub
  *
  *  \return Number of points found.
  */
-int ngb_treefind_ghost_search(tessellation * T, MyDouble searchcenter[3], MyDouble refpos[3], MyFloat hsml, MyFloat maxdist, int target, int origin, int mode, int thread_id, int numnodes,
-                              int *firstnode)
+int ngb_treefind_ghost_search(tessellation *T, MyDouble searchcenter[3], MyDouble refpos[3], MyFloat hsml, MyFloat maxdist, int target,
+                              int origin, int mode, int thread_id, int numnodes, int *firstnode)
 {
   int i, k, numngb, no, p;
   int image_flag = 0;
@@ -1210,9 +1201,9 @@ int ngb_treefind_ghost_search(tessellation * T, MyDouble searchcenter[3], MyDoub
   search_min_Ladd[0] = search_min[0] + boxSize_X;
   refsearch_max_Lsub[0] = refsearch_max[0] - boxSize_X;
   refsearch_min_Ladd[0] = refsearch_min[0] + boxSize_X;
-#else /* #if !defined(REFLECTIVE_X) */
-  search_max_Lsub[0] = 2 * boxSize_X - search_max[0];
-  search_min_Ladd[0] = -search_min[0];
+#else  /* #if !defined(REFLECTIVE_X) */
+  search_max_Lsub[0]    = 2 * boxSize_X - search_max[0];
+  search_min_Ladd[0]    = -search_min[0];
   refsearch_max_Lsub[0] = 2 * boxSize_X - refsearch_max[0];
   refsearch_min_Ladd[0] = -refsearch_min[0];
 #endif /* #if !defined(REFLECTIVE_X) #else */
@@ -1222,9 +1213,9 @@ int ngb_treefind_ghost_search(tessellation * T, MyDouble searchcenter[3], MyDoub
   search_min_Ladd[1] = search_min[1] + boxSize_Y;
   refsearch_max_Lsub[1] = refsearch_max[1] - boxSize_Y;
   refsearch_min_Ladd[1] = refsearch_min[1] + boxSize_Y;
-#else /* #if !defined(REFLECTIVE_Y) */
-  search_max_Lsub[1] = 2 * boxSize_Y - search_max[1];
-  search_min_Ladd[1] = -search_min[1];
+#else  /* #if !defined(REFLECTIVE_Y) */
+  search_max_Lsub[1]    = 2 * boxSize_Y - search_max[1];
+  search_min_Ladd[1]    = -search_min[1];
   refsearch_max_Lsub[1] = 2 * boxSize_Y - refsearch_max[1];
   refsearch_min_Ladd[1] = -refsearch_min[1];
 #endif /* #if !defined(REFLECTIVE_Y) #else */
@@ -1234,9 +1225,9 @@ int ngb_treefind_ghost_search(tessellation * T, MyDouble searchcenter[3], MyDoub
   search_min_Ladd[2] = search_min[2] + boxSize_Z;
   refsearch_max_Lsub[2] = refsearch_max[2] - boxSize_Z;
   refsearch_min_Ladd[2] = refsearch_min[2] + boxSize_Z;
-#else /* #if !defined(REFLECTIVE_Z) */
-  search_max_Lsub[2] = 2 * boxSize_Z - search_max[2];
-  search_min_Ladd[2] = -search_min[2];
+#else  /* #if !defined(REFLECTIVE_Z) */
+  search_max_Lsub[2]    = 2 * boxSize_Z - search_max[2];
+  search_min_Ladd[2]    = -search_min[2];
   refsearch_max_Lsub[2] = 2 * boxSize_Z - refsearch_max[2];
   refsearch_min_Ladd[2] = -refsearch_min[2];
 #endif /* #if !defined(REFLECTIVE_Z) #else */
@@ -1256,7 +1247,7 @@ int ngb_treefind_ghost_search(tessellation * T, MyDouble searchcenter[3], MyDoub
     {
       if(mode == MODE_LOCAL_PARTICLES)
         {
-          no = Ngb_MaxPart;     /* root node */
+          no = Ngb_MaxPart; /* root node */
 
 #ifdef EXTENDED_GHOST_SEARCH
           bitflags = 0;
@@ -1269,13 +1260,13 @@ int ngb_treefind_ghost_search(tessellation * T, MyDouble searchcenter[3], MyDoub
 #ifdef EXTENDED_GHOST_SEARCH
           bitflags = first_bitflag[k];
 #endif /* #ifdef EXTENDED_GHOST_SEARCH */
-          no = Ngb_Nodes[no].u.d.nextnode;      /* open it */
+          no = Ngb_Nodes[no].u.d.nextnode; /* open it */
         }
 
       while(no >= 0)
         {
           count++;
-          if(no < Ngb_MaxPart)  /* single particle */
+          if(no < Ngb_MaxPart) /* single particle */
             {
               p = no;
               no = Ngb_Nextnode[no];
@@ -1284,7 +1275,7 @@ int ngb_treefind_ghost_search(tessellation * T, MyDouble searchcenter[3], MyDoub
                 continue;
 
               if(P[p].Mass == 0 && P[p].ID == 0)
-                continue;       /* skip cells that have been swallowed or eliminated */
+                continue; /* skip cells that have been swallowed or eliminated */
 
               if(P[p].Ti_Current != All.Ti_Current)
                 {
@@ -1293,8 +1284,8 @@ int ngb_treefind_ghost_search(tessellation * T, MyDouble searchcenter[3], MyDoub
 
               offx = offy = offz = 0;
 
-              image_flag = 0;   /* for each coordinates there are three possibilities. We
-                                   encode them to basis three, i.e. x*3^0 + y*3^1 + z*3^2 */
+              image_flag = 0; /* for each coordinates there are three possibilities. We
+                                 encode them to basis three, i.e. x*3^0 + y*3^1 + z*3^2 */
 
 #if !defined(REFLECTIVE_X)
               if(P[p].Pos[0] - refpos[0] < -boxHalf_X)
@@ -1352,7 +1343,6 @@ int ngb_treefind_ghost_search(tessellation * T, MyDouble searchcenter[3], MyDoub
                       for(repz = -1; repz <= 1; repz++, offz = 0)
 #endif /* #if defined(REFLECTIVE_Z) && !defined(TWODIMS) */
                         {
-
                           image_flag = image_flag_periodic_bnds;
 
                           x = P[p].Pos[0];
@@ -1373,7 +1363,7 @@ int ngb_treefind_ghost_search(tessellation * T, MyDouble searchcenter[3], MyDoub
                             x = -x;
 #endif /* #if defined(REFLECTIVE_X) */
 
-#if  defined(REFLECTIVE_Y)
+#if defined(REFLECTIVE_Y)
                           if(repy == 1)
                             {
                               offy = 2 * boxSize_Y;
@@ -1387,7 +1377,7 @@ int ngb_treefind_ghost_search(tessellation * T, MyDouble searchcenter[3], MyDoub
                             y = -y;
 #endif /* #if  defined(REFLECTIVE_Y) */
 
-#if  defined(REFLECTIVE_Z) && !defined(TWODIMS)
+#if defined(REFLECTIVE_Z) && !defined(TWODIMS)
                           if(repz == 1)
                             {
                               offz = 2 * boxSize_Z;
@@ -1449,12 +1439,12 @@ int ngb_treefind_ghost_search(tessellation * T, MyDouble searchcenter[3], MyDoub
                                     }
 
                                   if(listp >= 0)
-                                    if((ListExports[listp].image_bits & (1 << image_flag)))     /* already in list */
+                                    if((ListExports[listp].image_bits & (1 << image_flag))) /* already in list */
                                       continue;
                                 }
                               else
                                 {
-                                  if((ListExports[List_P[p].currentexport].image_bits & (1 << image_flag)))     /* already in list */
+                                  if((ListExports[List_P[p].currentexport].image_bits & (1 << image_flag))) /* already in list */
                                     continue;
                                 }
                             }
@@ -1474,16 +1464,17 @@ int ngb_treefind_ghost_search(tessellation * T, MyDouble searchcenter[3], MyDoub
                     }
                 }
             }
-          else if(no < Ngb_MaxPart + Ngb_MaxNodes)      /* internal node */
+          else if(no < Ngb_MaxPart + Ngb_MaxNodes) /* internal node */
             {
               if(mode == MODE_IMPORTED_PARTICLES)
                 {
-                  if(no < Ngb_FirstNonTopLevelNode)     /* we reached a top-level node again, which means that we are done with the branch */
+                  if(no <
+                     Ngb_FirstNonTopLevelNode) /* we reached a top-level node again, which means that we are done with the branch */
                     break;
                 }
 
               current = &Ngb_Nodes[no];
-              no = current->u.d.sibling;        /* in case the node can be discarded */
+              no = current->u.d.sibling; /* in case the node can be discarded */
 
               if(current->Ti_Current != All.Ti_Current)
                 {
@@ -1495,7 +1486,7 @@ int ngb_treefind_ghost_search(tessellation * T, MyDouble searchcenter[3], MyDoub
                 continue;
               if(search_min_Ladd[0] > current->u.d.range_max[0] && search_max[0] < current->u.d.range_min[0])
                 continue;
-#else /* #if !defined(REFLECTIVE_X) */
+#else  /* #if !defined(REFLECTIVE_X) */
               if(search_min[0] > current->u.d.range_max[0] && search_max_Lsub[0] > current->u.d.range_max[0])
                 continue;
               if(search_min_Ladd[0] < current->u.d.range_min[0] && search_max[0] < current->u.d.range_min[0])
@@ -1507,7 +1498,7 @@ int ngb_treefind_ghost_search(tessellation * T, MyDouble searchcenter[3], MyDoub
                 continue;
               if(search_min_Ladd[1] > current->u.d.range_max[1] && search_max[1] < current->u.d.range_min[1])
                 continue;
-#else /* #if !defined(REFLECTIVE_Y) */
+#else  /* #if !defined(REFLECTIVE_Y) */
               if(search_min[1] > current->u.d.range_max[1] && search_max_Lsub[1] > current->u.d.range_max[1])
                 continue;
               if(search_min_Ladd[1] < current->u.d.range_min[1] && search_max[1] < current->u.d.range_min[1])
@@ -1519,21 +1510,21 @@ int ngb_treefind_ghost_search(tessellation * T, MyDouble searchcenter[3], MyDoub
                 continue;
               if(search_min_Ladd[2] > current->u.d.range_max[2] && search_max[2] < current->u.d.range_min[2])
                 continue;
-#else /* #if !defined(REFLECTIVE_Z) */
+#else  /* #if !defined(REFLECTIVE_Z) */
               if(search_min[2] > current->u.d.range_max[2] && search_max_Lsub[2] > current->u.d.range_max[2])
                 continue;
               if(search_min_Ladd[2] < current->u.d.range_min[2] && search_max[2] < current->u.d.range_min[2])
                 continue;
 #endif /* #if !defined(REFLECTIVE_Z) #else */
 
-              /* now deal with the search region of the reference point */
+                /* now deal with the search region of the reference point */
 
 #if !defined(REFLECTIVE_X)
               if(refsearch_min[0] > current->u.d.range_max[0] && refsearch_max_Lsub[0] < current->u.d.range_min[0])
                 continue;
               if(refsearch_min_Ladd[0] > current->u.d.range_max[0] && refsearch_max[0] < current->u.d.range_min[0])
                 continue;
-#else /* #if !defined(REFLECTIVE_X) */
+#else  /* #if !defined(REFLECTIVE_X) */
               if(refsearch_min[0] > current->u.d.range_max[0] && refsearch_max_Lsub[0] > current->u.d.range_max[0])
                 continue;
               if(refsearch_min_Ladd[0] < current->u.d.range_min[0] && refsearch_max[0] < current->u.d.range_min[0])
@@ -1545,7 +1536,7 @@ int ngb_treefind_ghost_search(tessellation * T, MyDouble searchcenter[3], MyDoub
                 continue;
               if(refsearch_min_Ladd[1] > current->u.d.range_max[1] && refsearch_max[1] < current->u.d.range_min[1])
                 continue;
-#else /* #if !defined(REFLECTIVE_Y) */
+#else  /* #if !defined(REFLECTIVE_Y) */
               if(refsearch_min[1] > current->u.d.range_max[1] && refsearch_max_Lsub[1] > current->u.d.range_max[1])
                 continue;
               if(refsearch_min_Ladd[1] < current->u.d.range_min[1] && refsearch_max[1] < current->u.d.range_min[1])
@@ -1557,16 +1548,16 @@ int ngb_treefind_ghost_search(tessellation * T, MyDouble searchcenter[3], MyDoub
                 continue;
               if(refsearch_min_Ladd[2] > current->u.d.range_max[2] && refsearch_max[2] < current->u.d.range_min[2])
                 continue;
-#else /* #if !defined(REFLECTIVE_Z) */
+#else  /* #if !defined(REFLECTIVE_Z) */
               if(refsearch_min[2] > current->u.d.range_max[2] && refsearch_max_Lsub[2] > current->u.d.range_max[2])
                 continue;
               if(refsearch_min_Ladd[2] < current->u.d.range_min[2] && refsearch_max[2] < current->u.d.range_min[2])
                 continue;
 #endif /* #if !defined(REFLECTIVE_Z) #else */
 
-              no = current->u.d.nextnode;       /* ok, we need to open the node */
+              no = current->u.d.nextnode; /* ok, we need to open the node */
             }
-          else                  /* pseudo particle */
+          else /* pseudo particle */
             {
               if(mode == 1)
                 terminate("mode == 1");
@@ -1574,7 +1565,7 @@ int ngb_treefind_ghost_search(tessellation * T, MyDouble searchcenter[3], MyDoub
               if(mode == MODE_IMPORTED_PARTICLES)
                 terminate("mode == MODE_IMPORTED_PARTICLES should not occur here");
 
-              if(target >= 0)   /* if no target is given, export will not occur */
+              if(target >= 0) /* if no target is given, export will not occur */
                 ngb_treefind_export_node_threads(no, target, thread_id, image_flag);
 
               no = Ngb_Nextnode[no - Ngb_MaxNodes];
@@ -1616,7 +1607,8 @@ int ngb_treefind_ghost_search(tessellation * T, MyDouble searchcenter[3], MyDoub
                           T->Indi.AllocFacNinlist *= ALLOC_INCREASE_FACTOR;
                           MaxNinlist = T->Indi.AllocFacNinlist;
 #ifdef VERBOSE
-                          printf("Task=%d: increase memory allocation, MaxNinlist=%d Indi.AllocFacNinlist=%g\n", ThisTask, MaxNinlist, T->Indi.AllocFacNinlist);
+                          printf("Task=%d: increase memory allocation, MaxNinlist=%d Indi.AllocFacNinlist=%g\n", ThisTask, MaxNinlist,
+                                 T->Indi.AllocFacNinlist);
 #endif /* #ifdef VERBOSE */
                           ListExports = myrealloc_movable(ListExports, MaxNinlist * sizeof(struct list_export_data));
 
@@ -1645,7 +1637,8 @@ int ngb_treefind_ghost_search(tessellation * T, MyDouble searchcenter[3], MyDoub
               T->Indi.AllocFacNinlist *= ALLOC_INCREASE_FACTOR;
               MaxNinlist = T->Indi.AllocFacNinlist;
 #ifdef VERBOSE
-              printf("Task=%d: increase memory allocation, MaxNinlist=%d Indi.AllocFacNinlist=%g\n", ThisTask, MaxNinlist, T->Indi.AllocFacNinlist);
+              printf("Task=%d: increase memory allocation, MaxNinlist=%d Indi.AllocFacNinlist=%g\n", ThisTask, MaxNinlist,
+                     T->Indi.AllocFacNinlist);
 #endif /* #ifdef VERBOSE */
               ListExports = myrealloc_movable(ListExports, MaxNinlist * sizeof(struct list_export_data));
 
@@ -1701,9 +1694,9 @@ int ngb_treefind_ghost_search(tessellation * T, MyDouble searchcenter[3], MyDoub
           dp->task = ThisTask;
           dp->ID = P[p].ID;
           if(image_flag)
-            dp->index = p + NumGas;     /* this is a replicated/mirrored local point */
+            dp->index = p + NumGas; /* this is a replicated/mirrored local point */
           else
-            dp->index = p;      /* this is actually a local point that wasn't made part of the mesh yet */
+            dp->index = p; /* this is actually a local point that wasn't made part of the mesh yet */
           dp->originalindex = p;
           dp->timebin = P[p].TimeBinHydro;
           dp->image_flags = (1 << image_flag);
@@ -1725,9 +1718,10 @@ int ngb_treefind_ghost_search(tessellation * T, MyDouble searchcenter[3], MyDoub
               T->Indi.AllocFacN_DP_Buffer *= ALLOC_INCREASE_FACTOR;
               MaxN_DP_Buffer = T->Indi.AllocFacN_DP_Buffer;
 #ifdef VERBOSE
-              printf("Task=%d: increase memory allocation, MaxN_DP_Buffer=%d Indi.AllocFacN_DP_Buffer=%g\n", ThisTask, MaxN_DP_Buffer, T->Indi.AllocFacN_DP_Buffer);
+              printf("Task=%d: increase memory allocation, MaxN_DP_Buffer=%d Indi.AllocFacN_DP_Buffer=%g\n", ThisTask, MaxN_DP_Buffer,
+                     T->Indi.AllocFacN_DP_Buffer);
 #endif /* #ifdef VERBOSE */
-              DP_Buffer = (point *) myrealloc_movable(DP_Buffer, MaxN_DP_Buffer * sizeof(point));
+              DP_Buffer = (point *)myrealloc_movable(DP_Buffer, MaxN_DP_Buffer * sizeof(point));
 
               if(N_DP_Buffer >= MaxN_DP_Buffer)
                 terminate("(N_DP_Buffer >= MaxN_DP_Buffer");
@@ -1757,9 +1751,7 @@ int ngb_treefind_ghost_search(tessellation * T, MyDouble searchcenter[3], MyDoub
   return numngb;
 }
 
-
 #endif /* #ifdef EXTENDED_GHOST_SEARCH #else */
-
 
 /*! \brief Counts up undecided tetrahedra.
  *
@@ -1767,7 +1759,7 @@ int ngb_treefind_ghost_search(tessellation * T, MyDouble searchcenter[3], MyDoub
  *
  *  \return (Local) number of undecided tetrahedra.
  */
-int count_undecided_tetras(tessellation * T)
+int count_undecided_tetras(tessellation *T)
 {
   int i, count;
 
@@ -1777,6 +1769,5 @@ int count_undecided_tetras(tessellation * T)
 
   return count;
 }
-
 
 #endif /* #if !defined(ONEDIMS) */

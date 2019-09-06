@@ -40,48 +40,41 @@
  *                int face_get_normals(tessellation * T, int i, struct
  *                  geometry *geom)
  *                double distance_to_border(int cell)
- * 
- * 
+ *
+ *
  * \par Major modifications and contributions:
- * 
+ *
  * - DD.MM.YYYY Description
  * - 21.05.2018 Prepared file for public release -- Rainer Weinberger
  */
 
-
+#include <math.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <math.h>
 
 #include "../../main/allvars.h"
 #include "../../main/proto.h"
 
 #include "voronoi.h"
 
-
 tessellation Mesh, DeRefMesh;
-
 
 unsigned char *Edge_visited;
 struct area_list_data *AreaList;
 int Narea, MaxNarea;
 
-
-int DPinfinity;                 /* marker for special infinity point */
+int DPinfinity; /* marker for special infinity point */
 double CentralOffsetX, CentralOffsetY, CentralOffsetZ, ConversionFac;
-
 
 struct list_export_data *ListExports;
 struct list_P_data *List_P;
 int NumGasInMesh;
 int *List_InMesh;
 
-
 int CountInSphereTests, CountInSphereTestsExact;
 int CountConvexEdgeTest, CountConvexEdgeTestExact;
 int Ninlist, MaxNinlist;
-
 
 int CountFlips, Count_1_to_3_Flips2d, Count_2_to_4_Flips2d;
 int Count_1_to_4_Flips, Count_2_to_3_Flips, Count_3_to_2_Flips, Count_4_to_4_Flips;
@@ -89,16 +82,13 @@ int Count_EdgeSplits, Count_FaceSplits;
 int Count_InTetra, Count_InTetraExact;
 int Largest_N_DP_Buffer;
 
-
 long long TotCountInSphereTests, TotCountInSphereTestsExact;
 long long TotCountConvexEdgeTest, TotCountConvexEdgeTestExact;
-
 
 long long TotCountFlips, TotCount_1_to_3_Flips2d, TotCount_2_to_4_Flips2d;
 long long TotCount_1_to_4_Flips, TotCount_2_to_3_Flips, TotCount_3_to_2_Flips, TotCount_4_to_4_Flips;
 long long TotCount_EdgeSplits, TotCount_FaceSplits;
 long long TotCount_InTetra, TotCount_InTetraExact;
-
 
 /*! \brief Creates the Voronoi mesh.
  *
@@ -121,7 +111,7 @@ void create_mesh(void)
 
   for(k = 0; k < NumPart; k++)
     {
-      buTimeBin[k] = P[k].TimeBinHydro;
+      buTimeBin[k]      = P[k].TimeBinHydro;
       P[k].TimeBinHydro = 0;
     }
 
@@ -169,20 +159,20 @@ void create_mesh(void)
   CountInSphereTests = CountInSphereTestsExact = 0;
   CountConvexEdgeTest = CountConvexEdgeTestExact = 0;
   CountFlips = Count_1_to_3_Flips2d = Count_2_to_4_Flips2d = 0;
-  Count_1_to_4_Flips = 0;
-  Count_2_to_3_Flips = 0;
-  Count_3_to_2_Flips = 0;
-  Count_4_to_4_Flips = 0;
-  Count_EdgeSplits = 0;
-  Count_FaceSplits = 0;
+  Count_1_to_4_Flips                                       = 0;
+  Count_2_to_3_Flips                                       = 0;
+  Count_3_to_2_Flips                                       = 0;
+  Count_4_to_4_Flips                                       = 0;
+  Count_EdgeSplits                                         = 0;
+  Count_FaceSplits                                         = 0;
   Count_InTetra = Count_InTetraExact = 0;
-  Largest_N_DP_Buffer = 0;
+  Largest_N_DP_Buffer                = 0;
 
-  MaxNinlist = Mesh.Indi.AllocFacNinlist;
+  MaxNinlist  = Mesh.Indi.AllocFacNinlist;
   ListExports = mymalloc_movable(&ListExports, "ListExports", MaxNinlist * sizeof(struct list_export_data));
 
   NumGasInMesh = 0;
-  List_InMesh = mymalloc_movable(&List_InMesh, "List_InMesh", NumGas * sizeof(int));
+  List_InMesh  = mymalloc_movable(&List_InMesh, "List_InMesh", NumGas * sizeof(int));
 
   List_P = mymalloc_movable(&List_P, "List_P", NumGas * sizeof(struct list_P_data));
 
@@ -222,11 +212,13 @@ void create_mesh(void)
       tend = second();
 
       if(iter == 0)
-        mpi_printf("VORONOI: iter=%d: %llu local points, points/sec/task = %g, took %g secs\n", iter, ntot, ntot / (timediff(tstart, tend) + 1.0e-30) / NTask, timediff(tstart, tend));
+        mpi_printf("VORONOI: iter=%d: %llu local points, points/sec/task = %g, took %g secs\n", iter, ntot,
+                   ntot / (timediff(tstart, tend) + 1.0e-30) / NTask, timediff(tstart, tend));
       else
         {
           if(ntot)
-            mpi_printf("VORONOI: iter=%d: %llu additional points, points/sec/task = %g, took %g secs\n", iter, ntot, ntot / (timediff(tstart, tend) + 1.0e-30) / NTask, timediff(tstart, tend));
+            mpi_printf("VORONOI: iter=%d: %llu additional points, points/sec/task = %g, took %g secs\n", iter, ntot,
+                       ntot / (timediff(tstart, tend) + 1.0e-30) / NTask, timediff(tstart, tend));
           else
             mpi_printf("VORONOI: iter=%d: %llu additional points, took %g secs\n", iter, ntot, timediff(tstart, tend));
         }
@@ -263,7 +255,7 @@ void create_mesh(void)
                     continue;
                   SphP[i].Hsml *= HSML_INCREASE_FACTOR;
                 }
-#else /* #ifndef DOUBLE_STENCIL */
+#else  /* #ifndef DOUBLE_STENCIL */
               for(i = 0; i < Mesh.Ndp; i++)
                 Mesh.DP[i].Hsml *= HSML_INCREASE_FACTOR;
 #endif /* #ifndef DOUBLE_STENCIL #else */
@@ -283,16 +275,16 @@ void create_mesh(void)
     }
   while(ntot > 0);
 
-#if (REFLECTIVE_X == 2) || (REFLECTIVE_Y == 2) || (REFLECTIVE_Z == 2)
+#if(REFLECTIVE_X == 2) || (REFLECTIVE_Y == 2) || (REFLECTIVE_Z == 2)
   for(i = 0; i < Mesh.Ndp; i++)
     {
-#if (REFLECTIVE_X == 2)
+#if(REFLECTIVE_X == 2)
       Mesh.DP[i].image_flags |= OUTFLOW_X;
 #endif /* #if (REFLECTIVE_X == 2) */
-#if (REFLECTIVE_Y == 2)
+#if(REFLECTIVE_Y == 2)
       Mesh.DP[i].image_flags |= OUTFLOW_Y;
 #endif /* #if (REFLECTIVE_Y == 2) */
-#if (REFLECTIVE_Z == 2)
+#if(REFLECTIVE_Z == 2)
       Mesh.DP[i].image_flags |= OUTFLOW_Z;
 #endif /* #if (REFLECTIVE_Z == 2) */
     }
@@ -316,40 +308,40 @@ void create_mesh(void)
   in[5] = Count_InTetra;
   in[6] = Count_InTetraExact;
 #ifndef TWODIMS
-  in[7] = Count_1_to_4_Flips;
-  in[8] = Count_2_to_3_Flips;
-  in[9] = Count_3_to_2_Flips;
+  in[7]  = Count_1_to_4_Flips;
+  in[8]  = Count_2_to_3_Flips;
+  in[9]  = Count_3_to_2_Flips;
   in[10] = Count_4_to_4_Flips;
   in[11] = Count_FaceSplits;
   in[12] = Count_EdgeSplits;
   in[13] = CountConvexEdgeTest;
   in[14] = CountConvexEdgeTestExact;
-  n = 15;
-#else /* #ifndef TWODIMS */
-  in[7] = Count_1_to_3_Flips2d;
-  in[8] = Count_2_to_4_Flips2d;
-  n = 9;
+  n      = 15;
+#else  /* #ifndef TWODIMS */
+  in[7]                   = Count_1_to_3_Flips2d;
+  in[8]                   = Count_2_to_4_Flips2d;
+  n                       = 9;
 #endif /* #ifndef TWODIMS #else */
 
   sumup_large_ints(n, in, out);
 
-  TotNdp = out[0];
-  TotNdt = out[1];
-  TotCountInSphereTests = out[2];
+  TotNdp                     = out[0];
+  TotNdt                     = out[1];
+  TotCountInSphereTests      = out[2];
   TotCountInSphereTestsExact = out[3];
-  TotCountFlips = out[4];
-  TotCount_InTetra = out[5];
-  TotCount_InTetraExact = out[6];
+  TotCountFlips              = out[4];
+  TotCount_InTetra           = out[5];
+  TotCount_InTetraExact      = out[6];
 #ifndef TWODIMS
-  TotCount_1_to_4_Flips = out[7];
-  TotCount_2_to_3_Flips = out[8];
-  TotCount_3_to_2_Flips = out[9];
-  TotCount_4_to_4_Flips = out[10];
-  TotCount_FaceSplits = out[11];
-  TotCount_EdgeSplits = out[12];
-  TotCountConvexEdgeTest = out[13];
+  TotCount_1_to_4_Flips       = out[7];
+  TotCount_2_to_3_Flips       = out[8];
+  TotCount_3_to_2_Flips       = out[9];
+  TotCount_4_to_4_Flips       = out[10];
+  TotCount_FaceSplits         = out[11];
+  TotCount_EdgeSplits         = out[12];
+  TotCountConvexEdgeTest      = out[13];
   TotCountConvexEdgeTestExact = out[14];
-#else /* #ifndef TWODIMS */
+#else  /* #ifndef TWODIMS */
   TotCount_1_to_3_Flips2d = out[7];
   TotCount_2_to_4_Flips2d = out[8];
 #endif /* #ifndef TWODIMS #else */
@@ -357,19 +349,25 @@ void create_mesh(void)
   if(ThisTask == 0)
     {
 #ifndef TWODIMS
-      printf("VORONOI: Average D-Points=%llu  (NumGas=%llu)  D-Tetrahedra=%llu  InSphereTests=%llu  InSphereTestsExact=%llu  Flips=%llu\n",
-             TotNdp / NTask, All.TotNumGas / NTask, TotNdt / NTask, TotCountInSphereTests / NTask, TotCountInSphereTestsExact / NTask, TotCountFlips / NTask);
+      printf(
+          "VORONOI: Average D-Points=%llu  (NumGas=%llu)  D-Tetrahedra=%llu  InSphereTests=%llu  InSphereTestsExact=%llu  "
+          "Flips=%llu\n",
+          TotNdp / NTask, All.TotNumGas / NTask, TotNdt / NTask, TotCountInSphereTests / NTask, TotCountInSphereTestsExact / NTask,
+          TotCountFlips / NTask);
       printf("VORONOI: 1_to_4_Flips=%llu  2_to_3_Flips=%llu  3_to_2_Flips=%llu  4_to_4_Flips=%llu  FaceSplits=%llu  EdgeSplits=%llu\n",
-             TotCount_1_to_4_Flips / NTask, TotCount_2_to_3_Flips / NTask, TotCount_3_to_2_Flips / NTask, TotCount_4_to_4_Flips / NTask, TotCount_FaceSplits / NTask, TotCount_EdgeSplits / NTask);
+             TotCount_1_to_4_Flips / NTask, TotCount_2_to_3_Flips / NTask, TotCount_3_to_2_Flips / NTask,
+             TotCount_4_to_4_Flips / NTask, TotCount_FaceSplits / NTask, TotCount_EdgeSplits / NTask);
       printf("VORONOI: InTetra=%llu  InTetraExact=%llu  ConvexEdgeTest=%llu  ConvexEdgeTestExact=%llu\n", TotCount_InTetra,
              TotCount_InTetraExact / NTask, TotCountConvexEdgeTest / NTask, TotCountConvexEdgeTestExact / NTask);
-#else /* #ifndef TWODIMS */
-      printf("VORONOI: Average D-Points=%llu  (NumGas=%llu)  D-Triangles=%llu  InCircleTests=%llu InCircleTestsExact=%llu  Flips=%llu\n",
-             TotNdp / NTask, All.TotNumGas / NTask, TotNdt / NTask, TotCountInSphereTests / NTask, TotCountInSphereTestsExact / NTask, TotCountFlips / NTask);
+#else  /* #ifndef TWODIMS */
+      printf(
+          "VORONOI: Average D-Points=%llu  (NumGas=%llu)  D-Triangles=%llu  InCircleTests=%llu InCircleTestsExact=%llu  Flips=%llu\n",
+          TotNdp / NTask, All.TotNumGas / NTask, TotNdt / NTask, TotCountInSphereTests / NTask, TotCountInSphereTestsExact / NTask,
+          TotCountFlips / NTask);
       printf("VORONOI: 1_to_3_Flips=%llu  2_to_4_Flips=%llu  InTriangle=%llu  InTriangleExact=%llu\n", TotCount_1_to_3_Flips2d / NTask,
              TotCount_2_to_4_Flips2d / NTask, TotCount_InTetra / NTask, TotCount_InTetraExact / NTask);
 #endif /* #ifndef TWODIMS #else */
-      printf("VORONOI: Total D-Points: %llu Ratio=%g\n", TotNdp, ((double) TotNdp) / All.TotNumGas);
+      printf("VORONOI: Total D-Points: %llu Ratio=%g\n", TotNdp, ((double)TotNdp) / All.TotNumGas);
     }
 #endif /* #ifdef VERBOSE */
 
@@ -381,7 +379,7 @@ void create_mesh(void)
       if(i < 0)
         continue;
 
-      SphP[i].Volume = 0;
+      SphP[i].Volume      = 0;
       SphP[i].SurfaceArea = 0;
 #if defined(REGULARIZE_MESH_FACE_ANGLE) || defined(OUTPUT_MESH_FACE_ANGLE)
       SphP[i].MaxFaceAngle = 0;
@@ -419,7 +417,7 @@ void create_mesh(void)
 
   myfree(Mesh.DTF);
 
-  if(All.HighestActiveTimeBin == All.HighestOccupiedTimeBin)    /* only do this for full steps */
+  if(All.HighestActiveTimeBin == All.HighestOccupiedTimeBin) /* only do this for full steps */
     {
       /* check whether we can reduce allocation factors */
       while(Mesh.Ndp < ALLOC_DECREASE_FACTOR * Mesh.Indi.AllocFacNdp && Mesh.Indi.AllocFacNdp > MIN_ALLOC_NUMBER)
@@ -434,7 +432,8 @@ void create_mesh(void)
       while(Ninlist < ALLOC_DECREASE_FACTOR * Mesh.Indi.AllocFacNinlist && Mesh.Indi.AllocFacNinlist > MIN_ALLOC_NUMBER)
         Mesh.Indi.AllocFacNinlist /= ALLOC_INCREASE_FACTOR;
 
-      while(Largest_N_DP_Buffer < ALLOC_DECREASE_FACTOR * Mesh.Indi.AllocFacN_DP_Buffer && Mesh.Indi.AllocFacN_DP_Buffer > MIN_ALLOC_NUMBER)
+      while(Largest_N_DP_Buffer < ALLOC_DECREASE_FACTOR * Mesh.Indi.AllocFacN_DP_Buffer &&
+            Mesh.Indi.AllocFacN_DP_Buffer > MIN_ALLOC_NUMBER)
         Mesh.Indi.AllocFacN_DP_Buffer /= ALLOC_INCREASE_FACTOR;
     }
 
@@ -450,7 +449,6 @@ void create_mesh(void)
   myfree_movable(buTimeBin);
 #endif /* #if defined(CREATE_FULL_MESH) */
 }
-
 
 /*! \brief Routine that fetches local gas cells.
  *
@@ -475,9 +473,9 @@ int voronoi_get_local_particles(void)
         {
           Ngb_Marker[p] = Ngb_MarkerValue;
 
-          if((P[p].Mass == 0) && (P[p].ID == 0))        /* skip cells that have been swallowed or eliminated */
+          if((P[p].Mass == 0) && (P[p].ID == 0)) /* skip cells that have been swallowed or eliminated */
             {
-              List_P[p].firstexport = -1;
+              List_P[p].firstexport   = -1;
               List_P[p].currentexport = -1;
               continue;
             }
@@ -487,7 +485,8 @@ int voronoi_get_local_particles(void)
               Mesh.Indi.AllocFacNinlist *= ALLOC_INCREASE_FACTOR;
               MaxNinlist = Mesh.Indi.AllocFacNinlist;
 #ifdef VERBOSE
-              printf("VORONOI: Task=%d: increase memory allocation, MaxNinlist=%d Indi.AllocFacNinlist=%g\n", ThisTask, MaxNinlist, Mesh.Indi.AllocFacNinlist);
+              printf("VORONOI: Task=%d: increase memory allocation, MaxNinlist=%d Indi.AllocFacNinlist=%g\n", ThisTask, MaxNinlist,
+                     Mesh.Indi.AllocFacNinlist);
 #endif /* #ifdef VERBOSE */
               ListExports = myrealloc_movable(ListExports, MaxNinlist * sizeof(struct list_export_data));
 
@@ -500,15 +499,16 @@ int voronoi_get_local_particles(void)
           List_P[p].currentexport = List_P[p].firstexport = Ninlist++;
           ListExports[List_P[p].currentexport].image_bits = 1;
           ListExports[List_P[p].currentexport].nextexport = -1;
-          ListExports[List_P[p].currentexport].origin = ThisTask;
-          ListExports[List_P[p].currentexport].index = p;
+          ListExports[List_P[p].currentexport].origin     = ThisTask;
+          ListExports[List_P[p].currentexport].index      = p;
 
           if(Mesh.Ndp >= Mesh.MaxNdp)
             {
               Mesh.Indi.AllocFacNdp *= ALLOC_INCREASE_FACTOR;
               Mesh.MaxNdp = Mesh.Indi.AllocFacNdp;
 #ifdef VERBOSE
-              printf("VORONOI: Task=%d: increase memory allocation, MaxNdp=%d Indi.AllocFacNdp=%g\n", ThisTask, Mesh.MaxNdp, Mesh.Indi.AllocFacNdp);
+              printf("VORONOI: Task=%d: increase memory allocation, MaxNdp=%d Indi.AllocFacNdp=%g\n", ThisTask, Mesh.MaxNdp,
+                     Mesh.Indi.AllocFacNdp);
 #endif /* #ifdef VERBOSE */
               Mesh.DP -= 5;
               Mesh.DP = myrealloc_movable(Mesh.DP, (Mesh.MaxNdp + 5) * sizeof(point));
@@ -522,19 +522,19 @@ int voronoi_get_local_particles(void)
 
           point *dp = &Mesh.DP[Mesh.Ndp];
 
-          dp->x = P[p].Pos[0];
-          dp->y = P[p].Pos[1];
-          dp->z = P[p].Pos[2];
-          dp->ID = P[p].ID;
-          dp->task = ThisTask;
-          dp->index = p;
+          dp->x             = P[p].Pos[0];
+          dp->y             = P[p].Pos[1];
+          dp->z             = P[p].Pos[2];
+          dp->ID            = P[p].ID;
+          dp->task          = ThisTask;
+          dp->index         = p;
           dp->originalindex = -1;
-          dp->timebin = P[p].TimeBinHydro;
-          dp->image_flags = 1;
+          dp->timebin       = P[p].TimeBinHydro;
+          dp->image_flags   = 1;
 #ifdef DOUBLE_STENCIL
-          dp->Hsml = SphP[p].Hsml;
+          dp->Hsml             = SphP[p].Hsml;
           dp->first_connection = -1;
-          dp->last_connection = -1;
+          dp->last_connection  = -1;
 #endif /* #ifdef DOUBLE_STENCIL */
 
           Mesh.Ndp++;
@@ -545,10 +545,8 @@ int voronoi_get_local_particles(void)
   return count;
 }
 
-
 #ifdef REFINEMENT
 struct refdata *RefExch;
-
 
 /*! \brief Structures that are freed before refinement and derefinement step.
  *
@@ -567,7 +565,7 @@ void free_mesh_structures_not_needed_for_derefinement_refinement(void)
 
   myfree(GradExch);
 
-  RefExch = (struct refdata *) mymalloc_movable(&RefExch, "RefExch", Mesh_nimport * sizeof(struct refdata));
+  RefExch = (struct refdata *)mymalloc_movable(&RefExch, "RefExch", Mesh_nimport * sizeof(struct refdata));
 
   for(i = 0; i < Mesh_nimport; i++)
     {
@@ -579,7 +577,6 @@ void free_mesh_structures_not_needed_for_derefinement_refinement(void)
 
   myfree_movable(PrimExch);
 }
-
 
 /* \brief Structures that are freed after refinement and derefinement step.
  *
@@ -596,7 +593,7 @@ void free_all_remaining_mesh_structures(void)
 
   myfree(RefExch);
 
-  myfree(Mesh.DTC);             /* here we can free the centers of the Delaunay triangles again */
+  myfree(Mesh.DTC); /* here we can free the centers of the Delaunay triangles again */
   Mesh.DTC = NULL;
   myfree(List_P);
   myfree(List_InMesh);
@@ -606,7 +603,6 @@ void free_all_remaining_mesh_structures(void)
   myfree(Mesh.VF);
 }
 #endif /* #ifdef REFINEMENT */
-
 
 /*! \brief Frees arrays associated with Voronoi-mesh.
  *
@@ -628,12 +624,12 @@ void free_mesh(void)
 
         int q = Mesh.DP[i].first_connection;
 
-        if(q >= 0)              /* we have connections, let's add them to the free list */
+        if(q >= 0) /* we have connections, let's add them to the free list */
           {
             while(q >= 0)
               {
                 Nvc--;
-                DC[q].task = -1;        /* mark that this is unused */
+                DC[q].task = -1; /* mark that this is unused */
 
                 if(q == Mesh.DP[i].last_connection)
                   break;
@@ -643,10 +639,10 @@ void free_mesh(void)
 
             /* we add the new free spots at the beginning of the free list */
             DC[Mesh.DP[i].last_connection].next = FirstUnusedConnection;
-            FirstUnusedConnection = Mesh.DP[i].first_connection;
+            FirstUnusedConnection               = Mesh.DP[i].first_connection;
 
             Mesh.DP[i].first_connection = -1;
-            Mesh.DP[i].last_connection = -1;
+            Mesh.DP[i].last_connection  = -1;
           }
       }
   mpi_printf("done with freeing double stencil connections.\n");
@@ -655,7 +651,7 @@ void free_mesh(void)
   myfree_movable(GradExch);
   myfree_movable(PrimExch);
 
-  myfree_movable(Mesh.DTC);     /* here we can free the centers of the Delaunay triangles again */
+  myfree_movable(Mesh.DTC); /* here we can free the centers of the Delaunay triangles again */
   Mesh.DTC = NULL;
   myfree_movable(List_P);
   myfree_movable(List_InMesh);
@@ -664,7 +660,6 @@ void free_mesh(void)
   myfree_movable(Mesh.DP - 5);
   myfree_movable(Mesh.VF);
 }
-
 
 /*! \brief Get the maximum Delaunay radius for all active cells.
  *
@@ -693,13 +688,13 @@ int compute_max_delaunay_radius(void)
       SphP[i].MaxDelaunayRadius = 0;
     }
 
-  point *DP = Mesh.DP;
-  tetra *DT = Mesh.DT;
+  point *DP         = Mesh.DP;
+  tetra *DT         = Mesh.DT;
   tetra_center *DTC = Mesh.DTC;
 
   for(i = 0; i < Mesh.Ndt; i++)
     {
-      if(DT[i].t[0] < 0)        /* deleted ? */
+      if(DT[i].t[0] < 0) /* deleted ? */
         continue;
 
       dx = DP[DT[i].p[0]].x - DTC[i].cx;
@@ -722,7 +717,6 @@ int compute_max_delaunay_radius(void)
   return count;
 }
 
-
 #ifndef ONEDIMS
 /*! \brief Computes interface areas volume of cells.
  *
@@ -742,7 +736,7 @@ void compute_voronoi_faces_and_volumes(void)
       if(i < 0)
         continue;
 
-      SphP[i].Volume = 0;
+      SphP[i].Volume    = 0;
       SphP[i].Center[0] = 0;
       SphP[i].Center[1] = 0;
       SphP[i].Center[2] = 0;
@@ -757,16 +751,16 @@ void compute_voronoi_faces_and_volumes(void)
     Edge_visited[i] = 0;
 
   MaxNarea = Mesh.Indi.AllocFacNflux;
-  Narea = 0;
+  Narea    = 0;
   AreaList = mymalloc_movable(&AreaList, "AreaList", MaxNarea * sizeof(struct area_list_data));
 
   for(i = 0; i < Mesh.Ndt; i++)
     {
-      if(Mesh.DT[i].t[0] < 0)   /* deleted ? */
+      if(Mesh.DT[i].t[0] < 0) /* deleted ? */
         continue;
 
       bit = 1;
-      nr = 0;
+      nr  = 0;
 
       while(Edge_visited[i] != EDGE_ALL)
         {
@@ -798,7 +792,6 @@ void compute_voronoi_faces_and_volumes(void)
   myfree(Edge_visited);
 }
 
-
 /*! \brief Compare task of two area_list_data structures.
  *
  *  \param[in] a Pointer to first area_list_data structure.
@@ -808,15 +801,14 @@ void compute_voronoi_faces_and_volumes(void)
  */
 int area_list_data_compare(const void *a, const void *b)
 {
-  if(((struct area_list_data *) a)->task < (((struct area_list_data *) b)->task))
+  if(((struct area_list_data *)a)->task < (((struct area_list_data *)b)->task))
     return -1;
 
-  if(((struct area_list_data *) a)->task > (((struct area_list_data *) b)->task))
+  if(((struct area_list_data *)a)->task > (((struct area_list_data *)b)->task))
     return +1;
 
   return 0;
 }
-
 
 /*! \brief Sorts all interface areas and adds them to respective mesh
  *         generating points (ActiveArea).
@@ -850,7 +842,7 @@ void apply_area_list(void)
         }
     }
 
-  struct area_list_data *AreaListGet = (struct area_list_data *) mymalloc("AreaListGet", nimport * sizeof(struct area_list_data));
+  struct area_list_data *AreaListGet = (struct area_list_data *)mymalloc("AreaListGet", nimport * sizeof(struct area_list_data));
 
   /* exchange particle data */
   for(ngrp = 1; ngrp < (1 << PTask); ngrp++)
@@ -862,10 +854,9 @@ void apply_area_list(void)
           if(Send_count[recvTask] > 0 || Recv_count[recvTask] > 0)
             {
               /* get the particles */
-              MPI_Sendrecv(&AreaList[Send_offset[recvTask]],
-                           Send_count[recvTask] * sizeof(struct area_list_data), MPI_BYTE,
-                           recvTask, TAG_DENS_A,
-                           &AreaListGet[Recv_offset[recvTask]], Recv_count[recvTask] * sizeof(struct area_list_data), MPI_BYTE, recvTask, TAG_DENS_A, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
+              MPI_Sendrecv(&AreaList[Send_offset[recvTask]], Send_count[recvTask] * sizeof(struct area_list_data), MPI_BYTE, recvTask,
+                           TAG_DENS_A, &AreaListGet[Recv_offset[recvTask]], Recv_count[recvTask] * sizeof(struct area_list_data),
+                           MPI_BYTE, recvTask, TAG_DENS_A, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
             }
         }
     }
@@ -879,7 +870,6 @@ void apply_area_list(void)
 
   myfree(AreaListGet);
 }
-
 
 /*! \brief Calculates volumes of all cells that are created in refinement.
  *
@@ -901,11 +891,11 @@ void derefine_refine_compute_volumes(double *vol)
 
   for(i = 0; i < DeRefMesh.Ndt; i++)
     {
-      if(DeRefMesh.DT[i].t[0] < 0)      /* deleted ? */
+      if(DeRefMesh.DT[i].t[0] < 0) /* deleted ? */
         continue;
 
       bit = 1;
-      nr = 0;
+      nr  = 0;
 
       while(Edge_visited[i] != EDGE_ALL)
         {
@@ -920,9 +910,7 @@ void derefine_refine_compute_volumes(double *vol)
   myfree(Edge_visited);
 }
 
-
 #endif /* #ifndef ONEDIMS */
-
 
 /*! \brief Nearest distance in x direction, accounting for periodicity.
  *
@@ -941,7 +929,6 @@ double nearest_x(double d)
   return d;
 }
 
-
 /*! \brief Nearest distance in y direction, accounting for periodicity.
  *
  *  \param[in] d Distance to be checked.
@@ -959,7 +946,6 @@ double nearest_y(double d)
   return d;
 }
 
-
 /* \brief Nearest distance in z direction, accounting for periodicity.
  *
  * \param[in] d Distance to be checked.
@@ -976,7 +962,6 @@ double nearest_z(double d)
 #endif /* #if !defined(REFLECTIVE_Z) */
   return d;
 }
-
 
 /*! \brief Gets "radius" of a cell.
  *
@@ -996,16 +981,15 @@ double get_cell_radius(int i)
 #ifdef ONEDIMS
 #ifdef ONEDIMS_SPHERICAL
   cellrad = 0.5 * (Mesh.VF[i + 1].cx - Mesh.VF[i].cx);
-#else /* #ifdef ONEDIMS_SPHERICAL */
+#else  /* #ifdef ONEDIMS_SPHERICAL */
   cellrad = 0.5 * SphP[i].Volume;
 #endif /* #ifdef ONEDIMS_SPHERICAL #else */
-#else /* #ifdef ONEDIMS */
+#else  /* #ifdef ONEDIMS */
   cellrad = pow(SphP[i].Volume * 3.0 / (4.0 * M_PI), 1.0 / 3);
 #endif /* #ifdef ONEDIMS #else */
 #endif /* #ifdef TWODIMS */
   return cellrad;
 }
-
 
 /*! \brief Writes a file points_X.dat with Delaunay points.
  *
@@ -1016,7 +1000,7 @@ double get_cell_radius(int i)
  *
  *  \return void
  */
-void dump_points(tessellation * T)
+void dump_points(tessellation *T)
 {
   FILE *fd;
   int i;
@@ -1036,7 +1020,6 @@ void dump_points(tessellation * T)
   fclose(fd);
 }
 
-
 /*! \brief Calculates the normals to given interfaces.
  *
  *  \param[in] T Pointer to tesslation data.
@@ -1045,14 +1028,14 @@ void dump_points(tessellation * T)
  *
  *  \return 0 if success, -1 if interface can be ignored.
  */
-int face_get_normals(tessellation * T, int i, struct geometry *geom)
+int face_get_normals(tessellation *T, int i, struct geometry *geom)
 {
   int li, ri;
   double surface, surface_l, surface_r;
   int present_left, present_right;
   double mm;
 
-  face *VF = T->VF;
+  face *VF  = T->VF;
   point *DP = T->DP;
 
   li = DP[VF[i].p1].index;
@@ -1145,7 +1128,6 @@ int face_get_normals(tessellation * T, int i, struct geometry *geom)
   return 0;
 }
 
-
 /*! \brief Calculates distance of a cell to boundary of computational box.
  *
  *  \param[in] cell Index of cell in P and SphP structure.
@@ -1167,12 +1149,12 @@ double distance_to_border(int cell)
   d2 = P[cell].Pos[1];
 
   double min2 = fmin(d1, d2);
-  min = fmin(min, min2);
+  min         = fmin(min, min2);
 
   d1 = boxSize_Z - P[cell].Pos[2];
   assert(d1 > 0);
 
-  d2 = P[cell].Pos[2];
+  d2   = P[cell].Pos[2];
   min2 = fmin(d1, d2);
 
   min = fmin(min, min2);

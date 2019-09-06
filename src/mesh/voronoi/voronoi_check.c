@@ -29,30 +29,27 @@
  *                void check_triangles(tessellation * T, int npoints)
  *                void check_orientations(tessellation * T)
  *                void check_links(tessellation * T)
- * 
- * 
+ *
+ *
  * \par Major modifications and contributions:
- * 
+ *
  * - DD.MM.YYYY Description
  * - 22.05.2018 Prepared file for public release -- Rainer Weinberger
  */
 
-
+#include <math.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <math.h>
 
 #include "../../main/allvars.h"
 #include "../../main/proto.h"
 
 #include "voronoi.h"
 
-
-#if !defined(TWODIMS) && !defined(ONEDIMS)      /* three-dimensional test code */
+#if !defined(TWODIMS) && !defined(ONEDIMS) /* three-dimensional test code */
 
 int points_compare(const void *a, const void *b);
-
 
 /*! \brief Checks minimum distance between Delaunay points making sure it is
  *         nonzero.
@@ -61,7 +58,7 @@ int points_compare(const void *a, const void *b);
  *
  *  \return void
  */
-void check_for_min_distance(tessellation * T)
+void check_for_min_distance(tessellation *T)
 {
   point *DP = T->DP;
   int i, j;
@@ -74,20 +71,21 @@ void check_for_min_distance(tessellation * T)
 
       for(j = i + 1; j < T->Ndp; j++)
         {
-          r2 = (DP[i].x - DP[j].x) * (DP[i].x - DP[j].x) + (DP[i].y - DP[j].y) * (DP[i].y - DP[j].y) + (DP[i].z - DP[j].z) * (DP[i].z - DP[j].z);
+          r2 = (DP[i].x - DP[j].x) * (DP[i].x - DP[j].x) + (DP[i].y - DP[j].y) * (DP[i].y - DP[j].y) +
+               (DP[i].z - DP[j].z) * (DP[i].z - DP[j].z);
           if(r2 < r2min)
             r2min = r2;
 
           if(r2min == 0)
             {
               sprintf(msg, "i=%d j=%d equal.  DP[i].index=%d DP[j].index=%d\n", i, j, DP[i].index, DP[j].index);
-            terminate(msg)}
+              terminate(msg)
+            }
         }
     }
 
   printf("min distance=%g\n", sqrt(r2min));
 }
-
 
 /*! \brief Checks if tessellation links are correct.
  *
@@ -95,7 +93,7 @@ void check_for_min_distance(tessellation * T)
  *
  *  \return void
  */
-void check_links(tessellation * T)
+void check_links(tessellation *T)
 {
   tetra *DT = T->DT;
   int i, j, s, c, flag = 0;
@@ -104,14 +102,14 @@ void check_links(tessellation * T)
 
   for(i = 0; i < T->Ndt; i++)
     {
-      if(DT[i].t[0] < 0)        /* deleted ? */
+      if(DT[i].t[0] < 0) /* deleted ? */
         continue;
 
       for(j = 0; j < 4; j++)
         {
           if(DT[DT[i].t[j]].t[DT[i].s[j]] != i)
             {
-              printf("LINK for tetra=%d j=%d DT[i].s[j]=%d incorrect %d\n", i, j, DT[i].s[j], (int) (DT[DT[i].t[j]].t[DT[i].s[j]]));
+              printf("LINK for tetra=%d j=%d DT[i].s[j]=%d incorrect %d\n", i, j, DT[i].s[j], (int)(DT[DT[i].t[j]].t[DT[i].s[j]]));
             }
         }
 
@@ -147,14 +145,13 @@ void check_links(tessellation * T)
   printf("links ok\n");
 }
 
-
 /*! \brief Checks if orientations of tetrahedra are positive.
  *
  *  \param[in] T Pointer to tessellation.
  *
  *  \return void
  */
-void check_orientations(tessellation * T)
+void check_orientations(tessellation *T)
 {
   tetra *DT = T->DT;
   point *DP = T->DP;
@@ -171,18 +168,19 @@ void check_orientations(tessellation * T)
       point *p2 = &DP[t->p[2]];
       point *p3 = &DP[t->p[3]];
 
-      if(t->t[0] < 0)           /* deleted ? */
+      if(t->t[0] < 0) /* deleted ? */
         continue;
 
       if(isInfinity(p0) || isInfinity(p1) || isInfinity(p2) || isInfinity(p3))
         continue;
 
-      vol = calculate_tetra_volume(p0, p1, p2, p3);
+      vol  = calculate_tetra_volume(p0, p1, p2, p3);
       ivol = Orient3d_Exact(p0, p1, p2, p3);
 
       if(ivol <= 0)
         {
-          sprintf(msg, "Tetra %d is NEGATIVE (%d %d %d %d) oriented or FLAT: ivol=%d vol=%g\n", i, (int) (t->p[0]), (int) (t->p[1]), (int) (t->p[2]), (int) (t->p[3]), ivol, vol);
+          sprintf(msg, "Tetra %d is NEGATIVE (%d %d %d %d) oriented or FLAT: ivol=%d vol=%g\n", i, (int)(t->p[0]), (int)(t->p[1]),
+                  (int)(t->p[2]), (int)(t->p[3]), ivol, vol);
           terminate(msg);
         }
 
@@ -193,7 +191,6 @@ void check_orientations(tessellation * T)
   printf("orientations ok, volmin=%g\n", volmin);
 }
 
-
 /*! \brief Checks if tetrahedra are valid.
  *
  *  \param[in] T pointer to tessellation.
@@ -201,7 +198,7 @@ void check_orientations(tessellation * T)
  *
  *  \return void
  */
-void check_tetras(tessellation * T, int npoints)
+void check_tetras(tessellation *T, int npoints)
 {
   tetra *DT = T->DT;
   point *DP = T->DP;
@@ -220,7 +217,7 @@ void check_tetras(tessellation * T, int npoints)
       point *p2 = &DP[t->p[2]];
       point *p3 = &DP[t->p[3]];
 
-      if(t->t[0] < 0)           /* deleted ? */
+      if(t->t[0] < 0) /* deleted ? */
         continue;
 
       if(isInfinity(p0) || isInfinity(p1) || isInfinity(p2) || isInfinity(p3))
@@ -234,7 +231,6 @@ void check_tetras(tessellation * T, int npoints)
           sprintf(msg, "Tetra %d is NEGATIVE oriented\n", i);
           terminate(msg);
         }
-
 
       for(j = 0; j < npoints; j++)
         {
@@ -251,8 +247,8 @@ void check_tetras(tessellation * T, int npoints)
 
                         if(res_exact > 0)
                           {
-                            sprintf(msg, "ERROR tetra=%d: point=%d  in tetra with edges=%d|%d|%d|%d   res=%d|%d\n",
-                                    i, j, (int) (t->p[0]), (int) (t->p[1]), (int) (t->p[2]), (int) (t->p[3]), res, res_exact);
+                            sprintf(msg, "ERROR tetra=%d: point=%d  in tetra with edges=%d|%d|%d|%d   res=%d|%d\n", i, j,
+                                    (int)(t->p[0]), (int)(t->p[1]), (int)(t->p[2]), (int)(t->p[3]), res, res_exact);
                             terminate(msg);
                           }
                       }
@@ -263,7 +259,6 @@ void check_tetras(tessellation * T, int npoints)
   printf("Tetrahedra OK\n");
 }
 
-
 /*! \brief Compare integer value of two variables.
  *
  *  \param[in] a Pointer to first value.
@@ -273,21 +268,18 @@ void check_tetras(tessellation * T, int npoints)
  */
 int points_compare(const void *a, const void *b)
 {
-  if(*((int *) a) < *((int *) b))
+  if(*((int *)a) < *((int *)b))
     return -1;
 
-  if(*((int *) a) > *((int *) b))
+  if(*((int *)a) > *((int *)b))
     return +1;
 
   return 0;
 }
 
-
 #endif /* #if !defined(TWODIMS) && !defined(ONEDIMS) */
 
-
-#ifdef TWODIMS                  /* two-dimensional test code */
-
+#ifdef TWODIMS /* two-dimensional test code */
 
 /*! \brief Check 2d Voronoi mesh triangles.
  *
@@ -296,7 +288,7 @@ int points_compare(const void *a, const void *b)
  *
  *  \return void
  */
-void check_triangles(tessellation * T, int npoints)
+void check_triangles(tessellation *T, int npoints)
 {
   int i, j, res, res_exact;
   char msg[200];
@@ -332,7 +324,8 @@ void check_triangles(tessellation * T, int npoints)
 
                       if(res_exact > 0)
                         {
-                          sprintf(msg, "ERROR: point=%d lies in triangle=%d with edges=%d|%d|%d   res=%d|%d\n", j, i, (int) (DT[i].p[0]), (int) (DT[i].p[1]), (int) (DT[i].p[2]), res, res_exact);
+                          sprintf(msg, "ERROR: point=%d lies in triangle=%d with edges=%d|%d|%d   res=%d|%d\n", j, i,
+                                  (int)(DT[i].p[0]), (int)(DT[i].p[1]), (int)(DT[i].p[2]), res, res_exact);
                           terminate(msg);
                         }
                     }
@@ -343,14 +336,13 @@ void check_triangles(tessellation * T, int npoints)
   printf("triangles ok\n");
 }
 
-
 /*! \brief Check the orientations of triangles in 2d Voronoi mesh.
  *
  *  \param[in] T Pointer to tessellation.
  *
  *  \return void
  */
-void check_orientations(tessellation * T)
+void check_orientations(tessellation *T)
 {
   int i, ivol;
   double vol, volmin = 1.0e30;
@@ -367,14 +359,15 @@ void check_orientations(tessellation * T)
       if(DT[i].p[2] == DPinfinity)
         continue;
 
-      vol = test_triangle_orientation(T, DT[i].p[0], DT[i].p[1], DT[i].p[2]);
+      vol  = test_triangle_orientation(T, DT[i].p[0], DT[i].p[1], DT[i].p[2]);
       ivol = Orient2d_Exact(T, DT[i].p[0], DT[i].p[1], DT[i].p[2]);
 
       if(ivol <= 0)
         {
           double vol2 = Orient2d_Quick(T, DT[i].p[0], DT[i].p[1], DT[i].p[2]);
 
-          sprintf(msg, "Triangle %d is NEGATIVE (%d %d %d) oriented or FLAT: ivol=%d vol=%g|%g\n", i, (int) (DT[i].p[0]), (int) (DT[i].p[1]), (int) (DT[i].p[2]), ivol, vol, vol2);
+          sprintf(msg, "Triangle %d is NEGATIVE (%d %d %d) oriented or FLAT: ivol=%d vol=%g|%g\n", i, (int)(DT[i].p[0]),
+                  (int)(DT[i].p[1]), (int)(DT[i].p[2]), ivol, vol, vol2);
           terminate(msg);
         }
 
@@ -385,14 +378,13 @@ void check_orientations(tessellation * T)
   printf("orientations ok, volmin=%g\n", volmin);
 }
 
-
 /*! \brief Check links in 2d Voronoi mesh.
  *
  *  \param[in] T Pointer to tesselation.
  *
  *  \return void
  */
-void check_links(tessellation * T)
+void check_links(tessellation *T)
 {
   int i, j;
   char msg[200];
@@ -411,6 +403,5 @@ void check_links(tessellation * T)
         }
     }
 }
-
 
 #endif /* #ifdef TWODIMS */

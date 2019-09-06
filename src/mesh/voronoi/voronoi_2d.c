@@ -68,33 +68,28 @@
  *                void set_integers_for_pointer(point * p)
  *                void write_voronoi_mesh(tessellation * T, char *fname, int
  *                  writeTask, int lastTask)
- * 
+ *
  * \par Major modifications and contributions:
- * 
+ *
  * - DD.MM.YYYY Description
  * - 21.05.2018 Prepared file for public release -- Rainer Weinberger
  */
 
-
+#include <gmp.h>
+#include <math.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <math.h>
-#include <gmp.h>
-
 
 #include "../../main/allvars.h"
 #include "../../main/proto.h"
 
 #include "voronoi.h"
 
-
-#if defined(TWODIMS) && !defined(ONEDIMS)       /* will only be compiled in 2D case */
-
+#if defined(TWODIMS) && !defined(ONEDIMS) /* will only be compiled in 2D case */
 
 #define INSIDE_EPS 1.0e-8
 #define GAUSS_EPS 1.0e-8
-
 
 /*! \brief Initializes 2d tessellation and create all-enclosing triangle.
  *
@@ -103,7 +98,7 @@
  *
  *  \return void
  */
-void initialize_and_create_first_tetra(tessellation * T)
+void initialize_and_create_first_tetra(tessellation *T)
 {
   point *p;
   int i, n;
@@ -132,11 +127,11 @@ void initialize_and_create_first_tetra(tessellation * T)
 
   box *= 1.05;
 
-  tetra_incircle = 2.001 * (1 + sqrt(3)) / 3.0 * box;   /* to give room for ghost particles needed for periodic/reflective
-                                                           boundary conditions, the incircle is twice as large, i.e.
-                                                           [-0.5*box, 1.5*box,-0.5*box, 1.5*box] should be inside triangle */
+  tetra_incircle = 2.001 * (1 + sqrt(3)) / 3.0 * box; /* to give room for ghost particles needed for periodic/reflective
+                                                         boundary conditions, the incircle is twice as large, i.e.
+                                                         [-0.5*box, 1.5*box,-0.5*box, 1.5*box] should be inside triangle */
   tetra_sidelength = tetra_incircle * sqrt(12);
-  tetra_height = sqrt(3.0) / 2 * tetra_sidelength;
+  tetra_height     = sqrt(3.0) / 2 * tetra_sidelength;
 
   if(ThisTask == 0)
     printf("side-length of enclosing triangle=%g tetra_height=%g box=%g\n", tetra_sidelength, tetra_height, box);
@@ -165,19 +160,19 @@ void initialize_and_create_first_tetra(tessellation * T)
 
   for(i = -3, p = &DP[-3]; i < 0; i++, p++)
     {
-      p->index = -1;
-      p->task = ThisTask;
+      p->index   = -1;
+      p->task    = ThisTask;
       p->timebin = 0;
     }
 
   /* we also define a neutral element at infinity */
   DPinfinity = -4;
 
-  DP[DPinfinity].x = MAX_DOUBLE_NUMBER;
-  DP[DPinfinity].y = MAX_DOUBLE_NUMBER;
-  DP[DPinfinity].z = MAX_DOUBLE_NUMBER;
-  DP[DPinfinity].index = -1;
-  DP[DPinfinity].task = ThisTask;
+  DP[DPinfinity].x       = MAX_DOUBLE_NUMBER;
+  DP[DPinfinity].y       = MAX_DOUBLE_NUMBER;
+  DP[DPinfinity].z       = MAX_DOUBLE_NUMBER;
+  DP[DPinfinity].index   = -1;
+  DP[DPinfinity].task    = ThisTask;
   DP[DPinfinity].timebin = 0;
 
   /* now let's make the big triangle */
@@ -192,7 +187,7 @@ void initialize_and_create_first_tetra(tessellation * T)
 
   for(i = 0; i < 3; i++)
     {
-      n = i + 1;                /* tetra index */
+      n = i + 1; /* tetra index */
 
       DT[0].t[i] = n;
       DT[0].s[i] = 2;
@@ -226,7 +221,7 @@ void initialize_and_create_first_tetra(tessellation * T)
   DT[2].s[1] = 0;
   DT[3].s[0] = 1;
 
-  T->Ndt = 4;                   /* we'll start out with 4 triangles */
+  T->Ndt = 4; /* we'll start out with 4 triangles */
 
   CentralOffsetX = 0.5 * box - 0.5000001 * tetra_sidelength;
   CentralOffsetY = -0.5000001 * box;
@@ -236,7 +231,6 @@ void initialize_and_create_first_tetra(tessellation * T)
   for(i = -3; i < 0; i++)
     set_integers_for_point(T, i);
 }
-
 
 /*! \brief Insert a point into mesh.
  *
@@ -252,7 +246,7 @@ void initialize_and_create_first_tetra(tessellation * T)
  *
  * \return Index of triangle containing point pp.
  */
-int insert_point(tessellation * T, int pp, int ttstart)
+int insert_point(tessellation *T, int pp, int ttstart)
 {
   int tt0, tt1, tt2, tt3, ttetra_with_p;
   int moves, degenerate_flag;
@@ -262,7 +256,7 @@ int insert_point(tessellation * T, int pp, int ttstart)
 
   ttetra_with_p = tt0;
 
-  if(degenerate_flag == 1)      /* that's the normal split of a triangle into 3 */
+  if(degenerate_flag == 1) /* that's the normal split of a triangle into 3 */
     {
       /* we now need to split this triangle into three  */
       tt1 = T->Ndt++;
@@ -275,7 +269,7 @@ int insert_point(tessellation * T, int pp, int ttstart)
 #ifdef VERBOSE
           printf("Task=%d: increase memory allocation, MaxNdt=%d Indi.AllocFacNdt=%g\n", ThisTask, T->MaxNdt, T->Indi.AllocFacNdt);
 #endif /* #ifdef VERBOSE */
-          T->DT = myrealloc_movable(T->DT, T->MaxNdt * sizeof(tetra));
+          T->DT  = myrealloc_movable(T->DT, T->MaxNdt * sizeof(tetra));
           T->DTC = myrealloc_movable(T->DTC, T->MaxNdt * sizeof(tetra_center));
           T->DTF = myrealloc_movable(T->DTF, T->MaxNdt * sizeof(char));
 
@@ -313,7 +307,7 @@ int insert_point(tessellation * T, int pp, int ttstart)
 #ifdef VERBOSE
           printf("Task=%d: increase memory allocation, MaxNdt=%d Indi.AllocFacNdt=%g\n", ThisTask, T->MaxNdt, T->Indi.AllocFacNdt);
 #endif /* #ifdef VERBOSE */
-          T->DT = myrealloc_movable(T->DT, T->MaxNdt * sizeof(tetra));
+          T->DT  = myrealloc_movable(T->DT, T->MaxNdt * sizeof(tetra));
           T->DTC = myrealloc_movable(T->DTC, T->MaxNdt * sizeof(tetra_center));
           T->DTF = myrealloc_movable(T->DTF, T->MaxNdt * sizeof(char));
 
@@ -340,7 +334,6 @@ int insert_point(tessellation * T, int pp, int ttstart)
   return ttetra_with_p;
 }
 
-
 /*! \brief Make a 2 to 4 flip needed if point is on edge of a Delaunay
  *         triangle.
  *
@@ -361,7 +354,7 @@ int insert_point(tessellation * T, int pp, int ttstart)
  *
  *  \return void
  */
-void make_a_2_to_4_flip(tessellation * T, int pp, int tt0, int tt1, int tt2, int tt3, int i0, int j0)
+void make_a_2_to_4_flip(tessellation *T, int pp, int tt0, int tt1, int tt2, int tt3, int i0, int j0)
 {
   tetra *DT = T->DT;
   tetra *t0 = &DT[tt0];
@@ -420,7 +413,6 @@ void make_a_2_to_4_flip(tessellation * T, int pp, int tt0, int tt1, int tt2, int
   DT[t3->t[j1]].t[t3->s[j1]] = tt3;
 }
 
-
 /*! \brief Makes a 1 to 3 flip needed if point is in a Delaunay triangle.
  *
  *  If a new point is in a Delaunay triangle, this
@@ -434,7 +426,7 @@ void make_a_2_to_4_flip(tessellation * T, int pp, int tt0, int tt1, int tt2, int
  *
  *  \return void
  */
-void make_a_1_to_3_flip(tessellation * T, int pp, int tt0, int tt1, int tt2)
+void make_a_1_to_3_flip(tessellation *T, int pp, int tt0, int tt1, int tt2)
 {
   tetra *DT = T->DT;
   tetra *t0 = &DT[tt0];
@@ -468,7 +460,6 @@ void make_a_1_to_3_flip(tessellation * T, int pp, int tt0, int tt1, int tt2)
   DT[t2->t[2]].t[t2->s[2]] = tt2;
 }
 
-
 /*! \brief Flips trangle if needed.
  *
  *  See Springel (2010) for detailed discussion how mesh is constructed.
@@ -479,7 +470,7 @@ void make_a_1_to_3_flip(tessellation * T, int pp, int tt0, int tt1, int tt2)
  *
  *  \return void
  */
-void check_edge_and_flip_if_needed(tessellation * T, int ip, int it)
+void check_edge_and_flip_if_needed(tessellation *T, int ip, int it)
 {
   tetra *DT = T->DT;
   char *DTF = T->DTF;
@@ -544,25 +535,25 @@ void check_edge_and_flip_if_needed(tessellation * T, int ip, int it)
       st2 = t->s[pi1];
 
       /* change the points of the triangles */
-      t->p[pi2] = pp;
+      t->p[pi2]     = pp;
       DT[tt].p[ni2] = ip;
 
       /* change the pointers to the neighbouring triangles, and fix
          the adjency relations */
 
-      t->t[pi1] = tt;
+      t->t[pi1]     = tt;
       DT[tt].t[ni1] = it;
-      t->s[pi1] = ni1;
+      t->s[pi1]     = ni1;
       DT[tt].s[ni1] = pi1;
 
-      t->t[pi] = t0;
+      t->t[pi]      = t0;
       DT[t0].t[st0] = it;
-      t->s[pi] = st0;
+      t->s[pi]      = st0;
       DT[t0].s[st0] = pi;
 
-      DT[tt].t[ni] = t2;
+      DT[tt].t[ni]  = t2;
       DT[t2].t[st2] = tt;
-      DT[tt].s[ni] = st2;
+      DT[tt].s[ni]  = st2;
       DT[t2].s[st2] = ni;
 
       DTF[tt] = 0;
@@ -573,7 +564,6 @@ void check_edge_and_flip_if_needed(tessellation * T, int ip, int it)
       check_edge_and_flip_if_needed(T, ip, tt);
     }
 }
-
 
 /*! \brief Finds triangle in which new Delaunay point is located.
  *
@@ -589,7 +579,7 @@ void check_edge_and_flip_if_needed(tessellation * T, int ip, int it)
  *
  *  \return Index of triangle in DT array.
  */
-int get_triangle(tessellation * T, int pp, int *moves, int *degenerate_flag, int ttstart)
+int get_triangle(tessellation *T, int pp, int *moves, int *degenerate_flag, int ttstart)
 {
   int count_moves = 0;
   int ret;
@@ -610,7 +600,7 @@ int get_triangle(tessellation * T, int pp, int *moves, int *degenerate_flag, int
 
       if(count_moves > MAX_COUNT_MOVES)
         {
-          printf("ta=%d triangle=%d  xy=(%g|%g) ID=%d\n", ThisTask, (int) (tt), T->DP[pp].x, T->DP[pp].y, T->DP[pp].ID);
+          printf("ta=%d triangle=%d  xy=(%g|%g) ID=%d\n", ThisTask, (int)(tt), T->DP[pp].x, T->DP[pp].y, T->DP[pp].ID);
           if(count_moves > MAX_COUNT_MOVES + 10)
             terminate("too many moves, problem to find triangle");
         }
@@ -622,7 +612,6 @@ int get_triangle(tessellation * T, int pp, int *moves, int *degenerate_flag, int
 
   return tt;
 }
-
 
 /*! \brief Add row in matrix equation.
  *
@@ -642,7 +631,6 @@ static inline void add_row_2d(double *m, int r1, int r2, double fac)
   for(i = 0; i < 3; i++)
     m[r1 * 3 + i] += fac * m[r2 * 3 + i];
 }
-
 
 /*! \brief Solve system of linear equations for 2d Voronoi construction.
  *
@@ -679,7 +667,6 @@ int solve_linear_equations_2d(double *m, double *res)
   return 0;
 }
 
-
 /*! \brief Does point lie in triangle?
  *
  *  Tests whether point pp lies in the triangle, on an edge, or outside. In the
@@ -695,12 +682,12 @@ int solve_linear_equations_2d(double *m, double *res)
  *
  *  \return 1: point inside triangle; 0 outside; 10,11,12: on edge.
  */
-int FindTriangle(tessellation * T, int tt, int pp, int *degnerate_flag, int *nexttetra)
+int FindTriangle(tessellation *T, int tt, int pp, int *degnerate_flag, int *nexttetra)
 {
   tetra *DT = T->DT;
   point *DP = T->DP;
-  tetra *t = &DT[tt];
-  point *p = &DP[pp];
+  tetra *t  = &DT[tt];
+  point *p  = &DP[pp];
 
   int pp0, pp1, pp2;
   point *p0, *p1, *p2;
@@ -716,7 +703,7 @@ int FindTriangle(tessellation * T, int tt, int pp, int *degnerate_flag, int *nex
   if(pp0 == DPinfinity || pp1 == DPinfinity || pp2 == DPinfinity)
     {
       char buf[1000];
-      sprintf(buf, "we are in a triangle with an infinity point. tetra=%d  p=(%g|%g)\n", (int) (tt), p->x, p->y);
+      sprintf(buf, "we are in a triangle with an infinity point. tetra=%d  p=(%g|%g)\n", (int)(tt), p->x, p->y);
       terminate(buf);
     }
 
@@ -731,7 +718,7 @@ int FindTriangle(tessellation * T, int tt, int pp, int *degnerate_flag, int *nex
   double qx = p->xx - p0->xx;
   double qy = p->yy - p0->yy;
 
-  double mv_data[] = { ax, bx, qx, ay, by, qy };
+  double mv_data[] = {ax, bx, qx, ay, by, qy};
   double x[2];
 
   int ivol, flag2, flag1, flag0;
@@ -835,18 +822,20 @@ int FindTriangle(tessellation * T, int tt, int pp, int *degnerate_flag, int *nex
     {
       printf("flags=%d %d %d\n", flag0, flag1, flag2);
 
-      printf("points: %d %d %d %d\n", (int) (pp0), (int) (pp1), (int) (pp2), (int) (pp));
+      printf("points: %d %d %d %d\n", (int)(pp0), (int)(pp1), (int)(pp2), (int)(pp));
       printf("Ngas=%d\n", NumGas);
-      printf("xyz, p=%d: (%g|%g)  index=%d task=%d ID=%d  flags\n", (int) (pp0), p0->x, p0->y, p0->index, p0->task, P[p0->index % NumGas].ID);
-      printf("xyz, p=%d: (%g|%g)  index=%d task=%d ID=%d  flags\n", (int) (pp1), p1->x, p1->y, p1->index, p1->task, P[p1->index % NumGas].ID);
-      printf("xyz, p=%d: (%g|%g)  index=%d task=%d ID=%d  flags\n", (int) (pp2), p2->x, p2->y, p2->index, p2->task, P[p2->index % NumGas].ID);
-      printf("xyz, p=%d: (%g|%g)  index=%d task=%d ID=%d  flags\n", (int) (pp), p->x, p->y, p->index, p->task, P[p->index % NumGas].ID);
+      printf("xyz, p=%d: (%g|%g)  index=%d task=%d ID=%d  flags\n", (int)(pp0), p0->x, p0->y, p0->index, p0->task,
+             P[p0->index % NumGas].ID);
+      printf("xyz, p=%d: (%g|%g)  index=%d task=%d ID=%d  flags\n", (int)(pp1), p1->x, p1->y, p1->index, p1->task,
+             P[p1->index % NumGas].ID);
+      printf("xyz, p=%d: (%g|%g)  index=%d task=%d ID=%d  flags\n", (int)(pp2), p2->x, p2->y, p2->index, p2->task,
+             P[p2->index % NumGas].ID);
+      printf("xyz, p=%d: (%g|%g)  index=%d task=%d ID=%d  flags\n", (int)(pp), p->x, p->y, p->index, p->task, P[p->index % NumGas].ID);
       terminate("too many zeros - (perhaps identical points inserted?)");
     }
 
   if(flag0 >= 0 && flag1 >= 0 && flag2 >= 0)
     {
-
       /* we have a point inside the triangle, but it may still be on one of the edges */
 
       if(count_zeros == 0)
@@ -856,23 +845,23 @@ int FindTriangle(tessellation * T, int tt, int pp, int *degnerate_flag, int *nex
           return 1;
         }
 
-      if(count_zeros == 1)      /* we lie on a face */
+      if(count_zeros == 1) /* we lie on a face */
         {
           if(flag2 == 0)
             {
               *degnerate_flag = 12;
-              return 12;        /* point lies on side A */
+              return 12; /* point lies on side A */
             }
           if(flag1 == 0)
             {
               *degnerate_flag = 11;
-              return 11;        /* point lies on side C */
+              return 11; /* point lies on side C */
             }
 
           if(flag0 == 0)
             {
               *degnerate_flag = 10;
-              return 10;        /* point lies on side B */
+              return 10; /* point lies on side B */
             }
         }
     }
@@ -938,7 +927,6 @@ int FindTriangle(tessellation * T, int tt, int pp, int *degnerate_flag, int *nex
   return 0;
 }
 
-
 /*! \brief Tests whether point pp lies in the circumcircle around triangle
  *        p0,p1,p2.
  *
@@ -950,13 +938,13 @@ int FindTriangle(tessellation * T, int tt, int pp, int *degnerate_flag, int *nex
  *
  *  \return (-1,0,1); -1: in circle; 0 on circle, 1: outside circle.
  */
-int InCircle_Quick(tessellation * T, int pp0, int pp1, int pp2, int pp)
+int InCircle_Quick(tessellation *T, int pp0, int pp1, int pp2, int pp)
 {
   point *DP = T->DP;
   point *p0 = &DP[pp0];
   point *p1 = &DP[pp1];
   point *p2 = &DP[pp2];
-  point *p = &DP[pp];
+  point *p  = &DP[pp];
 
   double ax, ay, bx, by, cx, cy;
   double ab, bc, ca, a2, b2, c2, x;
@@ -989,7 +977,6 @@ int InCircle_Quick(tessellation * T, int pp0, int pp1, int pp2, int pp)
   return 0;
 }
 
-
 /*! \brief Tests whether point pp lies in the circumcircle around triangle
  *        p0,p1,p2 with some error margin.
  *
@@ -1005,13 +992,13 @@ int InCircle_Quick(tessellation * T, int pp0, int pp1, int pp2, int pp)
  *  \return (-1,0,1); -1: in circle; 0 on circle (within tolerance),
  *          1: outside circle.
  */
-int InCircle_Errorbound(tessellation * T, int pp0, int pp1, int pp2, int pp)
+int InCircle_Errorbound(tessellation *T, int pp0, int pp1, int pp2, int pp)
 {
   point *DP = T->DP;
   point *p0 = &DP[pp0];
   point *p1 = &DP[pp1];
   point *p2 = &DP[pp2];
-  point *p = &DP[pp];
+  point *p  = &DP[pp];
 
   if(pp0 == DPinfinity || pp1 == DPinfinity || pp2 == DPinfinity || pp == DPinfinity)
     return -1;
@@ -1058,7 +1045,6 @@ int InCircle_Errorbound(tessellation * T, int pp0, int pp1, int pp2, int pp)
   return 0;
 }
 
-
 /*! \brief Tests whether point pp lies in the circumcircle around triangle
  *  p0,p1,p2 using arbitrary precision operations.
  *
@@ -1074,13 +1060,13 @@ int InCircle_Errorbound(tessellation * T, int pp0, int pp1, int pp2, int pp)
  *  \return (-1,0,1); -1: in circle; 0 on circle,
  *          1: outside circle.
  */
-int InCircle_Exact(tessellation * T, int pp0, int pp1, int pp2, int pp)
+int InCircle_Exact(tessellation *T, int pp0, int pp1, int pp2, int pp)
 {
   point *DP = T->DP;
   point *p0 = &DP[pp0];
   point *p1 = &DP[pp1];
   point *p2 = &DP[pp2];
-  point *p = &DP[pp];
+  point *p  = &DP[pp];
 
   if(pp0 == DPinfinity || pp1 == DPinfinity || pp2 == DPinfinity || pp == DPinfinity)
     return -1;
@@ -1182,7 +1168,6 @@ int InCircle_Exact(tessellation * T, int pp0, int pp1, int pp2, int pp)
   return sign;
 }
 
-
 /*! \brief Returns the orientation of the triangle.
  *
  *  Defined as the determinant of the matrix of the position of the three edge
@@ -1198,7 +1183,7 @@ int InCircle_Exact(tessellation * T, int pp0, int pp1, int pp2, int pp)
  *
  *  \return Determinant of orientation matrix.
  */
-double test_triangle_orientation(tessellation * T, int pp0, int pp1, int pp2)
+double test_triangle_orientation(tessellation *T, int pp0, int pp1, int pp2)
 {
   point *DP = T->DP;
   point *p0 = &DP[pp0];
@@ -1207,7 +1192,6 @@ double test_triangle_orientation(tessellation * T, int pp0, int pp1, int pp2)
 
   return (p1->x - p0->x) * (p2->y - p0->y) - (p1->y - p0->y) * (p2->x - p0->x);
 }
-
 
 /*! \brief Check if triangle is positively or negatively oriented.
  *
@@ -1219,7 +1203,7 @@ double test_triangle_orientation(tessellation * T, int pp0, int pp1, int pp2)
  *  \return -1 if negatively, 0 if degenerate (in a line) and 1 if positively
  *          oriented.
  */
-int Orient2d_Quick(tessellation * T, int pp0, int pp1, int pp2)
+int Orient2d_Quick(tessellation *T, int pp0, int pp1, int pp2)
 {
   point *DP = T->DP;
   point *p0 = &DP[pp0];
@@ -1237,7 +1221,6 @@ int Orient2d_Quick(tessellation * T, int pp0, int pp1, int pp2)
   return 0;
 }
 
-
 /*! \brief Check if triangle is positively or negatively oriented.
  *
  *  Uses arbitrary precision operations, which is computationally expensive but
@@ -1251,7 +1234,7 @@ int Orient2d_Quick(tessellation * T, int pp0, int pp1, int pp2)
  *  \return -1 if negatively, 0 if degenerate (in a line) and 1 if positively
  *          oriented.
  */
-int Orient2d_Exact(tessellation * T, int pp0, int pp1, int pp2)
+int Orient2d_Exact(tessellation *T, int pp0, int pp1, int pp2)
 {
   point *DP = T->DP;
   point *p0 = &DP[pp0];
@@ -1288,7 +1271,7 @@ int Orient2d_Exact(tessellation * T, int pp0, int pp1, int pp2)
 
   return (sign);
 
-#else /* #if USEDBITS > 31 */
+#else  /* #if USEDBITS > 31 */
   signed long long dx1, dy1, dx2, dy2, x;
 
   dx1 = (p1->ix - p0->ix);
@@ -1306,10 +1289,8 @@ int Orient2d_Exact(tessellation * T, int pp0, int pp1, int pp2)
 #endif /* #if USEDBITS > 31 #else */
 }
 
-
-const int edge_start[3] = { 1, 2, 0 };
-const int edge_end[3] = { 2, 0, 1 };
-
+const int edge_start[3] = {1, 2, 0};
+const int edge_end[3]   = {2, 0, 1};
 
 /*! \brief Calculate cell volumes and face areas of mesh.
  *
@@ -1319,7 +1300,7 @@ const int edge_end[3] = { 2, 0, 1 };
  *
  *  \return void
  */
-void process_edge_faces_and_volumes(tessellation * T, int tt, int nr)
+void process_edge_faces_and_volumes(tessellation *T, int tt, int nr)
 {
   int i, j, qq, p1, p2, k;
   face *f;
@@ -1341,9 +1322,9 @@ void process_edge_faces_and_volumes(tessellation * T, int tt, int nr)
         terminate("Nvf larger than MaxNvf");
     }
 
-  tetra *DT = T->DT;
-  point *DP = T->DP;
-  face *VF = T->VF;
+  tetra *DT         = T->DT;
+  point *DP         = T->DP;
+  face *VF          = T->VF;
   tetra_center *DTC = T->DTC;
 
   tetra *t = &DT[tt];
@@ -1376,9 +1357,9 @@ void process_edge_faces_and_volumes(tessellation * T, int tt, int nr)
 #endif /* #ifdef TETRA_INDEX_IN_FACE */
 
 #ifdef REFINEMENT_MERGE_CELLS
-  f->t = tt;
-  f->nr = nr;                   /* delaunay tetra and edge number that generated this face */
-#endif /* #ifdef REFINEMENT_MERGE_CELLS */
+  f->t  = tt;
+  f->nr = nr; /* delaunay tetra and edge number that generated this face */
+#endif        /* #ifdef REFINEMENT_MERGE_CELLS */
 
   nx = DTC[tt].cx - DTC[qq].cx;
   ny = DTC[tt].cy - DTC[qq].cy;
@@ -1388,7 +1369,7 @@ void process_edge_faces_and_volumes(tessellation * T, int tt, int nr)
   hx = 0.5 * (dpi->x - dpj->x);
   hy = 0.5 * (dpi->y - dpj->y);
 
-  h = sqrt(hx * hx + hy * hy);
+  h    = sqrt(hx * hx + hy * hy);
   dvol = 0.5 * f->area * h;
 
 #if defined(REGULARIZE_MESH_FACE_ANGLE) || defined(OUTPUT_MESH_FACE_ANGLE)
@@ -1459,24 +1440,24 @@ void process_edge_faces_and_volumes(tessellation * T, int tt, int nr)
 
   if(DP[p1].ID < DP[p2].ID)
     {
-      low_p = p1;
+      low_p  = p1;
       high_p = p2;
     }
   else
     {
-      low_p = p2;
+      low_p  = p2;
       high_p = p1;
     }
 
   int this_task_responsible_flag = 0;
 
-  if(TimeBinSynchronized[DP[low_p].timebin])    /* the one with the lower ID is active */
+  if(TimeBinSynchronized[DP[low_p].timebin]) /* the one with the lower ID is active */
     {
       /* we need to check whether the one with the lower ID is a local particle */
       if(DP[low_p].task == ThisTask && DP[low_p].index >= 0 && DP[low_p].index < NumGas)
         this_task_responsible_flag = 1;
     }
-  else if(TimeBinSynchronized[DP[high_p].timebin])      /* only the side with the higher ID is active */
+  else if(TimeBinSynchronized[DP[high_p].timebin]) /* only the side with the higher ID is active */
     {
       /* we need to check whether we hold the one with the higher ID, if yes, we'll do it */
       if(DP[high_p].task == ThisTask && DP[high_p].index >= 0 && DP[high_p].index < NumGas)
@@ -1523,7 +1504,7 @@ void process_edge_faces_and_volumes(tessellation * T, int tt, int nr)
                     terminate("Narea >= MaxNarea");
                 }
 
-              AreaList[Narea].task = DP[q].task;
+              AreaList[Narea].task  = DP[q].task;
               AreaList[Narea].index = DP[q].originalindex;
               AreaList[Narea].darea = f->area;
               Narea++;
@@ -1531,7 +1512,6 @@ void process_edge_faces_and_volumes(tessellation * T, int tt, int nr)
         }
     }
 }
-
 
 /*! \brief Copies triangle information from DTC array to trilist.
  *
@@ -1547,12 +1527,12 @@ void process_edge_faces_and_volumes(tessellation * T, int tt, int nr)
  *
  *  \return Next index in trilist array.
  */
-int derefine_refine_get_triangles(tessellation * T, int tt, int nr, point * dtip, triangle * trilist, int ntri, int max_n_tri)
+int derefine_refine_get_triangles(tessellation *T, int tt, int nr, point *dtip, triangle *trilist, int ntri, int max_n_tri)
 {
-  tetra *DT = T->DT;
+  tetra *DT         = T->DT;
   tetra_center *DTC = T->DTC;
-  tetra *t = &DT[tt];
-  int qq = t->t[nr];
+  tetra *t          = &DT[tt];
+  int qq            = t->t[nr];
 
   if(ntri >= max_n_tri)
     terminate("ntri >= max_n_tri");
@@ -1581,7 +1561,6 @@ int derefine_refine_get_triangles(tessellation * T, int tt, int nr, point * dtip
   return ntri;
 }
 
-
 /*! \brief Add point and adjust triangles accordingly.
  *
  *  \param[in] q Index of point in DP array.
@@ -1592,7 +1571,7 @@ int derefine_refine_get_triangles(tessellation * T, int tt, int nr, point * dtip
  *
  *  \return Updated number of triangles.
  */
-int derefine_add_point_and_split_tri(int q, triangle * trilist, int ntri, int max_ntri, double vol)
+int derefine_add_point_and_split_tri(int q, triangle *trilist, int ntri, int max_ntri, double vol)
 {
   double m[2], n[2], sc[3], *a;
   double cut[2][2], ed[2];
@@ -1639,108 +1618,107 @@ int derefine_add_point_and_split_tri(int q, triangle * trilist, int ntri, int ma
             flag[k] = 0;
         }
 
-      switch (count)
+      switch(count)
         {
-        case 0:                /* the whole tetra is on the side of current owner - nothing to be done */
-          break;
+          case 0: /* the whole tetra is on the side of current owner - nothing to be done */
+            break;
 
-        case 3:                /* the whole tetra is on the side of new point */
-          trilist[i].owner = q; /* change owner */
-          break;
+          case 3:                 /* the whole tetra is on the side of new point */
+            trilist[i].owner = q; /* change owner */
+            break;
 
-        case 1:
-        case 2:
+          case 1:
+          case 2:
 
-          if(nnew + 2 > max_ntri)
-            terminate("nnew + 2 > max_ntri");
+            if(nnew + 2 > max_ntri)
+              terminate("nnew + 2 > max_ntri");
 
-          trilist[nnew] = trilist[i];
-          trilist[nnew + 1] = trilist[i];
+            trilist[nnew]     = trilist[i];
+            trilist[nnew + 1] = trilist[i];
 
-          /* find the point index that is on the other side */
-          for(k = 0; k < 3; k++)
-            {
-              if(flag[k] == 1 && count == 1)
-                break;
-              if(flag[k] == 0 && count == 2)
-                break;
-            }
+            /* find the point index that is on the other side */
+            for(k = 0; k < 3; k++)
+              {
+                if(flag[k] == 1 && count == 1)
+                  break;
+                if(flag[k] == 0 && count == 2)
+                  break;
+              }
 
-          for(j = 0; j < 2; j++)
-            {
-              kk = k + j + 1;
-              if(kk > 2)
-                kk -= 3;
+            for(j = 0; j < 2; j++)
+              {
+                kk = k + j + 1;
+                if(kk > 2)
+                  kk -= 3;
 
-              double *b = trilist[i].p[k];
-              double *a = trilist[i].p[kk];
+                double *b = trilist[i].p[k];
+                double *a = trilist[i].p[kk];
 
-              for(l = 0; l < 2; l++)
-                ed[l] = a[l] - b[l];
+                for(l = 0; l < 2; l++)
+                  ed[l] = a[l] - b[l];
 
-              double prod = (ed[0] * n[0] + ed[1] * n[1]);
-              double t;
-              if(prod)
-                t = -sc[k] / prod;
-              else
-                t = 0.5;
+                double prod = (ed[0] * n[0] + ed[1] * n[1]);
+                double t;
+                if(prod)
+                  t = -sc[k] / prod;
+                else
+                  t = 0.5;
 
-              if(t < 0)
-                t = 0;
-              if(t > 1)
-                t = 1;
+                if(t < 0)
+                  t = 0;
+                if(t > 1)
+                  t = 1;
 
-              for(l = 0; l < 2; l++)
-                cut[j][l] = b[l] + t * ed[l];
-            }
+                for(l = 0; l < 2; l++)
+                  cut[j][l] = b[l] + t * ed[l];
+              }
 
-          /* modify the tetra that's assigned to the new point */
-          for(j = 0; j < 2; j++)
-            {
-              kk = k + j + 1;
-              if(kk > 2)
-                kk -= 3;
+            /* modify the tetra that's assigned to the new point */
+            for(j = 0; j < 2; j++)
+              {
+                kk = k + j + 1;
+                if(kk > 2)
+                  kk -= 3;
 
-              for(l = 0; l < 2; l++)
-                trilist[i].p[kk][l] = cut[j][l];
-            }
+                for(l = 0; l < 2; l++)
+                  trilist[i].p[kk][l] = cut[j][l];
+              }
 
-          oldq = trilist[i].owner;
+            oldq = trilist[i].owner;
 
-          if(count == 1)
-            trilist[i].owner = q;
+            if(count == 1)
+              trilist[i].owner = q;
 
-          /* modify the two new tetras */
-          kk = k + 1;
-          if(kk > 2)
-            kk -= 3;
+            /* modify the two new tetras */
+            kk = k + 1;
+            if(kk > 2)
+              kk -= 3;
 
-          for(l = 0; l < 2; l++)
-            {
-              trilist[nnew].p[k][l] = cut[0][l];
+            for(l = 0; l < 2; l++)
+              {
+                trilist[nnew].p[k][l] = cut[0][l];
 
-              trilist[nnew + 1].p[k][l] = cut[1][l];
-              trilist[nnew + 1].p[kk][l] = cut[0][l];
-            }
+                trilist[nnew + 1].p[k][l]  = cut[1][l];
+                trilist[nnew + 1].p[kk][l] = cut[0][l];
+              }
 
-          if(count == 1)
-            {
-              trilist[nnew].owner = oldq;
-              trilist[nnew + 1].owner = oldq;
-            }
-          else
-            {
-              trilist[nnew].owner = q;
-              trilist[nnew + 1].owner = q;
-            }
-          nnew += 2;
-          break;
+            if(count == 1)
+              {
+                trilist[nnew].owner     = oldq;
+                trilist[nnew + 1].owner = oldq;
+              }
+            else
+              {
+                trilist[nnew].owner     = q;
+                trilist[nnew + 1].owner = q;
+              }
+            nnew += 2;
+            break;
         }
     }
 
   return nnew;
 }
-
 
 /*! \brief Determines area of triangle (i.e. 2d Volume).
  *
@@ -1749,7 +1727,7 @@ int derefine_add_point_and_split_tri(int q, triangle * trilist, int ntri, int ma
  *
  *  \return Area of triangle.
  */
-double get_tri_volume(int i, triangle * trilist)
+double get_tri_volume(int i, triangle *trilist)
 {
   double *p0 = &trilist[i].p[0][0];
   double *p1 = &trilist[i].p[1][0];
@@ -1759,7 +1737,6 @@ double get_tri_volume(int i, triangle * trilist)
 
   return 0.5 * nz;
 }
-
 
 /*! \brief Process edge for volume calculation.
  *
@@ -1773,10 +1750,10 @@ double get_tri_volume(int i, triangle * trilist)
  *
  *  \return void
  */
-void derefine_refine_process_edge(tessellation * T, double *vol, int tt, int nr)
+void derefine_refine_process_edge(tessellation *T, double *vol, int tt, int nr)
 {
-  tetra *DT = T->DT;
-  point *DP = T->DP;
+  tetra *DT         = T->DT;
+  point *DP         = T->DP;
   tetra_center *DTC = T->DTC;
 
   int i, j, qq, p1, p2;
@@ -1808,7 +1785,7 @@ void derefine_refine_process_edge(tessellation * T, double *vol, int tt, int nr)
   hx = 0.5 * (dpi->x - dpj->x);
   hy = 0.5 * (dpi->y - dpj->y);
 
-  h = sqrt(hx * hx + hy * hy);
+  h    = sqrt(hx * hx + hy * hy);
   dvol = 0.5 * area * h;
 
   if(p1 >= 0 && p1 < DeRefMesh.Ndp)
@@ -1818,14 +1795,13 @@ void derefine_refine_process_edge(tessellation * T, double *vol, int tt, int nr)
     vol[p2] += dvol;
 }
 
-
 /*! \brief Computes the circum-circle of all triangles in mesh.
  *
  *  \param[in, out] T Pointer to tessellation.
  *
  *  \return void
  */
-void compute_circumcircles(tessellation * T)
+void compute_circumcircles(tessellation *T)
 {
   tetra *DT = T->DT;
   char *DTF = T->DTF;
@@ -1849,7 +1825,6 @@ void compute_circumcircles(tessellation * T)
     }
 }
 
-
 /*! \brief Computes the circum-circle of triangle tt.
  *
  *  \param[in, out] T Pointer to tessellation.
@@ -1857,11 +1832,11 @@ void compute_circumcircles(tessellation * T)
  *
  *  \return void
  */
-void update_circumcircle(tessellation * T, int tt)
+void update_circumcircle(tessellation *T, int tt)
 {
-  tetra *DT = T->DT;
+  tetra *DT         = T->DT;
   tetra_center *DTC = T->DTC;
-  point *DP = T->DP;
+  point *DP         = T->DP;
 
   tetra *t = &DT[tt];
   point *p0, *p1, *p2;
@@ -1891,7 +1866,7 @@ void update_circumcircle(tessellation * T, int tt)
   double aa = 0.5 * (ax * ax + ay * ay);
   double bb = 0.5 * (bx * bx + by * by);
 
-  double mv_data[] = { ax, ay, aa, bx, by, bb };
+  double mv_data[] = {ax, ay, aa, bx, by, bb};
   double x[2];
 
   int status = solve_linear_equations_2d(mv_data, x);
@@ -1911,14 +1886,13 @@ void update_circumcircle(tessellation * T, int tt)
     }
 }
 
-
 /*! \brief Computes the integer coordinates from coordinates for a point.
  *
  *  \pararm[in, out] p Pointer to point.
  *
  *  \return void
  */
-void set_integers_for_pointer(point * p)
+void set_integers_for_pointer(point *p)
 {
   p->xx = (p->x - CentralOffsetX) * ConversionFac + 1.0;
   p->yy = (p->y - CentralOffsetY) * ConversionFac + 1.0;
@@ -1936,7 +1910,6 @@ void set_integers_for_pointer(point * p)
   p->yy = mask_voronoi_int(p->yy);
 }
 
-
 /*! \brief Outputs Voronoi mesh to file.
  *
  *  Outputs the Voronoi mesh data from task write Task to lastTask in file
@@ -1949,7 +1922,7 @@ void set_integers_for_pointer(point * p)
  *
  *  \return void
  */
-void write_voronoi_mesh(tessellation * T, char *fname, int writeTask, int lastTask)
+void write_voronoi_mesh(tessellation *T, char *fname, int writeTask, int lastTask)
 {
   CPU_Step[CPU_MISC] += measure_time();
 
@@ -1964,20 +1937,20 @@ void write_voronoi_mesh(tessellation * T, char *fname, int writeTask, int lastTa
   tetra *q, *qstart;
 
   tetra_center *DTC = T->DTC;
-  tetra *DT = T->DT;
-  point *DP = T->DP;
+  tetra *DT         = T->DT;
+  point *DP         = T->DP;
 
-  MaxNel = 10 * NumGas;         /* max edge list */
-  Nel = 0;                      /* length of edge list */
+  MaxNel = 10 * NumGas; /* max edge list */
+  Nel    = 0;           /* length of edge list */
 
-  EdgeList = mymalloc("EdgeList", MaxNel * sizeof(int));
-  Nedges = mymalloc("Nedges", NumGas * sizeof(int));
+  EdgeList     = mymalloc("EdgeList", MaxNel * sizeof(int));
+  Nedges       = mymalloc("Nedges", NumGas * sizeof(int));
   NedgesOffset = mymalloc("NedgesOffset", NumGas * sizeof(int));
-  whichtetra = mymalloc("whichtetra", NumGas * sizeof(int));
-  xyz_edges = mymalloc("xyz_edges", T->Ndt * DIMS * sizeof(float));
-  ngas_list = mymalloc("ngas_list", sizeof(int) * NTask);
-  nel_list = mymalloc("nel_list", sizeof(int) * NTask);
-  ndt_list = mymalloc("ndt_list", sizeof(int) * NTask);
+  whichtetra   = mymalloc("whichtetra", NumGas * sizeof(int));
+  xyz_edges    = mymalloc("xyz_edges", T->Ndt * DIMS * sizeof(float));
+  ngas_list    = mymalloc("ngas_list", sizeof(int) * NTask);
+  nel_list     = mymalloc("nel_list", sizeof(int) * NTask);
+  ndt_list     = mymalloc("ndt_list", sizeof(int) * NTask);
 
   for(i = 0; i < T->Ndt; i++)
     {
@@ -1987,7 +1960,7 @@ void write_voronoi_mesh(tessellation * T, char *fname, int writeTask, int lastTa
 
   for(i = 0; i < NumGas; i++)
     {
-      Nedges[i] = 0;
+      Nedges[i]     = 0;
       whichtetra[i] = -1;
     }
 
@@ -2035,8 +2008,8 @@ void write_voronoi_mesh(tessellation * T, char *fname, int writeTask, int lastTa
   if(ThisTask == writeTask)
     {
       ngas_tot = NumGas;
-      nel_tot = Nel;
-      ndt_tot = T->Ndt;
+      nel_tot  = Nel;
+      ndt_tot  = T->Ndt;
 
       for(task = writeTask + 1; task <= lastTask; task++)
         {
@@ -2133,6 +2106,5 @@ void write_voronoi_mesh(tessellation * T, char *fname, int writeTask, int lastTa
 
   CPU_Step[CPU_MAKEIMAGES] += measure_time();
 }
-
 
 #endif /* #if defined(TWODIMS) && !defined(ONEDIMS) */

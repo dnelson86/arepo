@@ -34,29 +34,26 @@
  *                  const void *b)
  *                static void derefine_exchange_flag(void)
  *
- * 
+ *
  * \par Major modifications and contributions:
- * 
+ *
  * - DD.MM.YYYY Description
  * - 22.05.2018 Prepared file for public release -- Rainer Weinberger
  */
 
-
+#include <math.h>
 #include <mpi.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <math.h>
 
 #include "../../main/allvars.h"
 #include "../../main/proto.h"
 
 #include "voronoi.h"
 
-
 #if defined(REFINEMENT_MERGE_CELLS) && !defined(ONEDIMS)
 #define DEREF_SA_FAC 1.0e-4
-
 
 int do_derefinements(void);
 static void derefine_add_ngb(int edge, int i, int j, double area, int tt, int nr);
@@ -67,35 +64,28 @@ static void derefine_exchange_flag(void);
 static void derefine_apply_probe_list(void);
 static int derefine_probe_list_data_compare_task(const void *a, const void *b);
 
-
 /*! \brief Data for derefinement: flag for de-refinement and index of cell.
  */
 static struct derefine_particle_data
 {
   int Flag;
   int dp_index;
-}
- *deref_SphP;
+} * deref_SphP;
 
-
- /*! \brief Data structure for communicating de-refinement flags.
-  */
+/*! \brief Data structure for communicating de-refinement flags.
+ */
 static struct flagexch
 {
   int Flag;
   MyIDType ID;
-}
- *FlagExch;
-
+} * FlagExch;
 
 /*! \brief Data structure to flag Delaunay data.
  */
 static struct flag_delaunay_data
 {
   int Flag;
-}
- *flag_DP;
-
+} * flag_DP;
 
 /*! \brief Structure defining auxiliary Delaunay data (for sorting).
  */
@@ -104,9 +94,7 @@ static struct seq_delaunay_data
   MyFloat rnd;
   int rank, index;
   MyIDType ID;
-}
- *seq_DP;
-
+} * seq_DP;
 
 /*! \brief Structure defining probe list element.
  */
@@ -115,9 +103,7 @@ static struct probe_list_data
   int task, index;
   int sendpart;
   int flag;
-}
- *ProbeList;
-
+} * ProbeList;
 
 /*! \brief Structure defining flux list element.
  */
@@ -127,24 +113,20 @@ static struct flux_list_data
   double dM, dP[3];
 #ifdef MHD
   double dB[3];
-#endif                          /* #ifdef MHD */
+#endif /* #ifdef MHD */
 
 #ifndef ISOTHERM_EQS
   double dEnergy;
-#endif                          /* #ifndef ISOTHERM_EQS */
+#endif /* #ifndef ISOTHERM_EQS */
 
 #ifdef MAXSCALARS
   double dConservedScalars[MAXSCALARS];
-#endif                          /* #ifdef MAXSCALARS */
-}
- *FluxList;
-
+#endif /* #ifdef MAXSCALARS */
+} * FluxList;
 
 static int Nflux, MaxNflux;
 
-
 static int *first_ngb, *last_ngb, first_free_ngb;
-
 
 /*! \brief Structure defining neighbour data.
  */
@@ -152,25 +134,21 @@ static struct ngb_data
 {
 #ifdef OPTIMIZE_MEMORY_USAGE
   MyFloat area;
-#else                           /* #ifdef OPTIMIZE_MEMORY_USAGE */
+#else  /* #ifdef OPTIMIZE_MEMORY_USAGE */
   double area;
-#endif                          /* #ifdef OPTIMIZE_MEMORY_USAGE #else */
+#endif /* #ifdef OPTIMIZE_MEMORY_USAGE #else */
   int index;
   int edge;
   int next_ngb;
-  int t, nr;                    /* delaunay tetra and edge number that generated this face */
-}
- *ngb;
-
+  int t, nr; /* delaunay tetra and edge number that generated this face */
+} * ngb;
 
 static int n_tri, max_n_tri;
 static triangle *trilist;
 
-
 #ifdef REFINEMENT_SPLIT_CELLS
 extern char *FlagDoNotRefine;
 #endif /* #ifdef REFINEMENT_SPLIT_CELLS */
-
 
 /*! \brief Adds cell in list ngb.
  *
@@ -187,7 +165,6 @@ static void derefine_add_ngb(int edge, int i, int j, double area, int t, int nr)
 {
   if(i >= 0 && j >= 0)
     {
-
       if(i >= Mesh.Ndp || j >= Mesh.Ndp)
         {
           terminate("i>= Ndp || j>= Ndp");
@@ -196,23 +173,22 @@ static void derefine_add_ngb(int edge, int i, int j, double area, int t, int nr)
       if(first_ngb[i] >= 0)
         {
           ngb[last_ngb[i]].next_ngb = first_free_ngb;
-          last_ngb[i] = first_free_ngb;
+          last_ngb[i]               = first_free_ngb;
         }
       else
         {
           first_ngb[i] = last_ngb[i] = first_free_ngb;
         }
 
-      ngb[first_free_ngb].area = area;
-      ngb[first_free_ngb].edge = edge;
-      ngb[first_free_ngb].t = t;
-      ngb[first_free_ngb].nr = nr;
-      ngb[first_free_ngb].index = j;
+      ngb[first_free_ngb].area     = area;
+      ngb[first_free_ngb].edge     = edge;
+      ngb[first_free_ngb].t        = t;
+      ngb[first_free_ngb].nr       = nr;
+      ngb[first_free_ngb].index    = j;
       ngb[first_free_ngb].next_ngb = -1;
       first_free_ngb++;
     }
 }
-
 
 /*! \brief Loop over all active cells and derefine the ones that need to be
  *         derefined.
@@ -242,7 +218,7 @@ int do_derefinements(void)
       if(i >= NumGas)
         terminate("index of gas cell greater than NumGas");
 
-      deref_SphP[i].Flag = 0;
+      deref_SphP[i].Flag     = 0;
       deref_SphP[i].dp_index = -1;
 
       if(derefine_should_this_cell_be_merged(i, deref_SphP[i].Flag))
@@ -266,7 +242,7 @@ int do_derefinements(void)
       /* let's create an explicit list of the neighbors of each cell */
 
       first_ngb = mymalloc("first_ngb", Mesh.Ndp * sizeof(int));
-      ngb = mymalloc("ngb", 2 * Mesh.Nvf * sizeof(struct ngb_data));
+      ngb       = mymalloc("ngb", 2 * Mesh.Nvf * sizeof(struct ngb_data));
 
       last_ngb = mymalloc("last_ngb", Mesh.Ndp * sizeof(int));
 
@@ -283,11 +259,11 @@ int do_derefinements(void)
 
       /* we now make a list of the delaunay points that we can sort in a globally unique way */
       flag_DP = mymalloc_movable(&flag_DP, "flag_DP", Mesh.Ndp * sizeof(struct flag_delaunay_data));
-      seq_DP = mymalloc("seq_DP", Mesh.Ndp * sizeof(struct seq_delaunay_data));
+      seq_DP  = mymalloc("seq_DP", Mesh.Ndp * sizeof(struct seq_delaunay_data));
 
       for(i = 0; i < Mesh.Ndp; i++)
         {
-          seq_DP[i].rank = i;
+          seq_DP[i].rank  = i;
           seq_DP[i].index = Mesh.DP[i].index;
 
           if(Mesh.DP[i].task == ThisTask)
@@ -296,28 +272,28 @@ int do_derefinements(void)
               if(li < 0)
                 {
                   flag_DP[i].Flag = 0;
-                  seq_DP[i].ID = 0;
-                  seq_DP[i].rnd = 0;
+                  seq_DP[i].ID    = 0;
+                  seq_DP[i].rnd   = 0;
                 }
               else
                 {
                   if(li < NumGas)
                     if(deref_SphP[li].dp_index < 0)
-                      deref_SphP[li].dp_index = i;      /* only guaranteed to be set for active cells */
+                      deref_SphP[li].dp_index = i; /* only guaranteed to be set for active cells */
 
                   if(li >= NumGas)
                     li -= NumGas;
 
                   flag_DP[i].Flag = deref_SphP[li].Flag;
-                  seq_DP[i].ID = P[li].ID;
-                  seq_DP[i].rnd = get_random_number();
+                  seq_DP[i].ID    = P[li].ID;
+                  seq_DP[i].rnd   = get_random_number();
                 }
             }
           else
             {
               flag_DP[i].Flag = FlagExch[Mesh.DP[i].index].Flag;
-              seq_DP[i].ID = FlagExch[Mesh.DP[i].index].ID;
-              seq_DP[i].rnd = get_random_number();
+              seq_DP[i].ID    = FlagExch[Mesh.DP[i].index].ID;
+              seq_DP[i].rnd   = get_random_number();
             }
         }
 
@@ -335,12 +311,12 @@ int do_derefinements(void)
             {
               j = seq_DP[i].rank;
 
-              if(flag_DP[j].Flag == 1)  /* this cell is still eligible for derefinement */
+              if(flag_DP[j].Flag == 1) /* this cell is still eligible for derefinement */
                 {
                   /* go through its neighbours and check whether one of them is already up for derefinement */
 
                   int n = 0;
-                  k = first_ngb[j];
+                  k     = first_ngb[j];
                   while(k >= 0)
                     {
                       /* we only need to consider neighboring cells if they are active */
@@ -361,7 +337,7 @@ int do_derefinements(void)
                             {
 #ifndef OPTIMIZE_MESH_MEMORY_FOR_REFINEMENT
                               timebin = PrimExch[Mesh.DP[q].index].TimeBinHydro;
-#else /* #ifndef OPTIMIZE_MESH_MEMORY_FOR_REFINEMENT */
+#else  /* #ifndef OPTIMIZE_MESH_MEMORY_FOR_REFINEMENT */
                               timebin = RefExch[Mesh.DP[q].index].TimeBinHydro;
 #endif /* #ifndef OPTIMIZE_MESH_MEMORY_FOR_REFINEMENT #else */
                             }
@@ -374,13 +350,12 @@ int do_derefinements(void)
                               if(Mesh.DP[q].ID == seq_DP[i].ID) /* same ID, so we have a mirrored particle */
                                 n++;
                             }
-
                         }
 
                       k = ngb[k].next_ngb;
                     }
 
-                  if(n == 0)    /* ok, none have been found. This means this cell is allowed to be refined */
+                  if(n == 0) /* ok, none have been found. This means this cell is allowed to be refined */
                     flag_DP[j].Flag = 2;
                   else
                     flag_DP[j].Flag = 3;
@@ -416,8 +391,8 @@ int do_derefinements(void)
          avoid de-refining two neighboring cells.  If such a pair is
          found, both cells will not be derefined. */
 
-      MaxNflux = Mesh.Indi.AllocFacNflux;
-      Nflux = 0;
+      MaxNflux  = Mesh.Indi.AllocFacNflux;
+      Nflux     = 0;
       ProbeList = mymalloc_movable(&ProbeList, "ProbeList", MaxNflux * sizeof(struct probe_list_data));
 
       count = 0;
@@ -430,7 +405,7 @@ int do_derefinements(void)
 
           if(deref_SphP[i].Flag == 2)
             {
-              j = deref_SphP[i].dp_index;       /* this is the delaunay point of this cell */
+              j = deref_SphP[i].dp_index; /* this is the delaunay point of this cell */
               if(j < 0)
                 terminate("j < 0");
 
@@ -451,7 +426,7 @@ int do_derefinements(void)
                           if(p < 0)
                             terminate("p < 0");
 
-                          if(p >= NumGas)       /* this is a local ghost point */
+                          if(p >= NumGas) /* this is a local ghost point */
                             p -= NumGas;
 
                           if(TimeBinSynchronized[P[p].TimeBinHydro])
@@ -466,7 +441,8 @@ int do_derefinements(void)
                               Mesh.Indi.AllocFacNflux *= ALLOC_INCREASE_FACTOR;
                               MaxNflux = Mesh.Indi.AllocFacNflux;
 #ifdef VERBOSE
-                              printf("Task=%d: increase memory allocation, MaxNflux=%d Indi.AllocFacNflux=%g\n", ThisTask, MaxNflux, Mesh.Indi.AllocFacNflux);
+                              printf("Task=%d: increase memory allocation, MaxNflux=%d Indi.AllocFacNflux=%g\n", ThisTask, MaxNflux,
+                                     Mesh.Indi.AllocFacNflux);
 #endif /* #ifdef VERBOSE */
                               ProbeList = myrealloc_movable(ProbeList, MaxNflux * sizeof(struct probe_list_data));
 
@@ -474,10 +450,10 @@ int do_derefinements(void)
                                 terminate("Nflux >= MaxNflux");
                             }
 
-                          ProbeList[Nflux].task = Mesh.DP[q].task;
-                          ProbeList[Nflux].index = Mesh.DP[q].originalindex;
+                          ProbeList[Nflux].task     = Mesh.DP[q].task;
+                          ProbeList[Nflux].index    = Mesh.DP[q].originalindex;
                           ProbeList[Nflux].sendpart = i;
-                          ProbeList[Nflux].flag = 0;
+                          ProbeList[Nflux].flag     = 0;
 
                           Nflux++;
                         }
@@ -514,12 +490,13 @@ int do_derefinements(void)
 
       in[1] = count;
       MPI_Reduce(in, out, 2, MPI_INT, MPI_SUM, 0, MPI_COMM_WORLD);
-      mpi_printf("DEREFINE: Number of cells that we could de-refine: %d, number of cells we exclude from this set:  %d\n", out[0], out[1]);
+      mpi_printf("DEREFINE: Number of cells that we could de-refine: %d, number of cells we exclude from this set:  %d\n", out[0],
+                 out[1]);
 
       /* we now distribute the conserved quantities of the cell among the neighbours */
 
       MaxNflux = Mesh.Indi.AllocFacNflux;
-      Nflux = 0;
+      Nflux    = 0;
       FluxList = mymalloc_movable(&FluxList, "FluxList", MaxNflux * sizeof(struct flux_list_data));
 
       for(idx = 0; idx < TimeBinsHydro.NActiveParticles; idx++)
@@ -530,12 +507,12 @@ int do_derefinements(void)
 
           if(deref_SphP[i].Flag == 2)
             {
-              j = deref_SphP[i].dp_index;       /* this is the delaunay point of this cell */
+              j = deref_SphP[i].dp_index; /* this is the delaunay point of this cell */
               if(j < 0)
                 terminate("j < 0");
 
               max_n_tri = 300000;
-              n_tri = 0;
+              n_tri     = 0;
 
               trilist = mymalloc("trilist", max_n_tri * sizeof(triangle));
 
@@ -549,7 +526,7 @@ int do_derefinements(void)
                 }
 
               /* assign the first point as owner to all tetras */
-              k = first_ngb[j];
+              k     = first_ngb[j];
               int q = ngb[k].index;
               int t;
               for(t = 0; t < n_tri; t++)
@@ -566,7 +543,7 @@ int do_derefinements(void)
                 {
                   int q = ngb[k].index;
                   n_tri = derefine_add_point_and_split_tri(q, trilist, n_tri, max_n_tri, vol);
-                  k = ngb[k].next_ngb;
+                  k     = ngb[k].next_ngb;
                 }
 
               if(n_tri > max_assumed_ntri)
@@ -578,9 +555,9 @@ int do_derefinements(void)
               k = first_ngb[j];
               while(k >= 0)
                 {
-                  int q = ngb[k].index;
+                  int q     = ngb[k].index;
                   volume[q] = 0;
-                  k = ngb[k].next_ngb;
+                  k         = ngb[k].next_ngb;
                 }
 
               /* now assign the volume of the triangles to the neighbors */
@@ -594,7 +571,7 @@ int do_derefinements(void)
 
               /* first, let's establish the surface area sum for this cell */
               double voltot = 0;
-              k = first_ngb[j];
+              k             = first_ngb[j];
               while(k >= 0)
                 {
                   if(ngb[k].area > DEREF_SA_FAC * SphP[i].SurfaceArea)
@@ -607,7 +584,7 @@ int do_derefinements(void)
 
               /* now, distribute conserved quantities proportional to the gained volume */
               double facsum = 0;
-              k = first_ngb[j];
+              k             = first_ngb[j];
               while(k >= 0)
                 {
                   if(ngb[k].area > DEREF_SA_FAC * SphP[i].SurfaceArea)
@@ -620,7 +597,7 @@ int do_derefinements(void)
                         {
                           warn("strange: fac=%g\n", fac);
                           fac = 0;
-                          //terminate("strange");
+                          // terminate("strange");
                         }
                       facsum += fac;
 
@@ -631,7 +608,7 @@ int do_derefinements(void)
                           if(p < 0)
                             terminate("p < 0");
 
-                          if(p >= NumGas)       /* this is a local ghost point */
+                          if(p >= NumGas) /* this is a local ghost point */
                             p -= NumGas;
                           P[p].Mass += fac * P[i].Mass;
                           SphP[p].Momentum[0] += fac * SphP[i].Momentum[0];
@@ -650,7 +627,8 @@ int do_derefinements(void)
 
 #ifdef MAXSCALARS
                           for(int s = 0; s < N_Scalar; s++)
-                            *(MyFloat *) (((char *) (&SphP[p])) + scalar_elements[s].offset_mass) += fac * (*(MyFloat *) (((char *) (&SphP[i])) + scalar_elements[s].offset_mass));
+                            *(MyFloat *)(((char *)(&SphP[p])) + scalar_elements[s].offset_mass) +=
+                                fac * (*(MyFloat *)(((char *)(&SphP[i])) + scalar_elements[s].offset_mass));
 #endif /* #ifdef MAXSCALARS */
 
 #ifdef REFINEMENT_SPLIT_CELLS
@@ -672,7 +650,8 @@ int do_derefinements(void)
                               Mesh.Indi.AllocFacNflux *= ALLOC_INCREASE_FACTOR;
                               MaxNflux = Mesh.Indi.AllocFacNflux;
 #ifdef VERBOSE
-                              printf("Task=%d: increase memory allocation, MaxNflux=%d Indi.AllocFacNflux=%g\n", ThisTask, MaxNflux, Mesh.Indi.AllocFacNflux);
+                              printf("Task=%d: increase memory allocation, MaxNflux=%d Indi.AllocFacNflux=%g\n", ThisTask, MaxNflux,
+                                     Mesh.Indi.AllocFacNflux);
 #endif /* #ifdef VERBOSE */
                               FluxList = myrealloc_movable(FluxList, MaxNflux * sizeof(struct flux_list_data));
 
@@ -680,9 +659,9 @@ int do_derefinements(void)
                                 terminate("Nflux >= MaxNflux");
                             }
 
-                          FluxList[Nflux].task = Mesh.DP[q].task;
+                          FluxList[Nflux].task  = Mesh.DP[q].task;
                           FluxList[Nflux].index = Mesh.DP[q].originalindex;
-                          FluxList[Nflux].dM = fac * P[i].Mass;
+                          FluxList[Nflux].dM    = fac * P[i].Mass;
                           FluxList[Nflux].dP[0] = fac * SphP[i].Momentum[0];
                           FluxList[Nflux].dP[1] = fac * SphP[i].Momentum[1];
                           FluxList[Nflux].dP[2] = fac * SphP[i].Momentum[2];
@@ -698,7 +677,8 @@ int do_derefinements(void)
 
 #ifdef MAXSCALARS
                           for(int s = 0; s < N_Scalar; s++)
-                            FluxList[Nflux].dConservedScalars[s] = fac * (*(MyFloat *) (((char *) (&SphP[i])) + scalar_elements[s].offset_mass));
+                            FluxList[Nflux].dConservedScalars[s] =
+                                fac * (*(MyFloat *)(((char *)(&SphP[i])) + scalar_elements[s].offset_mass));
 #endif /* #ifdef MAXSCALARS */
                           Nflux++;
                         }
@@ -720,8 +700,8 @@ int do_derefinements(void)
               /* we set the dissolved cell to zero mass and zero ID. It will be eliminated from the list
                * of cells in the next domain decomposition
                */
-              P[i].Mass = 0;
-              P[i].ID = 0;
+              P[i].Mass   = 0;
+              P[i].ID     = 0;
               P[i].Vel[0] = 0;
               P[i].Vel[1] = 0;
               P[i].Vel[2] = 0;
@@ -761,7 +741,6 @@ int do_derefinements(void)
   return countall;
 }
 
-
 /*! \brief Communicates probe list data if needed.
  *
  *  \return void
@@ -796,7 +775,7 @@ static void derefine_apply_probe_list(void)
         }
     }
 
-  struct probe_list_data *ProbeListGet = (struct probe_list_data *) mymalloc("ProbeListGet", nimport * sizeof(struct probe_list_data));
+  struct probe_list_data *ProbeListGet = (struct probe_list_data *)mymalloc("ProbeListGet", nimport * sizeof(struct probe_list_data));
 
   /* exchange particle data */
   for(ngrp = 1; ngrp < (1 << PTask); ngrp++)
@@ -808,10 +787,10 @@ static void derefine_apply_probe_list(void)
           if(Send_count[recvTask] > 0 || Recv_count[recvTask] > 0)
             {
               /* get the particles */
-              MPI_Sendrecv(&ProbeList[Send_offset[recvTask]],
-                           Send_count[recvTask] * sizeof(struct probe_list_data), MPI_BYTE,
-                           recvTask, TAG_DENS_A,
-                           &ProbeListGet[Recv_offset[recvTask]], Recv_count[recvTask] * sizeof(struct probe_list_data), MPI_BYTE, recvTask, TAG_DENS_A, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
+              MPI_Sendrecv(&ProbeList[Send_offset[recvTask]], Send_count[recvTask] * sizeof(struct probe_list_data), MPI_BYTE,
+                           recvTask, TAG_DENS_A, &ProbeListGet[Recv_offset[recvTask]],
+                           Recv_count[recvTask] * sizeof(struct probe_list_data), MPI_BYTE, recvTask, TAG_DENS_A, MPI_COMM_WORLD,
+                           MPI_STATUS_IGNORE);
             }
         }
     }
@@ -838,17 +817,16 @@ static void derefine_apply_probe_list(void)
           if(Send_count[recvTask] > 0 || Recv_count[recvTask] > 0)
             {
               /* get the particles */
-              MPI_Sendrecv(&ProbeListGet[Recv_offset[recvTask]],
-                           Recv_count[recvTask] * sizeof(struct probe_list_data), MPI_BYTE,
-                           recvTask, TAG_DENS_A,
-                           &ProbeList[Send_offset[recvTask]], Send_count[recvTask] * sizeof(struct probe_list_data), MPI_BYTE, recvTask, TAG_DENS_A, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
+              MPI_Sendrecv(&ProbeListGet[Recv_offset[recvTask]], Recv_count[recvTask] * sizeof(struct probe_list_data), MPI_BYTE,
+                           recvTask, TAG_DENS_A, &ProbeList[Send_offset[recvTask]],
+                           Send_count[recvTask] * sizeof(struct probe_list_data), MPI_BYTE, recvTask, TAG_DENS_A, MPI_COMM_WORLD,
+                           MPI_STATUS_IGNORE);
             }
         }
     }
 
   myfree(ProbeListGet);
 }
-
 
 /*! \brief Communicate flux list data if needed.
  *
@@ -884,7 +862,7 @@ static void derefine_apply_flux_list(void)
         }
     }
 
-  struct flux_list_data *FluxListGet = (struct flux_list_data *) mymalloc("FluxListGet", nimport * sizeof(struct flux_list_data));
+  struct flux_list_data *FluxListGet = (struct flux_list_data *)mymalloc("FluxListGet", nimport * sizeof(struct flux_list_data));
 
   /* exchange particle data */
   for(ngrp = 1; ngrp < (1 << PTask); ngrp++)
@@ -896,10 +874,9 @@ static void derefine_apply_flux_list(void)
           if(Send_count[recvTask] > 0 || Recv_count[recvTask] > 0)
             {
               /* get the particles */
-              MPI_Sendrecv(&FluxList[Send_offset[recvTask]],
-                           Send_count[recvTask] * sizeof(struct flux_list_data), MPI_BYTE,
-                           recvTask, TAG_DENS_A,
-                           &FluxListGet[Recv_offset[recvTask]], Recv_count[recvTask] * sizeof(struct flux_list_data), MPI_BYTE, recvTask, TAG_DENS_A, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
+              MPI_Sendrecv(&FluxList[Send_offset[recvTask]], Send_count[recvTask] * sizeof(struct flux_list_data), MPI_BYTE, recvTask,
+                           TAG_DENS_A, &FluxListGet[Recv_offset[recvTask]], Recv_count[recvTask] * sizeof(struct flux_list_data),
+                           MPI_BYTE, recvTask, TAG_DENS_A, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
             }
         }
     }
@@ -915,7 +892,7 @@ static void derefine_apply_flux_list(void)
           char buf[1000];
 #ifndef LONGIDS
           printf("On task=%d flux to ID=%d, but this is already deleted (index p=%d)\n", ThisTask, P[p].ID, p);
-#else /* #ifndef LONGIDS */
+#else  /* #ifndef LONGIDS */
           printf("On task=%d flux to ID=%llu, but this is already deleted (index p=%d)\n", ThisTask, P[p].ID, p);
 #endif /* #ifndef LONGIDS #else */
           terminate(buf);
@@ -934,7 +911,7 @@ static void derefine_apply_flux_list(void)
 #ifdef MAXSCALARS
       int k;
       for(k = 0; k < N_Scalar; k++)
-        *(MyFloat *) (((char *) (&SphP[p])) + scalar_elements[k].offset_mass) += FluxListGet[i].dConservedScalars[k];
+        *(MyFloat *)(((char *)(&SphP[p])) + scalar_elements[k].offset_mass) += FluxListGet[i].dConservedScalars[k];
 #endif /* #ifdef MAXSCALARS */
 
 #ifndef ISOTHERM_EQS
@@ -949,7 +926,6 @@ static void derefine_apply_flux_list(void)
   myfree(FluxListGet);
 }
 
-
 /*! \brief Compares flux list data task of two elements.
  *
  *  \param[in] a Pointer to first flux list data object.
@@ -959,15 +935,14 @@ static void derefine_apply_flux_list(void)
  */
 static int derefine_flux_list_data_compare(const void *a, const void *b)
 {
-  if(((struct flux_list_data *) a)->task < (((struct flux_list_data *) b)->task))
+  if(((struct flux_list_data *)a)->task < (((struct flux_list_data *)b)->task))
     return -1;
 
-  if(((struct flux_list_data *) a)->task > (((struct flux_list_data *) b)->task))
+  if(((struct flux_list_data *)a)->task > (((struct flux_list_data *)b)->task))
     return +1;
 
   return 0;
 }
-
 
 /*! \brief Compares probe list data task of two elements.
  *
@@ -978,15 +953,14 @@ static int derefine_flux_list_data_compare(const void *a, const void *b)
  */
 static int derefine_probe_list_data_compare_task(const void *a, const void *b)
 {
-  if(((struct probe_list_data *) a)->task < (((struct probe_list_data *) b)->task))
+  if(((struct probe_list_data *)a)->task < (((struct probe_list_data *)b)->task))
     return -1;
 
-  if(((struct probe_list_data *) a)->task > (((struct probe_list_data *) b)->task))
+  if(((struct probe_list_data *)a)->task > (((struct probe_list_data *)b)->task))
     return +1;
 
   return 0;
 }
-
 
 /*! \brief Compares seq delaunay data task of two elements.
  *
@@ -1003,33 +977,32 @@ static int derefine_probe_list_data_compare_task(const void *a, const void *b)
  */
 static int derefine_compare_seq_DP_ID(const void *a, const void *b)
 {
-  if(((struct seq_delaunay_data *) a)->rnd < (((struct seq_delaunay_data *) b)->rnd))
+  if(((struct seq_delaunay_data *)a)->rnd < (((struct seq_delaunay_data *)b)->rnd))
     return -1;
 
-  if(((struct seq_delaunay_data *) a)->rnd > (((struct seq_delaunay_data *) b)->rnd))
+  if(((struct seq_delaunay_data *)a)->rnd > (((struct seq_delaunay_data *)b)->rnd))
     return +1;
 
-  if(((struct seq_delaunay_data *) a)->ID < (((struct seq_delaunay_data *) b)->ID))
+  if(((struct seq_delaunay_data *)a)->ID < (((struct seq_delaunay_data *)b)->ID))
     return -1;
 
-  if(((struct seq_delaunay_data *) a)->ID > (((struct seq_delaunay_data *) b)->ID))
+  if(((struct seq_delaunay_data *)a)->ID > (((struct seq_delaunay_data *)b)->ID))
     return +1;
 
-  if(((struct seq_delaunay_data *) a)->index < (((struct seq_delaunay_data *) b)->index))
+  if(((struct seq_delaunay_data *)a)->index < (((struct seq_delaunay_data *)b)->index))
     return -1;
 
-  if(((struct seq_delaunay_data *) a)->index > (((struct seq_delaunay_data *) b)->index))
+  if(((struct seq_delaunay_data *)a)->index > (((struct seq_delaunay_data *)b)->index))
     return +1;
 
-  if(((struct seq_delaunay_data *) a)->rank < (((struct seq_delaunay_data *) b)->rank))
+  if(((struct seq_delaunay_data *)a)->rank < (((struct seq_delaunay_data *)b)->rank))
     return -1;
 
-  if(((struct seq_delaunay_data *) a)->rank > (((struct seq_delaunay_data *) b)->rank))
+  if(((struct seq_delaunay_data *)a)->rank > (((struct seq_delaunay_data *)b)->rank))
     return +1;
 
   return 0;
 }
-
 
 /*! \brief Sets exchange flag in de-refinement algorithm.
  *
@@ -1048,10 +1021,9 @@ static void derefine_exchange_flag(void)
   {
     int Flag;
     MyIDType ID;
-  }
-   *tmpExch, *tmpRecv;
+  } * tmpExch, *tmpRecv;
 
-  tmpExch = (struct exchange_data *) mymalloc("tmpExch", Mesh_nexport * sizeof(struct exchange_data));
+  tmpExch = (struct exchange_data *)mymalloc("tmpExch", Mesh_nexport * sizeof(struct exchange_data));
 
   /* prepare data for export */
   for(j = 0; j < NTask; j++)
@@ -1067,10 +1039,10 @@ static void derefine_exchange_flag(void)
           if((task = ListExports[listp].origin) != ThisTask)
             {
               place = ListExports[listp].index;
-              off = Mesh_Send_offset[task] + Mesh_Send_count[task]++;
+              off   = Mesh_Send_offset[task] + Mesh_Send_count[task]++;
 
               tmpExch[off].Flag = 0;
-              tmpExch[off].ID = P[place].ID;
+              tmpExch[off].ID   = P[place].ID;
 
               if(P[place].Type == 0)
                 if(TimeBinSynchronized[P[place].TimeBinHydro])
@@ -1090,19 +1062,19 @@ static void derefine_exchange_flag(void)
         {
           if(Mesh_Send_count[recvTask] > 0 || Mesh_Recv_count[recvTask] > 0)
             {
-              tmpRecv = (struct exchange_data *) mymalloc("tmpRecv", Mesh_Recv_count[recvTask] * sizeof(struct exchange_data));
+              tmpRecv = (struct exchange_data *)mymalloc("tmpRecv", Mesh_Recv_count[recvTask] * sizeof(struct exchange_data));
 
               /* get the values */
-              MPI_Sendrecv(&tmpExch[Mesh_Send_offset[recvTask]],
-                           Mesh_Send_count[recvTask] * sizeof(struct exchange_data), MPI_BYTE,
-                           recvTask, TAG_DENS_A, tmpRecv, Mesh_Recv_count[recvTask] * sizeof(struct exchange_data), MPI_BYTE, recvTask, TAG_DENS_A, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
+              MPI_Sendrecv(&tmpExch[Mesh_Send_offset[recvTask]], Mesh_Send_count[recvTask] * sizeof(struct exchange_data), MPI_BYTE,
+                           recvTask, TAG_DENS_A, tmpRecv, Mesh_Recv_count[recvTask] * sizeof(struct exchange_data), MPI_BYTE, recvTask,
+                           TAG_DENS_A, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
 
               for(i = 0; i < Mesh_Recv_count[recvTask]; i++)
                 {
                   if(Mesh_Recv_offset[recvTask] + i >= Mesh_nimport)
                     terminate("number of imported mesh points grater than Mesh_nimport");
                   FlagExch[Mesh_Recv_offset[recvTask] + i].Flag = tmpRecv[i].Flag;
-                  FlagExch[Mesh_Recv_offset[recvTask] + i].ID = tmpRecv[i].ID;
+                  FlagExch[Mesh_Recv_offset[recvTask] + i].ID   = tmpRecv[i].ID;
                 }
 
               myfree(tmpRecv);
@@ -1112,6 +1084,5 @@ static void derefine_exchange_flag(void)
 
   myfree(tmpExch);
 }
-
 
 #endif /* #if defined(REFINEMENT_MERGE_CELLS) && !defined(ONEDIMS) */

@@ -23,24 +23,20 @@
  * \details     contains functions:
  *                static void refine_add_ngb(int i, int j)
  *                int do_refinements(void)
- * 
+ *
  * \par Major modifications and contributions:
- * 
+ *
  * - DD.MM.YYYY Description
  * - 23.05.2018 Prepared file for public release -- Rainer Weinberger
  */
 
-
 #include "../../main/allvars.h"
 #include "../../main/proto.h"
 
-
 #ifdef REFINEMENT_SPLIT_CELLS
-
 
 static int *ref_SphP_dp_index;
 static int *first_ngb, *last_ngb, first_free_ngb;
-
 
 /*! \brief Linked list for neighbor data.
  *
@@ -49,9 +45,7 @@ static struct ngb_data
 {
   int index;
   int next_ngb;
-}
- *ngb;
-
+} * ngb;
 
 /*! \brief Add element to linked neighbor list.
  *
@@ -64,7 +58,6 @@ static void refine_add_ngb(int i, int j)
 {
   if(i >= 0 && j >= 0)
     {
-
       if(i >= Mesh.Ndp || j >= Mesh.Ndp)
         {
           terminate("i>= Ndp || j>= Ndp");
@@ -73,19 +66,18 @@ static void refine_add_ngb(int i, int j)
       if(first_ngb[i] >= 0)
         {
           ngb[last_ngb[i]].next_ngb = first_free_ngb;
-          last_ngb[i] = first_free_ngb;
+          last_ngb[i]               = first_free_ngb;
         }
       else
         {
           first_ngb[i] = last_ngb[i] = first_free_ngb;
         }
 
-      ngb[first_free_ngb].index = j;
+      ngb[first_free_ngb].index    = j;
       ngb[first_free_ngb].next_ngb = -1;
       first_free_ngb++;
     }
 }
-
 
 /*! \brief Loops through active cells and refine cells if needed.
  *
@@ -106,7 +98,7 @@ int do_refinements(void)
 
   ref_SphP_dp_index = mymalloc_movable(&ref_SphP_dp_index, "ref_SphP_dp_index", NumGas * sizeof(int));
 
-  int NActiveParticles = TimeBinsHydro.NActiveParticles;        /* save this since refinement is going to change it */
+  int NActiveParticles = TimeBinsHydro.NActiveParticles; /* save this since refinement is going to change it */
   for(idx = 0, count = 0; idx < NActiveParticles; idx++)
     {
       i = TimeBinsHydro.ActiveParticleList[idx];
@@ -129,17 +121,19 @@ int do_refinements(void)
 
       if(NumPart + count >= All.MaxPart)
         {
-          sprintf(buf, "On Task=%d with NumPart=%d we try to produce %d cells. Sorry, no space left...(All.MaxPart=%d)\n", ThisTask, NumPart, count, All.MaxPart);
+          sprintf(buf, "On Task=%d with NumPart=%d we try to produce %d cells. Sorry, no space left...(All.MaxPart=%d)\n", ThisTask,
+                  NumPart, count, All.MaxPart);
           terminate(buf);
         }
 
       if(NumGas + count >= All.MaxPartSph)
         {
-          sprintf(buf, "On Task=%d with NumGas=%d we try to produce %d cells. Sorry, no space left...(All.MaxPartSph=%d)\n", ThisTask, NumGas, count, All.MaxPartSph);
+          sprintf(buf, "On Task=%d with NumGas=%d we try to produce %d cells. Sorry, no space left...(All.MaxPartSph=%d)\n", ThisTask,
+                  NumGas, count, All.MaxPartSph);
           terminate(buf);
         }
 
-      if(All.MaxID == 0)        /* MaxID not calculated yet */
+      if(All.MaxID == 0) /* MaxID not calculated yet */
         calculate_maxid();
 
       int *list = mymalloc("list", NTask * sizeof(int));
@@ -156,14 +150,14 @@ int do_refinements(void)
       myfree(list);
 
       Ngb_MarkerValue++;
-      int nchanged = 0;
-      int *nodelist = (int *) mymalloc("nodelist", NTopleaves * sizeof(int));
+      int nchanged  = 0;
+      int *nodelist = (int *)mymalloc("nodelist", NTopleaves * sizeof(int));
 
       /*  create explicit list of neighbors */
 
       first_ngb = mymalloc("first_ngb", Mesh.Ndp * sizeof(int));
-      ngb = mymalloc("ngbs", 2 * Mesh.Nvf * sizeof(struct ngb_data));
-      last_ngb = mymalloc("last_ngb", Mesh.Ndp * sizeof(int));
+      ngb       = mymalloc("ngbs", 2 * Mesh.Nvf * sizeof(struct ngb_data));
+      last_ngb  = mymalloc("last_ngb", Mesh.Ndp * sizeof(int));
 
       for(i = 0; i < Mesh.Ndp; i++)
         {
@@ -174,7 +168,7 @@ int do_refinements(void)
               int li = Mesh.DP[i].index;
               if(li >= 0 && li < NumGas)
                 if(ref_SphP_dp_index[li] < 0)
-                  ref_SphP_dp_index[li] = i;    /* only guaranteed to be set for active cells */
+                  ref_SphP_dp_index[li] = i; /* only guaranteed to be set for active cells */
             }
         }
 
@@ -202,7 +196,7 @@ int do_refinements(void)
                   if(TimeBinSynchronized[P[NumPart + count].TimeBinGrav] && P[i].Mass > 0)
                     addToGravList = 0;
 
-                  /* there is already an entry in the list of active particles for 
+                  /* there is already an entry in the list of active particles for
                      gravity that points to the index that we will use for our new cell */
                 }
 
@@ -210,7 +204,7 @@ int do_refinements(void)
 
               j = NumGas + count;
 
-              P[j] = P[i];
+              P[j]    = P[i];
               SphP[j] = SphP[i];
 
               P[j].ID = newid++;
@@ -224,9 +218,9 @@ int do_refinements(void)
               dir[0] = cos(phi);
               dir[1] = sin(phi);
               dir[2] = 0;
-#else /* #ifdef TWODIMS */
+#else  /* #ifdef TWODIMS */
               double theta = acos(2 * get_random_number() - 1);
-              double phi = 2 * M_PI * get_random_number();
+              double phi   = 2 * M_PI * get_random_number();
 
               dir[0] = sin(theta) * cos(phi);
               dir[1] = sin(theta) * sin(phi);
@@ -242,9 +236,9 @@ int do_refinements(void)
               SphP[j].SepVector[1] = SphP[i].SepVector[1] = dir[1];
               SphP[j].SepVector[2] = SphP[i].SepVector[2] = dir[2];
 
-                /**** create the voronoi cell of i as an auxiliary mesh */
+              /**** create the voronoi cell of i as an auxiliary mesh */
 
-              int jj = ref_SphP_dp_index[i];    /* this is the delaunay point of this cell */
+              int jj = ref_SphP_dp_index[i]; /* this is the delaunay point of this cell */
               if(jj < 0)
                 terminate("jj < 0");
 
@@ -267,7 +261,8 @@ int do_refinements(void)
                       DeRefMesh.Indi.AllocFacNdp *= ALLOC_INCREASE_FACTOR;
                       DeRefMesh.MaxNdp = DeRefMesh.Indi.AllocFacNdp;
 #ifdef VERBOSE
-                      printf("Task=%d: increase memory allocation, MaxNdp=%d Indi.AllocFacNdp=%g\n", ThisTask, DeRefMesh.MaxNdp, DeRefMesh.Indi.AllocFacNdp);
+                      printf("Task=%d: increase memory allocation, MaxNdp=%d Indi.AllocFacNdp=%g\n", ThisTask, DeRefMesh.MaxNdp,
+                             DeRefMesh.Indi.AllocFacNdp);
 #endif /* #ifdef VERBOSE */
                       DeRefMesh.DP -= 5;
                       DeRefMesh.DP = myrealloc_movable(DeRefMesh.DP, (DeRefMesh.MaxNdp + 5) * sizeof(point));
@@ -276,7 +271,9 @@ int do_refinements(void)
 
                   DeRefMesh.DP[DeRefMesh.Ndp] = Mesh.DP[q];
 
-                  double r = sqrt(pow(DeRefMesh.DP[DeRefMesh.Ndp].x - P[i].Pos[0], 2) + pow(DeRefMesh.DP[DeRefMesh.Ndp].y - P[i].Pos[1], 2) + pow(DeRefMesh.DP[DeRefMesh.Ndp].z - P[i].Pos[2], 2));
+                  double r =
+                      sqrt(pow(DeRefMesh.DP[DeRefMesh.Ndp].x - P[i].Pos[0], 2) + pow(DeRefMesh.DP[DeRefMesh.Ndp].y - P[i].Pos[1], 2) +
+                           pow(DeRefMesh.DP[DeRefMesh.Ndp].z - P[i].Pos[2], 2));
 
                   if(r < 2 * fac)
                     terminate("We are trying to split a heavily distorted cell... We better stop. Check your refinement criterion.");
@@ -301,9 +298,9 @@ int do_refinements(void)
 
               /* and finally, add the newly generated point */
 
-              DeRefMesh.DP[DeRefMesh.Ndp].x = P[j].Pos[0];
-              DeRefMesh.DP[DeRefMesh.Ndp].y = P[j].Pos[1];
-              DeRefMesh.DP[DeRefMesh.Ndp].z = P[j].Pos[2];
+              DeRefMesh.DP[DeRefMesh.Ndp].x  = P[j].Pos[0];
+              DeRefMesh.DP[DeRefMesh.Ndp].y  = P[j].Pos[1];
+              DeRefMesh.DP[DeRefMesh.Ndp].z  = P[j].Pos[2];
               DeRefMesh.DP[DeRefMesh.Ndp].ID = P[j].ID;
 #ifndef OPTIMIZE_MEMORY_USAGE
               set_integers_for_point(&DeRefMesh, DeRefMesh.Ndp);
@@ -348,7 +345,10 @@ int do_refinements(void)
               for(k = 0; k < 3; k++)
                 {
                   SphP[i].B[k] = SphP[i].BConserved[k] / (voli + volj);
-                  SphP[j].B[k] = SphP[i].B[k] + SphP[i].Grad.dB[k][0] * (P[j].Pos[0] - P[i].Pos[0]) + SphP[i].Grad.dB[k][1] * (P[j].Pos[1] - P[i].Pos[1]) + SphP[i].Grad.dB[k][2] * (P[j].Pos[2] - P[i].Pos[2]);        /* extrapolate B to the position of the new cell */
+                  SphP[j].B[k] =
+                      SphP[i].B[k] + SphP[i].Grad.dB[k][0] * (P[j].Pos[0] - P[i].Pos[0]) +
+                      SphP[i].Grad.dB[k][1] * (P[j].Pos[1] - P[i].Pos[1]) +
+                      SphP[i].Grad.dB[k][2] * (P[j].Pos[2] - P[i].Pos[2]); /* extrapolate B to the position of the new cell */
 
                   /* update conserved variables */
                   SphP[i].BConserved[k] = SphP[i].B[k] * voli;
@@ -368,24 +368,25 @@ int do_refinements(void)
 #endif /* #ifdef USE_SFR */
 
 #ifdef MAXSCALARS
-              for(int s = 0; s < N_Scalar; s++) /* Note, the changes in MATERIALS, HIGHRESGASMASS, etc., are treated as part of the Scalars */
+              for(int s = 0; s < N_Scalar;
+                  s++) /* Note, the changes in MATERIALS, HIGHRESGASMASS, etc., are treated as part of the Scalars */
                 {
-                  *(MyFloat *) (((char *) (&SphP[i])) + scalar_elements[s].offset_mass) *= faci;
-                  *(MyFloat *) (((char *) (&SphP[j])) + scalar_elements[s].offset_mass) *= facj;
+                  *(MyFloat *)(((char *)(&SphP[i])) + scalar_elements[s].offset_mass) *= faci;
+                  *(MyFloat *)(((char *)(&SphP[j])) + scalar_elements[s].offset_mass) *= facj;
                 }
 #endif /* #ifdef MAXSCALARS */
 
 #ifdef REFINEMENT_HIGH_RES_GAS
               /* the change in the SphP[].HighResMass is treated as part of the Scalars loop above */
-              SphP[i].AllowRefinement += 2;     /* increment the refinement "generation" of both cells */
+              SphP[i].AllowRefinement += 2; /* increment the refinement "generation" of both cells */
               SphP[j].AllowRefinement += 2;
 #endif /* #ifdef REFINEMENT_HIGH_RES_GAS */
 
               /* add the new particle into the neighbour tree */
-              int no = Ngb_Nextnode[i];
+              int no          = Ngb_Nextnode[i];
               Ngb_Nextnode[i] = j;
               Ngb_Nextnode[j] = no;
-              Ngb_Father[j] = Ngb_Father[i];
+              Ngb_Father[j]   = Ngb_Father[i];
 
               ngb_update_rangebounds(j, &nchanged, nodelist);
 
@@ -395,7 +396,7 @@ int do_refinements(void)
               timebin_add_particle(&TimeBinsGravity, j, i, P[i].TimeBinGrav, addToGravList);
 
               SphP[j].first_connection = -1;
-              SphP[j].last_connection = -1;
+              SphP[j].last_connection  = -1;
 
               count++;
             }
@@ -420,6 +421,5 @@ int do_refinements(void)
 
   return countall;
 }
-
 
 #endif /* REFINEMENT_SPLIT_CELLS */

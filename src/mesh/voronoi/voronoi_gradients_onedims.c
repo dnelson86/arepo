@@ -24,25 +24,21 @@
  *                double getValue(int i, int k)
  *                void calculate_gradients(void)
  *                void compute_divvel()
- * 
+ *
  * \par Major modifications and contributions:
- * 
+ *
  * - DD.MM.YYYY Description
  * - 23.05.2018 Prepared file for public release -- Rainer Weinberger
  */
 
-
 #include "../../main/allvars.h"
 #include "../../main/proto.h"
 
-
 #if defined(ONEDIMS)
-
 
 #ifdef OUTPUT_DIVVEL
 static void compute_divvel();
 #endif /* #ifdef OUTPUT_DIVVEL */
-
 
 /*! \brief Gets a value of a quantity.
  *
@@ -53,12 +49,12 @@ static void compute_divvel();
  */
 double getValue(int i, int k)
 {
-  if((grad_elements[k].type == GRADIENT_TYPE_VELX) || (grad_elements[k].type == GRADIENT_TYPE_VELY) || (grad_elements[k].type == GRADIENT_TYPE_VELZ))
-    return *(MyFloat *) (((char *) (&P[i])) + grad_elements[k].offset);
+  if((grad_elements[k].type == GRADIENT_TYPE_VELX) || (grad_elements[k].type == GRADIENT_TYPE_VELY) ||
+     (grad_elements[k].type == GRADIENT_TYPE_VELZ))
+    return *(MyFloat *)(((char *)(&P[i])) + grad_elements[k].offset);
   else
-    return *(MyFloat *) (((char *) (&SphP[i])) + grad_elements[k].offset);
+    return *(MyFloat *)(((char *)(&SphP[i])) + grad_elements[k].offset);
 }
-
 
 /*! \brief Calculates gradients in a 1d simulation.
  *
@@ -80,12 +76,12 @@ void calculate_gradients(void)
       for(k = 0; k < N_Grad; k++)
         {
           double Value = getValue(i, k);
-          double Pos = P[i].Pos[0];
+          double Pos   = P[i].Pos[0];
 
-#if defined (ONEDIMS_SPHERICAL) || defined (REFLECTIVE_X)
+#if defined(ONEDIMS_SPHERICAL) || defined(REFLECTIVE_X)
           if(i == 0 || i == NumGas - 1)
             {
-              MySingle *data = (MySingle *) (((char *) (&(SphP[i].Grad))) + grad_elements[k].offset_grad);
+              MySingle *data = (MySingle *)(((char *)(&(SphP[i].Grad))) + grad_elements[k].offset_grad);
               memset(data, 0, 3 * sizeof(MySingle));
               continue;
             }
@@ -108,10 +104,10 @@ void calculate_gradients(void)
 
           double grad = (ValueL - ValueR) / (PosL - PosR);
 
-          MySingle *data = (MySingle *) (((char *) (&(SphP[i].Grad))) + grad_elements[k].offset_grad);
-          data[0] = grad;
-          data[1] = 0;
-          data[2] = 0;
+          MySingle *data = (MySingle *)(((char *)(&(SphP[i].Grad))) + grad_elements[k].offset_grad);
+          data[0]        = grad;
+          data[1]        = 0;
+          data[2]        = 0;
 
           double ValueMin = dmin(ValueL, ValueR);
           double ValueMax = dmax(ValueL, ValueR);
@@ -159,7 +155,6 @@ void calculate_gradients(void)
   CPU_Step[CPU_GRADIENTS] += measure_time();
 }
 
-
 #ifdef OUTPUT_DIVVEL
 /*! \brief Calculates velocity divergence in 1d simulation.
  *
@@ -181,9 +176,9 @@ void compute_divvel()
 
       if(i == 0)
         {
-#if defined (ONEDIMS_SPHERICAL) || defined (REFLECTIVE_X)
+#if defined(ONEDIMS_SPHERICAL) || defined(REFLECTIVE_X)
           VelxL = P[i].Vel[0];
-#else /* #if defined (ONEDIMS_SPHERICAL) || defined (REFLECTIVE_X) */
+#else  /* #if defined (ONEDIMS_SPHERICAL) || defined (REFLECTIVE_X) */
           VelxL = P[NumGas - 1].Vel[0];
 #endif /* #if defined (ONEDIMS_SPHERICAL) || defined (REFLECTIVE_X) #else */
         }
@@ -192,9 +187,9 @@ void compute_divvel()
 
       if(i == NumGas - 1)
         {
-#if defined (ONEDIMS_SPHERICAL) || defined (REFLECTIVE_X)
+#if defined(ONEDIMS_SPHERICAL) || defined(REFLECTIVE_X)
           VelxR = P[i].Vel[0];
-#else /* #if defined (ONEDIMS_SPHERICAL) || defined (REFLECTIVE_X) */
+#else  /* #if defined (ONEDIMS_SPHERICAL) || defined (REFLECTIVE_X) */
           VelxR = P[0].Vel[0];
 #endif /* #if defined (ONEDIMS_SPHERICAL) || defined (REFLECTIVE_X) #else */
         }
@@ -205,6 +200,5 @@ void compute_divvel()
     }
 }
 #endif /* #ifdef OUTPUT_DIVVEL */
-
 
 #endif /* #if defined(ONEDIMS) */

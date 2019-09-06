@@ -35,83 +35,67 @@
  *                  fftw_real * scratch)
  *                void pm2d_periodic_transposeB(fftw_real * field,
  *                  fftw_real * scratch)
- * 
- * 
+ *
+ *
  * \par Major modifications and contributions:
- * 
+ *
  * - DD.MM.YYYY Description
  * - 21.05.2018 Prepared file for public release -- Rainer Weinberger
  */
 
-
+#include <math.h>
 #include <mpi.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <math.h>
-
 
 #ifdef PMGRID
 #ifndef GRAVITY_NOT_PERIODIC
 #ifdef TWODIMS
 
-
 #ifdef NOTYPEPREFIX_FFTW
-#include        <rfftw_mpi.h>
+#include <rfftw_mpi.h>
 #else /* #ifdef NOTYPEPREFIX_FFTW */
 #ifdef DOUBLEPRECISION_FFTW
-#include     <drfftw_mpi.h>     /* double precision FFTW */
-#else /* #ifdef DOUBLEPRECISION_FFTW */
-#include     <srfftw_mpi.h>
+#include <drfftw_mpi.h> /* double precision FFTW */
+#else                   /* #ifdef DOUBLEPRECISION_FFTW */
+#include <srfftw_mpi.h>
 #endif /* #ifdef DOUBLEPRECISION_FFTW #else */
 #endif /* #ifdef NOTYPEPREFIX_FFTW #else */
-
 
 #include "../../main/allvars.h"
 #include "../../main/proto.h"
 
+#define PMGRID2 (2 * (PMGRID / 2 + 1))
 
-#define  PMGRID2 (2*(PMGRID/2 + 1))
-
-
-#if (PMGRID > 1024)
+#if(PMGRID > 1024)
 typedef long long large_array_offset;
-#else /* #if (PMGRID > 1024) */
+#else  /* #if (PMGRID > 1024) */
 typedef unsigned int large_array_offset;
 #endif /* #if (PMGRID > 1024) #else */
 
-
 #define d_fftw_real fftw_real
 
-
 static rfftwnd_mpi_plan fft_forward_plan, fft_inverse_plan;
-
 
 static int slab_to_task[PMGRID];
 static int *slabs_x_per_task;
 static int *first_slab_x_of_task;
 
-
 static int slabstart_x, nslab_x, slabstart_y, nslab_y, smallest_slab;
 
-
 static int fftsize, maxfftsize;
-
 
 static fftw_real *rhogrid, *forcegrid, *workspace;
 static d_fftw_real *d_rhogrid, *d_forcegrid, *d_workspace;
 
-
 static fftw_complex *fft_of_rhogrid;
-
 
 static MyFloat to_slab_fac;
 
-
-void pm2d_periodic_transposeA(fftw_real * field, fftw_real * scratch);
-void pm2d_periodic_transposeB(fftw_real * field, fftw_real * scratch);
+void pm2d_periodic_transposeA(fftw_real *field, fftw_real *scratch);
+void pm2d_periodic_transposeB(fftw_real *field, fftw_real *scratch);
 int pm2d_periodic_compare_sortindex(const void *a, const void *b);
-
 
 /*! \brief Data for fft slab.
  */
@@ -120,10 +104,9 @@ static struct part_slab_data
   large_array_offset globalindex;
   int partindex;
   int localindex;
-} *part;
+} * part;
 
 static int *part_sortindex;
-
 
 /*! \brief This routines generates the FFTW-plans to carry out the parallel
  *         FFTs later on. Some auxiliary variables are also initialized.
@@ -136,7 +119,7 @@ void pm2d_init_periodic(void)
   int slab_to_task_local[PMGRID];
 
   All.Asmth[0] = ASMTH * All.BoxSize / PMGRID;
-  All.Rcut[0] = RCUT * All.Asmth[0];
+  All.Rcut[0]  = RCUT * All.Asmth[0];
 
   /* Set up the FFTW plan files. */
 
@@ -157,20 +140,18 @@ void pm2d_init_periodic(void)
 
   MPI_Allreduce(&nslab_x, &smallest_slab, 1, MPI_INT, MPI_MIN, MPI_COMM_WORLD);
 
-  slabs_x_per_task = (int *) mymalloc("slabs_per_task", NTask * sizeof(int));
+  slabs_x_per_task = (int *)mymalloc("slabs_per_task", NTask * sizeof(int));
   MPI_Allgather(&nslab_x, 1, MPI_INT, slabs_x_per_task, 1, MPI_INT, MPI_COMM_WORLD);
 
-  first_slab_x_of_task = (int *) mymalloc("first_slab_of_task", NTask * sizeof(int));
+  first_slab_x_of_task = (int *)mymalloc("first_slab_of_task", NTask * sizeof(int));
   MPI_Allgather(&slabstart_x, 1, MPI_INT, first_slab_x_of_task, 1, MPI_INT, MPI_COMM_WORLD);
 
   to_slab_fac = PMGRID / All.BoxSize;
 
   MPI_Allreduce(&fftsize, &maxfftsize, 1, MPI_INT, MPI_MAX, MPI_COMM_WORLD);
 
-
   printf("maxfftsize=%d PMGRID=%d\n", maxfftsize, PMGRID);
 }
-
 
 /*! \brief Allocates memory for 2d PM algorithm.
  *
@@ -190,30 +171,30 @@ void pm2d_init_periodic_allocate(void)
 
   /* allocate the memory to hold the FFT fields */
 
-  rhogrid = (fftw_real *) mymalloc("rhogrid", bytes = maxfftsize * sizeof(d_fftw_real));
+  rhogrid = (fftw_real *)mymalloc("rhogrid", bytes = maxfftsize * sizeof(d_fftw_real));
   bytes_tot += bytes;
 
-  forcegrid = (fftw_real *) mymalloc("forcegrid", bytes = maxfftsize * sizeof(d_fftw_real));
+  forcegrid = (fftw_real *)mymalloc("forcegrid", bytes = maxfftsize * sizeof(d_fftw_real));
   bytes_tot += bytes;
 
-  part = (struct part_slab_data *) mymalloc("part", bytes = 4 * NumPart * sizeof(struct part_slab_data));
+  part = (struct part_slab_data *)mymalloc("part", bytes = 4 * NumPart * sizeof(struct part_slab_data));
   bytes_tot += bytes;
 
-  part_sortindex = (int *) mymalloc("part_sortindex", bytes = 4 * NumPart * sizeof(int));
+  part_sortindex = (int *)mymalloc("part_sortindex", bytes = 4 * NumPart * sizeof(int));
   bytes_tot += bytes;
 
   if(ThisTask == 0)
-    printf("Using %g MByte for periodic FFT computation. (presently allocated=%g MB)\n", bytes_tot / (1024.0 * 1024.0), AllocatedBytes / (1024.0 * 1024.0));
+    printf("Using %g MByte for periodic FFT computation. (presently allocated=%g MB)\n", bytes_tot / (1024.0 * 1024.0),
+           AllocatedBytes / (1024.0 * 1024.0));
 
   workspace = forcegrid;
 
-  fft_of_rhogrid = (fftw_complex *) & rhogrid[0];
+  fft_of_rhogrid = (fftw_complex *)&rhogrid[0];
 
-  d_rhogrid = (d_fftw_real *) rhogrid;
-  d_forcegrid = (d_fftw_real *) forcegrid;
-  d_workspace = (d_fftw_real *) workspace;
+  d_rhogrid   = (d_fftw_real *)rhogrid;
+  d_forcegrid = (d_fftw_real *)forcegrid;
+  d_workspace = (d_fftw_real *)workspace;
 }
-
 
 /*! \brief This routine frees the space allocated for the parallel FFT
  *         algorithm.
@@ -228,7 +209,6 @@ void pm2d_init_periodic_free(void)
   myfree(forcegrid);
   myfree(rhogrid);
 }
-
 
 /*! \brief Long range periodic 2d gravity.
  *
@@ -272,8 +252,8 @@ void pm2d_force_periodic(int mode)
   asmth2 = (2 * M_PI) * All.Asmth[0] / All.BoxSize;
   asmth2 *= asmth2;
 
-  fac = All.G / (M_PI * All.BoxSize);   /* to get potential */
-  fac *= 1 / (2 * All.BoxSize / PMGRID);        /* for finite differencing */
+  fac = All.G / (M_PI * All.BoxSize);    /* to get potential */
+  fac *= 1 / (2 * All.BoxSize / PMGRID); /* for finite differencing */
 
   if(mode == 1)
     {
@@ -294,8 +274,8 @@ void pm2d_force_periodic(int mode)
   /* determine the cells each particles accesses */
   for(i = 0, num_on_grid = 0; i < N; i++)
     {
-      slab_x = (int) (to_slab_fac * P[i].Pos[0]);
-      slab_y = (int) (to_slab_fac * P[i].Pos[1]);
+      slab_x = (int)(to_slab_fac * P[i].Pos[0]);
+      slab_y = (int)(to_slab_fac * P[i].Pos[1]);
 
       if(slab_x >= PMGRID)
         slab_x = PMGRID - 1;
@@ -315,9 +295,9 @@ void pm2d_force_periodic(int mode)
 
             offset = (PMGRID2 * slab_xx + slab_yy);
 
-            part[num_on_grid].partindex = (i << 2) + (xx << 1) + yy;
+            part[num_on_grid].partindex   = (i << 2) + (xx << 1) + yy;
             part[num_on_grid].globalindex = offset;
-            part_sortindex[num_on_grid] = num_on_grid;
+            part_sortindex[num_on_grid]   = num_on_grid;
             num_on_grid++;
           }
     }
@@ -339,13 +319,13 @@ void pm2d_force_periodic(int mode)
     }
 
   /* allocate the local field */
-  localfield_globalindex = (large_array_offset *) mymalloc("first_slab_of_task", num_field_points * sizeof(large_array_offset));
-  localfield_d_data = (d_fftw_real *) mymalloc("localfield_d_data", num_field_points * sizeof(d_fftw_real));
-  localfield_data = (fftw_real *) localfield_d_data;
-  localfield_first = (int *) mymalloc("localfield_d_data", NTask * sizeof(int));
-  localfield_count = (int *) mymalloc("localfield_count", NTask * sizeof(int));
-  localfield_offset = (int *) mymalloc("localfield_count", NTask * sizeof(int));
-  localfield_togo = (int *) mymalloc("localfield_togo", NTask * NTask * sizeof(int));
+  localfield_globalindex = (large_array_offset *)mymalloc("first_slab_of_task", num_field_points * sizeof(large_array_offset));
+  localfield_d_data      = (d_fftw_real *)mymalloc("localfield_d_data", num_field_points * sizeof(d_fftw_real));
+  localfield_data        = (fftw_real *)localfield_d_data;
+  localfield_first       = (int *)mymalloc("localfield_d_data", NTask * sizeof(int));
+  localfield_count       = (int *)mymalloc("localfield_count", NTask * sizeof(int));
+  localfield_offset      = (int *)mymalloc("localfield_count", NTask * sizeof(int));
+  localfield_togo        = (int *)mymalloc("localfield_togo", NTask * NTask * sizeof(int));
 
   for(i = 0; i < NTask; i++)
     {
@@ -389,8 +369,8 @@ void pm2d_force_periodic(int mode)
     {
       pindex = (part[i].partindex >> 2);
 
-      slab_x = (int) (to_slab_fac * P[pindex].Pos[0]);
-      slab_y = (int) (to_slab_fac * P[pindex].Pos[1]);
+      slab_x = (int)(to_slab_fac * P[pindex].Pos[0]);
+      slab_y = (int)(to_slab_fac * P[pindex].Pos[1]);
 
       dx = to_slab_fac * P[pindex].Pos[0] - slab_x;
       dy = to_slab_fac * P[pindex].Pos[1] - slab_y;
@@ -400,7 +380,7 @@ void pm2d_force_periodic(int mode)
       localfield_d_data[part[i + 0].localindex] += weight * (1.0 - dx) * (1.0 - dy);
       localfield_d_data[part[i + 1].localindex] += weight * (1.0 - dx) * dy;
       localfield_d_data[part[i + 2].localindex] += weight * (dx) * (1.0 - dy);
-      localfield_d_data[part[i + 3].localindex] += weight * (dx) * dy;
+      localfield_d_data[part[i + 3].localindex] += weight * (dx)*dy;
     }
 
   /* clear local FFT-mesh density field */
@@ -420,25 +400,28 @@ void pm2d_force_periodic(int mode)
         {
           if(level > 0)
             {
-              import_d_data = (d_fftw_real *) mymalloc("import_d_data", localfield_togo[recvTask * NTask + ThisTask] * sizeof(d_fftw_real));
-              import_globalindex = (large_array_offset *) mymalloc("import_d_data", localfield_togo[recvTask * NTask + ThisTask] * sizeof(large_array_offset));
+              import_d_data =
+                  (d_fftw_real *)mymalloc("import_d_data", localfield_togo[recvTask * NTask + ThisTask] * sizeof(d_fftw_real));
+              import_globalindex = (large_array_offset *)mymalloc(
+                  "import_d_data", localfield_togo[recvTask * NTask + ThisTask] * sizeof(large_array_offset));
 
               if(localfield_togo[sendTask * NTask + recvTask] > 0 || localfield_togo[recvTask * NTask + sendTask] > 0)
                 {
                   MPI_Sendrecv(localfield_d_data + localfield_offset[recvTask],
-                               localfield_togo[sendTask * NTask + recvTask] * sizeof(d_fftw_real),
-                               MPI_BYTE, recvTask, TAG_NONPERIOD_A, import_d_data,
-                               localfield_togo[recvTask * NTask + sendTask] * sizeof(d_fftw_real), MPI_BYTE, recvTask, TAG_NONPERIOD_A, MPI_COMM_WORLD, &status);
+                               localfield_togo[sendTask * NTask + recvTask] * sizeof(d_fftw_real), MPI_BYTE, recvTask, TAG_NONPERIOD_A,
+                               import_d_data, localfield_togo[recvTask * NTask + sendTask] * sizeof(d_fftw_real), MPI_BYTE, recvTask,
+                               TAG_NONPERIOD_A, MPI_COMM_WORLD, &status);
 
                   MPI_Sendrecv(localfield_globalindex + localfield_offset[recvTask],
-                               localfield_togo[sendTask * NTask + recvTask] * sizeof(large_array_offset),
-                               MPI_BYTE, recvTask, TAG_NONPERIOD_B, import_globalindex,
-                               localfield_togo[recvTask * NTask + sendTask] * sizeof(large_array_offset), MPI_BYTE, recvTask, TAG_NONPERIOD_B, MPI_COMM_WORLD, &status);
+                               localfield_togo[sendTask * NTask + recvTask] * sizeof(large_array_offset), MPI_BYTE, recvTask,
+                               TAG_NONPERIOD_B, import_globalindex,
+                               localfield_togo[recvTask * NTask + sendTask] * sizeof(large_array_offset), MPI_BYTE, recvTask,
+                               TAG_NONPERIOD_B, MPI_COMM_WORLD, &status);
                 }
             }
           else
             {
-              import_d_data = localfield_d_data + localfield_offset[ThisTask];
+              import_d_data      = localfield_d_data + localfield_offset[ThisTask];
               import_globalindex = localfield_globalindex + localfield_offset[ThisTask];
             }
 
@@ -457,7 +440,6 @@ void pm2d_force_periodic(int mode)
             }
         }
     }
-
 
   /* Do the FFT of the density field */
 
@@ -514,12 +496,10 @@ void pm2d_force_periodic(int mode)
 
   rfftwnd_mpi(fft_inverse_plan, 1, rhogrid, workspace, FFTW_TRANSPOSED_ORDER);
 
-
-
-#ifdef EVALPOTENTIAL            /* now read out the potential */
+#ifdef EVALPOTENTIAL /* now read out the potential */
   if(mode == 0)
     {
-      for(level = 0; level < (1 << PTask); level++)     /* note: for level=0, target is the same task */
+      for(level = 0; level < (1 << PTask); level++) /* note: for level=0, target is the same task */
         {
           sendTask = ThisTask;
           recvTask = ThisTask ^ level;
@@ -528,37 +508,37 @@ void pm2d_force_periodic(int mode)
             {
               if(level > 0)
                 {
-                  import_data = (fftw_real *) mymalloc("import_data", localfield_togo[recvTask * NTask + ThisTask] * sizeof(fftw_real));
-                  import_globalindex = (large_array_offset *) mymalloc("import_data", localfield_togo[recvTask * NTask + ThisTask] * sizeof(large_array_offset));
+                  import_data = (fftw_real *)mymalloc("import_data", localfield_togo[recvTask * NTask + ThisTask] * sizeof(fftw_real));
+                  import_globalindex = (large_array_offset *)mymalloc(
+                      "import_data", localfield_togo[recvTask * NTask + ThisTask] * sizeof(large_array_offset));
 
                   if(localfield_togo[sendTask * NTask + recvTask] > 0 || localfield_togo[recvTask * NTask + sendTask] > 0)
                     {
                       MPI_Sendrecv(localfield_globalindex + localfield_offset[recvTask],
-                                   localfield_togo[sendTask * NTask +
-                                                   recvTask] * sizeof(large_array_offset), MPI_BYTE,
-                                   recvTask, TAG_NONPERIOD_C, import_globalindex,
-                                   localfield_togo[recvTask * NTask + sendTask] * sizeof(large_array_offset), MPI_BYTE, recvTask, TAG_NONPERIOD_C, MPI_COMM_WORLD, &status);
+                                   localfield_togo[sendTask * NTask + recvTask] * sizeof(large_array_offset), MPI_BYTE, recvTask,
+                                   TAG_NONPERIOD_C, import_globalindex,
+                                   localfield_togo[recvTask * NTask + sendTask] * sizeof(large_array_offset), MPI_BYTE, recvTask,
+                                   TAG_NONPERIOD_C, MPI_COMM_WORLD, &status);
                     }
                 }
               else
                 {
-                  import_data = localfield_data + localfield_offset[ThisTask];
+                  import_data        = localfield_data + localfield_offset[ThisTask];
                   import_globalindex = localfield_globalindex + localfield_offset[ThisTask];
                 }
 
               for(i = 0; i < localfield_togo[recvTask * NTask + sendTask]; i++)
                 {
-                  offset = import_globalindex[i] - first_slab_x_of_task[ThisTask] * ((large_array_offset) PMGRID2);
+                  offset         = import_globalindex[i] - first_slab_x_of_task[ThisTask] * ((large_array_offset)PMGRID2);
                   import_data[i] = rhogrid[offset];
                 }
 
               if(level > 0)
                 {
-                  MPI_Sendrecv(import_data,
-                               localfield_togo[recvTask * NTask + sendTask] * sizeof(fftw_real), MPI_BYTE,
-                               recvTask, TAG_NONPERIOD_A,
-                               localfield_data + localfield_offset[recvTask],
-                               localfield_togo[sendTask * NTask + recvTask] * sizeof(fftw_real), MPI_BYTE, recvTask, TAG_NONPERIOD_A, MPI_COMM_WORLD, &status);
+                  MPI_Sendrecv(import_data, localfield_togo[recvTask * NTask + sendTask] * sizeof(fftw_real), MPI_BYTE, recvTask,
+                               TAG_NONPERIOD_A, localfield_data + localfield_offset[recvTask],
+                               localfield_togo[sendTask * NTask + recvTask] * sizeof(fftw_real), MPI_BYTE, recvTask, TAG_NONPERIOD_A,
+                               MPI_COMM_WORLD, &status);
 
                   myfree(import_globalindex);
                   myfree(import_data);
@@ -575,18 +555,18 @@ void pm2d_force_periodic(int mode)
           while(j < num_on_grid && (part[j].partindex >> 2) != i)
             j++;
 
-          slab_x = (int) (to_slab_fac * P[i].Pos[0]);
-          dx = to_slab_fac * P[i].Pos[0] - slab_x;
+          slab_x = (int)(to_slab_fac * P[i].Pos[0]);
+          dx     = to_slab_fac * P[i].Pos[0] - slab_x;
 
-          slab_y = (int) (to_slab_fac * P[i].Pos[1]);
-          dy = to_slab_fac * P[i].Pos[1] - slab_y;
+          slab_y = (int)(to_slab_fac * P[i].Pos[1]);
+          dy     = to_slab_fac * P[i].Pos[1] - slab_y;
 
-          pot =
-            +localfield_data[part[j + 0].localindex] * (1.0 - dx) * (1.0 - dy)
-            + localfield_data[part[j + 1].localindex] * (1.0 - dx) * dy + localfield_data[part[j + 2].localindex] * dx * (1.0 - dy) + localfield_data[part[j + 3].localindex] * dx * dy;
+          pot = +localfield_data[part[j + 0].localindex] * (1.0 - dx) * (1.0 - dy) +
+                localfield_data[part[j + 1].localindex] * (1.0 - dx) * dy + localfield_data[part[j + 2].localindex] * dx * (1.0 - dy) +
+                localfield_data[part[j + 3].localindex] * dx * dy;
 
           P[i].PM_Potential += pot * fac * (2 * All.BoxSize / PMGRID);
-          /* compensate the finite differencing factor */ ;
+          /* compensate the finite differencing factor */;
         }
     }
 #endif /* #ifdef EVALPOTENTIAL */
@@ -595,9 +575,9 @@ void pm2d_force_periodic(int mode)
      and send back the results to the right CPUs */
 
   for(dim = 1; dim >= 0; dim--) /* Calculate each component of the force. */
-    {                           /* we do the x component last, because for differencing the potential in the x-direction, we need to contruct the transpose */
+    { /* we do the x component last, because for differencing the potential in the x-direction, we need to contruct the transpose */
       if(dim == 0)
-        pm2d_periodic_transposeA(rhogrid, forcegrid);   /* compute the transpose of the potential field */
+        pm2d_periodic_transposeA(rhogrid, forcegrid); /* compute the transpose of the potential field */
 
       for(xx = slabstart_x; xx < (slabstart_x + nslab_x); xx++)
         for(y = 0; y < PMGRID; y++)
@@ -606,8 +586,8 @@ void pm2d_force_periodic(int mode)
 
             yrr = yll = yr = yl = y;
 
-            yr = y + 1;
-            yl = y - 1;
+            yr  = y + 1;
+            yl  = y - 1;
             yrr = y + 2;
             yll = y - 2;
             if(yr >= PMGRID)
@@ -621,21 +601,22 @@ void pm2d_force_periodic(int mode)
 
             if(dim == 0)
               {
-                forcegrid[x + y * nslab_x]
-                  = fac * ((4.0 / 3) * (rhogrid[(x + yl * nslab_x)] - rhogrid[(x + yr * nslab_x)]) - (1.0 / 6) * (rhogrid[(x + yll * nslab_x)] - rhogrid[(x + yrr * nslab_x)]));
+                forcegrid[x + y * nslab_x] = fac * ((4.0 / 3) * (rhogrid[(x + yl * nslab_x)] - rhogrid[(x + yr * nslab_x)]) -
+                                                    (1.0 / 6) * (rhogrid[(x + yll * nslab_x)] - rhogrid[(x + yrr * nslab_x)]));
               }
             else
               {
-                forcegrid[PMGRID2 * x + y] = fac * ((4.0 / 3) * (rhogrid[PMGRID2 * x + yl] - rhogrid[PMGRID2 * x + yr]) - (1.0 / 6) * (rhogrid[PMGRID2 * x + yll] - rhogrid[PMGRID2 * x + yrr]));
+                forcegrid[PMGRID2 * x + y] = fac * ((4.0 / 3) * (rhogrid[PMGRID2 * x + yl] - rhogrid[PMGRID2 * x + yr]) -
+                                                    (1.0 / 6) * (rhogrid[PMGRID2 * x + yll] - rhogrid[PMGRID2 * x + yrr]));
               }
           }
 
       if(dim == 0)
-        pm2d_periodic_transposeB(forcegrid, rhogrid);   /* compute the transpose of the potential field */
+        pm2d_periodic_transposeB(forcegrid, rhogrid); /* compute the transpose of the potential field */
 
       /* send the force components to the right processors */
 
-      for(level = 0; level < (1 << PTask); level++)     /* note: for level=0, target is the same task */
+      for(level = 0; level < (1 << PTask); level++) /* note: for level=0, target is the same task */
         {
           sendTask = ThisTask;
           recvTask = ThisTask ^ level;
@@ -644,38 +625,38 @@ void pm2d_force_periodic(int mode)
             {
               if(level > 0)
                 {
-                  import_data = (fftw_real *) mymalloc("import_data", localfield_togo[recvTask * NTask + ThisTask] * sizeof(fftw_real));
-                  import_globalindex = (large_array_offset *) mymalloc("import_data", localfield_togo[recvTask * NTask + ThisTask] * sizeof(large_array_offset));
+                  import_data = (fftw_real *)mymalloc("import_data", localfield_togo[recvTask * NTask + ThisTask] * sizeof(fftw_real));
+                  import_globalindex = (large_array_offset *)mymalloc(
+                      "import_data", localfield_togo[recvTask * NTask + ThisTask] * sizeof(large_array_offset));
 
                   if(localfield_togo[sendTask * NTask + recvTask] > 0 || localfield_togo[recvTask * NTask + sendTask] > 0)
                     {
                       MPI_Sendrecv(localfield_globalindex + localfield_offset[recvTask],
-                                   localfield_togo[sendTask * NTask +
-                                                   recvTask] * sizeof(large_array_offset), MPI_BYTE,
-                                   recvTask, TAG_NONPERIOD_C, import_globalindex,
-                                   localfield_togo[recvTask * NTask + sendTask] * sizeof(large_array_offset), MPI_BYTE, recvTask, TAG_NONPERIOD_C, MPI_COMM_WORLD, &status);
+                                   localfield_togo[sendTask * NTask + recvTask] * sizeof(large_array_offset), MPI_BYTE, recvTask,
+                                   TAG_NONPERIOD_C, import_globalindex,
+                                   localfield_togo[recvTask * NTask + sendTask] * sizeof(large_array_offset), MPI_BYTE, recvTask,
+                                   TAG_NONPERIOD_C, MPI_COMM_WORLD, &status);
                     }
                 }
               else
                 {
-                  import_data = localfield_data + localfield_offset[ThisTask];
+                  import_data        = localfield_data + localfield_offset[ThisTask];
                   import_globalindex = localfield_globalindex + localfield_offset[ThisTask];
                 }
 
               for(i = 0; i < localfield_togo[recvTask * NTask + sendTask]; i++)
                 {
                   /* determine offset in local FFT slab */
-                  offset = import_globalindex[i] - first_slab_x_of_task[ThisTask] * PMGRID2;
+                  offset         = import_globalindex[i] - first_slab_x_of_task[ThisTask] * PMGRID2;
                   import_data[i] = forcegrid[offset];
                 }
 
               if(level > 0)
                 {
-                  MPI_Sendrecv(import_data,
-                               localfield_togo[recvTask * NTask + sendTask] * sizeof(fftw_real), MPI_BYTE,
-                               recvTask, TAG_NONPERIOD_A,
-                               localfield_data + localfield_offset[recvTask],
-                               localfield_togo[sendTask * NTask + recvTask] * sizeof(fftw_real), MPI_BYTE, recvTask, TAG_NONPERIOD_A, MPI_COMM_WORLD, &status);
+                  MPI_Sendrecv(import_data, localfield_togo[recvTask * NTask + sendTask] * sizeof(fftw_real), MPI_BYTE, recvTask,
+                               TAG_NONPERIOD_A, localfield_data + localfield_offset[recvTask],
+                               localfield_togo[sendTask * NTask + recvTask] * sizeof(fftw_real), MPI_BYTE, recvTask, TAG_NONPERIOD_A,
+                               MPI_COMM_WORLD, &status);
 
                   myfree(import_globalindex);
                   myfree(import_data);
@@ -690,15 +671,15 @@ void pm2d_force_periodic(int mode)
           while(j < num_on_grid && (part[j].partindex >> 2) != i)
             j++;
 
-          slab_x = (int) (to_slab_fac * P[i].Pos[0]);
-          dx = to_slab_fac * P[i].Pos[0] - slab_x;
+          slab_x = (int)(to_slab_fac * P[i].Pos[0]);
+          dx     = to_slab_fac * P[i].Pos[0] - slab_x;
 
-          slab_y = (int) (to_slab_fac * P[i].Pos[1]);
-          dy = to_slab_fac * P[i].Pos[1] - slab_y;
+          slab_y = (int)(to_slab_fac * P[i].Pos[1]);
+          dy     = to_slab_fac * P[i].Pos[1] - slab_y;
 
-          acc_dim =
-            +localfield_data[part[j + 0].localindex] * (1.0 - dx) * (1.0 - dy)
-            + localfield_data[part[j + 1].localindex] * (1.0 - dx) * dy + localfield_data[part[j + 2].localindex] * (dx) * (1.0 - dy) + localfield_data[part[j + 3].localindex] * (dx) * dy;
+          acc_dim = +localfield_data[part[j + 0].localindex] * (1.0 - dx) * (1.0 - dy) +
+                    localfield_data[part[j + 1].localindex] * (1.0 - dx) * dy +
+                    localfield_data[part[j + 2].localindex] * (dx) * (1.0 - dy) + localfield_data[part[j + 3].localindex] * (dx)*dy;
 
           P[i].GravPM[dim] += acc_dim;
         }
@@ -717,7 +698,6 @@ void pm2d_force_periodic(int mode)
   mpi_printf("done PM-2d.\n");
 }
 
-
 /*! \brief Compares two objects of type part_slab_data.
  *
  *  According to element globalindex.
@@ -729,15 +709,14 @@ void pm2d_force_periodic(int mode)
  */
 int pm2d_periodic_compare_sortindex(const void *a, const void *b)
 {
-  if(part[*(int *) a].globalindex < part[*(int *) b].globalindex)
+  if(part[*(int *)a].globalindex < part[*(int *)b].globalindex)
     return -1;
 
-  if(part[*(int *) a].globalindex > part[*(int *) b].globalindex)
+  if(part[*(int *)a].globalindex > part[*(int *)b].globalindex)
     return +1;
 
   return 0;
 }
-
 
 /*! \brief Merge sort algorithm for 2d periodic particle mesh algorithm.
  *
@@ -786,7 +765,6 @@ static void pm2d_msort_pmperiodic_with_tmp(int *b, size_t n, int *t)
   memcpy(b, t, (n - n2) * sizeof(int));
 }
 
-
 /*! \brief Wrapper for sorting algorithm in 2d periodic PM algorithm.
  *
  *  Uses pm2d_msort_pmperiodic_with_tmp.
@@ -798,17 +776,16 @@ static void pm2d_msort_pmperiodic_with_tmp(int *b, size_t n, int *t)
  *
  *  \return void
  */
-void pm2d_mysort_pmperiodic(void *b, size_t n, size_t s, int (*cmp) (const void *, const void *))
+void pm2d_mysort_pmperiodic(void *b, size_t n, size_t s, int (*cmp)(const void *, const void *))
 {
   const size_t size = n * s;
 
-  int *tmp = (int *) mymalloc("tmp", size);
+  int *tmp = (int *)mymalloc("tmp", size);
 
-  pm2d_msort_pmperiodic_with_tmp((int *) b, n, tmp);
+  pm2d_msort_pmperiodic_with_tmp((int *)b, n, tmp);
 
   myfree(tmp);
 }
-
 
 /*! \brief Transpose operation for 2d fft.
  *
@@ -819,7 +796,7 @@ void pm2d_mysort_pmperiodic(void *b, size_t n, size_t s, int (*cmp) (const void 
  *
  *  \return void
  */
-void pm2d_periodic_transposeA(fftw_real * field, fftw_real * scratch)
+void pm2d_periodic_transposeA(fftw_real *field, fftw_real *scratch)
 {
   int x, y, task;
 
@@ -827,25 +804,28 @@ void pm2d_periodic_transposeA(fftw_real * field, fftw_real * scratch)
     for(x = 0; x < nslab_x; x++)
       for(y = first_slab_x_of_task[task]; y < first_slab_x_of_task[task] + slabs_x_per_task[task]; y++)
         {
-          scratch[(first_slab_x_of_task[task] * nslab_x + x * slabs_x_per_task[task] + (y - first_slab_x_of_task[task]))] = field[PMGRID2 * x + y];
+          scratch[(first_slab_x_of_task[task] * nslab_x + x * slabs_x_per_task[task] + (y - first_slab_x_of_task[task]))] =
+              field[PMGRID2 * x + y];
         }
 
 #ifndef NO_ISEND_IRECV_IN_DOMAIN
   MPI_Request *requests;
   int nrequests = 0;
 
-  requests = (MPI_Request *) mymalloc(2 * NTask * sizeof(MPI_Request));
+  requests = (MPI_Request *)mymalloc(2 * NTask * sizeof(MPI_Request));
 
   for(task = 0; task < NTask; task++)
     {
-      MPI_Isend(scratch + first_slab_x_of_task[task] * nslab_x, nslab_x * slabs_x_per_task[task] * sizeof(fftw_real), MPI_BYTE, task, TAG_KEY, MPI_COMM_WORLD, &requests[nrequests++]);
+      MPI_Isend(scratch + first_slab_x_of_task[task] * nslab_x, nslab_x * slabs_x_per_task[task] * sizeof(fftw_real), MPI_BYTE, task,
+                TAG_KEY, MPI_COMM_WORLD, &requests[nrequests++]);
 
-      MPI_Irecv(field + first_slab_x_of_task[task] * nslab_x, nslab_x * slabs_x_per_task[task] * sizeof(fftw_real), MPI_BYTE, task, TAG_KEY, MPI_COMM_WORLD, &requests[nrequests++]);
+      MPI_Irecv(field + first_slab_x_of_task[task] * nslab_x, nslab_x * slabs_x_per_task[task] * sizeof(fftw_real), MPI_BYTE, task,
+                TAG_KEY, MPI_COMM_WORLD, &requests[nrequests++]);
     }
 
   MPI_Waitall(nrequests, requests, MPI_STATUSES_IGNORE);
   myfree(requests);
-#else /* #ifndef NO_ISEND_IRECV_IN_DOMAIN */
+#else  /* #ifndef NO_ISEND_IRECV_IN_DOMAIN */
   int ngrp;
 
   for(ngrp = 0; ngrp < (1 << PTask); ngrp++)
@@ -854,15 +834,14 @@ void pm2d_periodic_transposeA(fftw_real * field, fftw_real * scratch)
 
       if(task < NTask)
         {
-          MPI_Sendrecv(scratch + first_slab_x_of_task[task] * nslab_x,
-                       nslab_x * slabs_x_per_task[task] * sizeof(fftw_real),
-                       MPI_BYTE, task, TAG_KEY,
-                       field + first_slab_x_of_task[task] * nslab_x, nslab_x * slabs_x_per_task[task] * sizeof(fftw_real), MPI_BYTE, task, TAG_KEY, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
+          MPI_Sendrecv(scratch + first_slab_x_of_task[task] * nslab_x, nslab_x * slabs_x_per_task[task] * sizeof(fftw_real), MPI_BYTE,
+                       task, TAG_KEY, field + first_slab_x_of_task[task] * nslab_x,
+                       nslab_x * slabs_x_per_task[task] * sizeof(fftw_real), MPI_BYTE, task, TAG_KEY, MPI_COMM_WORLD,
+                       MPI_STATUS_IGNORE);
         }
     }
 #endif /* #ifndef NO_ISEND_IRECV_IN_DOMAIN #else */
 }
-
 
 /*! \brief Transpose operation for 2d fft.
  *
@@ -873,7 +852,7 @@ void pm2d_periodic_transposeA(fftw_real * field, fftw_real * scratch)
  *
  *  \return void
  */
-void pm2d_periodic_transposeB(fftw_real * field, fftw_real * scratch)
+void pm2d_periodic_transposeB(fftw_real *field, fftw_real *scratch)
 {
   int x, y, task;
 
@@ -881,20 +860,21 @@ void pm2d_periodic_transposeB(fftw_real * field, fftw_real * scratch)
   MPI_Request *requests;
   int nrequests = 0;
 
-  requests = (MPI_Request *) mymalloc(2 * NTask * sizeof(MPI_Request));
+  requests = (MPI_Request *)mymalloc(2 * NTask * sizeof(MPI_Request));
 
   for(task = 0; task < NTask; task++)
     {
-      MPI_Isend(field + first_slab_x_of_task[task] * nslab_x, nslab_x * slabs_x_per_task[task] * sizeof(fftw_real), MPI_BYTE, task, TAG_KEY, MPI_COMM_WORLD, &requests[nrequests++]);
+      MPI_Isend(field + first_slab_x_of_task[task] * nslab_x, nslab_x * slabs_x_per_task[task] * sizeof(fftw_real), MPI_BYTE, task,
+                TAG_KEY, MPI_COMM_WORLD, &requests[nrequests++]);
 
-      MPI_Irecv(scratch + first_slab_x_of_task[task] * nslab_x, nslab_x * slabs_x_per_task[task] * sizeof(fftw_real), MPI_BYTE, task, TAG_KEY, MPI_COMM_WORLD, &requests[nrequests++]);
+      MPI_Irecv(scratch + first_slab_x_of_task[task] * nslab_x, nslab_x * slabs_x_per_task[task] * sizeof(fftw_real), MPI_BYTE, task,
+                TAG_KEY, MPI_COMM_WORLD, &requests[nrequests++]);
     }
-
 
   MPI_Waitall(nrequests, requests, MPI_STATUSES_IGNORE);
   myfree(requests);
 
-#else /* #ifndef NO_ISEND_IRECV_IN_DOMAIN */
+#else  /* #ifndef NO_ISEND_IRECV_IN_DOMAIN */
   int ngrp;
 
   for(ngrp = 0; ngrp < (1 << PTask); ngrp++)
@@ -903,10 +883,10 @@ void pm2d_periodic_transposeB(fftw_real * field, fftw_real * scratch)
 
       if(task < NTask)
         {
-          MPI_Sendrecv(field + first_slab_x_of_task[task] * nslab_x,
-                       nslab_x * slabs_x_per_task[task] * sizeof(fftw_real),
-                       MPI_BYTE, task, TAG_KEY,
-                       scratch + first_slab_x_of_task[task] * nslab_x, nslab_x * slabs_x_per_task[task] * sizeof(fftw_real), MPI_BYTE, task, TAG_KEY, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
+          MPI_Sendrecv(field + first_slab_x_of_task[task] * nslab_x, nslab_x * slabs_x_per_task[task] * sizeof(fftw_real), MPI_BYTE,
+                       task, TAG_KEY, scratch + first_slab_x_of_task[task] * nslab_x,
+                       nslab_x * slabs_x_per_task[task] * sizeof(fftw_real), MPI_BYTE, task, TAG_KEY, MPI_COMM_WORLD,
+                       MPI_STATUS_IGNORE);
         }
     }
 #endif /* #ifndef NO_ISEND_IRECV_IN_DOMAIN #else */
@@ -915,7 +895,8 @@ void pm2d_periodic_transposeB(fftw_real * field, fftw_real * scratch)
     for(x = 0; x < nslab_x; x++)
       for(y = first_slab_x_of_task[task]; y < first_slab_x_of_task[task] + slabs_x_per_task[task]; y++)
         {
-          field[PMGRID2 * x + y] = scratch[(first_slab_x_of_task[task] * nslab_x + x * slabs_x_per_task[task] + (y - first_slab_x_of_task[task]))];
+          field[PMGRID2 * x + y] =
+              scratch[(first_slab_x_of_task[task] * nslab_x + x * slabs_x_per_task[task] + (y - first_slab_x_of_task[task]))];
         }
 }
 

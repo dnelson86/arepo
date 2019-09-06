@@ -351,7 +351,7 @@ void fof_prepare_output_order(void)
       aux_sort[i].DM_BindingEnergy = PS[i].BindingEnergy;
 #endif /* #ifdef SUBFIND */
       aux_sort[i].Type = P[i].Type;
-      aux_sort[i].ID = P[i].ID;
+      aux_sort[i].ID   = P[i].ID;
 #if defined(RECOMPUTE_POTENTIAL_IN_SNAPSHOT)
       aux_sort[i].FileOrder = P[i].FileOrder;
 #endif /* #if defined(RECOMPUTE_POTENTIAL_IN_SNAPSHOT) */

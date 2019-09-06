@@ -37,8 +37,8 @@
 #include "../main/allvars.h"
 #include "../main/proto.h"
 
-#include "add_bggrid.h"
 #include "../domain/domain.h"
+#include "add_bggrid.h"
 
 #ifdef ADDBACKGROUNDGRID
 

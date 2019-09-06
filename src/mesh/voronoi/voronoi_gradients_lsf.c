@@ -39,37 +39,30 @@
  *                double boundaryX(double dx)
  *                double boundaryY(double dx)
  *                double boundaryZ(double dx)
- * 
+ *
  * \par Major modifications and contributions:
- * 
+ *
  * - DD.MM.YYYY Description
  * - 23.05.2018 Prepared file for public release -- Rainer Weinberger
  */
 
-
 #include "../../main/allvars.h"
 #include "../../main/proto.h"
 
-
 #if !defined(ONEDIMS)
-
 
 static double *minvalues, *maxvalues;
 
-
 static void limit_gradients();
 static void correct_for_reflective_boundaries(double *ValueOther, double Value, int type, unsigned int *image_flags);
-
 
 static double boundaryX(double dx);
 static double boundaryY(double dy);
 static double boundaryZ(double dz);
 
-
 #if defined(OUTPUT_DIVVEL) || defined(MHD)
 static void compute_divergences();
 #endif /* #if defined(OUTPUT_DIVVEL) || defined(MHD) */
-
 
 /*! \brief Adds row to another one in matrix equation.
  *
@@ -93,7 +86,6 @@ static void inline add_row(double X[NUMDIMS][NUMDIMS], double y[NUMDIMS], int so
     }
 }
 
-
 /*! \brief Solve a matrix problem X*grad = y.
  *
  *   Note that we know here that X is symmetric, and that we can pivot on the
@@ -106,7 +98,7 @@ static void inline add_row(double X[NUMDIMS][NUMDIMS], double y[NUMDIMS], int so
  */
 static void solve_matrix_problem(double X[NUMDIMS][NUMDIMS], double y[NUMDIMS], double grad[NUMDIMS])
 {
-#if NUMDIMS==2
+#if NUMDIMS == 2
   int perm[NUMDIMS];
 
   if(fabs(X[0][0]) > fabs(X[1][1]))
@@ -153,7 +145,7 @@ static void solve_matrix_problem(double X[NUMDIMS][NUMDIMS], double y[NUMDIMS], 
 
   if(fabs(X[perm[1]][perm[1]]) < fabs(X[perm[2]][perm[2]]))
     {
-      int p = perm[1];
+      int p   = perm[1];
       perm[1] = perm[2];
       perm[2] = p;
     }
@@ -166,7 +158,6 @@ static void solve_matrix_problem(double X[NUMDIMS][NUMDIMS], double y[NUMDIMS], 
 
 #endif /* #if NUMDIMS==2 #else */
 }
-
 
 /*! \brief Loop through all active cells and calculate gradients.
  *
@@ -186,8 +177,7 @@ void calculate_gradients(void)
     double X[NUMDIMS][NUMDIMS]; /* input matrix */
     double y[NUMDIMS];          /* input vector */
     double grad[NUMDIMS];       /* output */
-  }
-   *mdata;
+  } * mdata;
 
   mdata = mymalloc("mdata", N_Grad * sizeof(struct matrix_vec_data));
 
@@ -204,12 +194,13 @@ void calculate_gradients(void)
           minvalues[i * N_Grad + k] = +MAX_REAL_NUMBER;
           maxvalues[i * N_Grad + k] = -MAX_REAL_NUMBER;
 
-          if((grad_elements[k].type == GRADIENT_TYPE_VELX) || (grad_elements[k].type == GRADIENT_TYPE_VELY) || (grad_elements[k].type == GRADIENT_TYPE_VELZ))
+          if((grad_elements[k].type == GRADIENT_TYPE_VELX) || (grad_elements[k].type == GRADIENT_TYPE_VELY) ||
+             (grad_elements[k].type == GRADIENT_TYPE_VELZ))
             {
-              Value[k] = *(MyFloat *) (((char *) (&P[i])) + grad_elements[k].offset) / All.cf_atime;
+              Value[k] = *(MyFloat *)(((char *)(&P[i])) + grad_elements[k].offset) / All.cf_atime;
             }
           else
-            Value[k] = *(MyFloat *) (((char *) (&SphP[i])) + grad_elements[k].offset);
+            Value[k] = *(MyFloat *)(((char *)(&SphP[i])) + grad_elements[k].offset);
         }
 
       MyDouble *Center = SphP[i].Center;
@@ -231,8 +222,8 @@ void calculate_gradients(void)
 
       while(q >= 0)
         {
-          int dp = DC[q].dp_index;
-          int vf = DC[q].vf_index;
+          int dp       = DC[q].dp_index;
+          int vf       = DC[q].vf_index;
           int particle = Mesh.DP[dp].index;
 
           if(particle < 0)
@@ -292,9 +283,9 @@ void calculate_gradients(void)
                       double py = Center[1] - ff * ny;
                       double pz = Center[2] - ff * nz;
 
-                      Mirror[0] = 2. * px - Center[0];
-                      Mirror[1] = 2. * py - Center[1];
-                      Mirror[2] = 2. * pz - Center[2];
+                      Mirror[0]   = 2. * px - Center[0];
+                      Mirror[1]   = 2. * py - Center[1];
+                      Mirror[2]   = 2. * pz - Center[2];
                       CenterOther = Mirror;
                     }
                   else
@@ -308,7 +299,7 @@ void calculate_gradients(void)
               norm[1] = boundaryY(CenterOther[1] - Center[1]);
               norm[2] = boundaryZ(CenterOther[2] - Center[2]);
 
-              double dist = sqrt(norm[0] * norm[0] + norm[1] * norm[1] + norm[2] * norm[2]);
+              double dist    = sqrt(norm[0] * norm[0] + norm[1] * norm[1] + norm[2] * norm[2]);
               double distinv = 1.0 / dist;
               norm[0] *= distinv;
               norm[1] *= distinv;
@@ -322,19 +313,21 @@ void calculate_gradients(void)
 
                   if(Mesh.DP[dp].task == ThisTask)
                     {
-                      if((grad_elements[k].type == GRADIENT_TYPE_VELX) || (grad_elements[k].type == GRADIENT_TYPE_VELY) || (grad_elements[k].type == GRADIENT_TYPE_VELZ))
+                      if((grad_elements[k].type == GRADIENT_TYPE_VELX) || (grad_elements[k].type == GRADIENT_TYPE_VELY) ||
+                         (grad_elements[k].type == GRADIENT_TYPE_VELZ))
                         {
-                          ValueOther = *(MyFloat *) (((char *) (&P[particle])) + grad_elements[k].offset);
+                          ValueOther = *(MyFloat *)(((char *)(&P[particle])) + grad_elements[k].offset);
                         }
                       else
-                        ValueOther = *(MyFloat *) (((char *) (&SphP[particle])) + grad_elements[k].offset);
+                        ValueOther = *(MyFloat *)(((char *)(&SphP[particle])) + grad_elements[k].offset);
                     }
                   else
                     {
-                      ValueOther = *(MyFloat *) (((char *) (&PrimExch[particle])) + grad_elements[k].offset_exch);
+                      ValueOther = *(MyFloat *)(((char *)(&PrimExch[particle])) + grad_elements[k].offset_exch);
                     }
 
-                  if((grad_elements[k].type == GRADIENT_TYPE_VELX) || (grad_elements[k].type == GRADIENT_TYPE_VELY) || (grad_elements[k].type == GRADIENT_TYPE_VELZ))
+                  if((grad_elements[k].type == GRADIENT_TYPE_VELX) || (grad_elements[k].type == GRADIENT_TYPE_VELY) ||
+                     (grad_elements[k].type == GRADIENT_TYPE_VELZ))
                     {
                       ValueOther /= All.cf_atime;
 
@@ -377,7 +370,7 @@ void calculate_gradients(void)
         {
           solve_matrix_problem(mdata[k].X, mdata[k].y, mdata[k].grad);
 
-          MySingle *data = (MySingle *) (((char *) (&(SphP[i].Grad))) + grad_elements[k].offset_grad);
+          MySingle *data = (MySingle *)(((char *)(&(SphP[i].Grad))) + grad_elements[k].offset_grad);
           for(int j = 0; j < NUMDIMS; j++)
             data[j] = mdata[k].grad[j];
           for(int j = NUMDIMS; j < 3; j++)
@@ -441,7 +434,6 @@ void calculate_gradients(void)
   TIMER_STOP(CPU_GRADIENTS);
 }
 
-
 #if defined(OUTPUT_DIVVEL) || defined(MHD)
 /*! \brief Computes divergences applying the Gauss' law.
  *
@@ -478,15 +470,15 @@ void compute_divergences()
       struct grad_data *GradOther;
 #endif /* #ifdef MHD */
 #if defined(EVALPOTENTIAL)
-      SphP[i].PotentialPeak = 1;        /* starts off true */
+      SphP[i].PotentialPeak = 1; /* starts off true */
       double PotenOther;
 #endif /* #if defined(EVALPOTENTIAL) */
 
       int q = SphP[i].first_connection;
       while(q >= 0)
         {
-          int dp = DC[q].dp_index;
-          int vf = DC[q].vf_index;
+          int dp       = DC[q].dp_index;
+          int vf       = DC[q].vf_index;
           int particle = Mesh.DP[dp].index;
 
           if(particle < 0)
@@ -524,16 +516,16 @@ void compute_divergences()
                       nx /= nn;
                       ny /= nn;
                       nz /= nn;
-                      double fx = (SphP[i].Center[0] - Mesh.VF[vf].cx);
-                      double fy = (SphP[i].Center[1] - Mesh.VF[vf].cy);
-                      double fz = (SphP[i].Center[2] - Mesh.VF[vf].cz);
-                      double ff = (fx * nx + fy * ny + fz * nz);
-                      double px = SphP[i].Center[0] - ff * nx;
-                      double py = SphP[i].Center[1] - ff * ny;
-                      double pz = SphP[i].Center[2] - ff * nz;
-                      Mirror[0] = 2. * px - SphP[i].Center[0];
-                      Mirror[1] = 2. * py - SphP[i].Center[1];
-                      Mirror[2] = 2. * pz - SphP[i].Center[2];
+                      double fx   = (SphP[i].Center[0] - Mesh.VF[vf].cx);
+                      double fy   = (SphP[i].Center[1] - Mesh.VF[vf].cy);
+                      double fz   = (SphP[i].Center[2] - Mesh.VF[vf].cz);
+                      double ff   = (fx * nx + fy * ny + fz * nz);
+                      double px   = SphP[i].Center[0] - ff * nx;
+                      double py   = SphP[i].Center[1] - ff * ny;
+                      double pz   = SphP[i].Center[2] - ff * nz;
+                      Mirror[0]   = 2. * px - SphP[i].Center[0];
+                      Mirror[1]   = 2. * py - SphP[i].Center[1];
+                      Mirror[2]   = 2. * pz - SphP[i].Center[2];
                       CenterOther = Mirror;
                     }
                   else
@@ -544,7 +536,7 @@ void compute_divergences()
 #endif /* #if defined(OUTPUT_DIVVEL) */
 #ifdef MHD
                   GradOther = &SphP[particle].Grad;
-                  BOther = SphP[particle].B;
+                  BOther    = SphP[particle].B;
 #endif /* #ifdef MHD */
 #if defined(EVALPOTENTIAL)
                   PotenOther = P[particle].Potential;
@@ -558,7 +550,7 @@ void compute_divergences()
 #endif /* #if defined(OUTPUT_DIVVEL) */
 #ifdef MHD
                   GradOther = &GradExch[particle];
-                  BOther = PrimExch[particle].B;
+                  BOther    = PrimExch[particle].B;
 #endif /* #ifdef MHD */
 #if defined(EVALPOTENTIAL)
                   PotenOther = PrimExch[particle].Potential;
@@ -613,7 +605,6 @@ void compute_divergences()
 }
 #endif /* #if defined(OUTPUT_DIVVEL) || defined(MHD) */
 
-
 /*! \brief Correct values for gradient calculation for reflective boundary
  *         conditions.
  *
@@ -658,7 +649,6 @@ void correct_for_reflective_boundaries(double *ValueOther, double Value, int typ
 #endif /* #if defined(REFLECTIVE_Z) */
 }
 
-
 /*! \brief Loops through mesh and limits associated gradients.
  *
  *  \return void
@@ -668,7 +658,7 @@ void limit_gradients(void)
   mpi_printf("VORONOI: Limiting gradients...\n");
 
   point *DP = Mesh.DP;
-  face *VF = Mesh.VF;
+  face *VF  = Mesh.VF;
 
   for(int i = 0; i < Mesh.Nvf; i++)
     {
@@ -713,15 +703,16 @@ void limit_gradients(void)
                     {
                       for(int k = 0; k < N_Grad; k++)
                         {
-                          if((grad_elements[k].type == GRADIENT_TYPE_VELX) || (grad_elements[k].type == GRADIENT_TYPE_VELY) || (grad_elements[k].type == GRADIENT_TYPE_VELZ))
+                          if((grad_elements[k].type == GRADIENT_TYPE_VELX) || (grad_elements[k].type == GRADIENT_TYPE_VELY) ||
+                             (grad_elements[k].type == GRADIENT_TYPE_VELZ))
                             {
-                              value = *(MyFloat *) (((char *) (&P[q])) + grad_elements[k].offset);
+                              value = *(MyFloat *)(((char *)(&P[q])) + grad_elements[k].offset);
                               value /= All.cf_atime;
                             }
                           else
-                            value = *(MyFloat *) (((char *) (&SphP[q])) + grad_elements[k].offset);
+                            value = *(MyFloat *)(((char *)(&SphP[q])) + grad_elements[k].offset);
 
-                          data = (MySingle *) (((char *) (&(SphP[q].Grad))) + grad_elements[k].offset_grad);
+                          data = (MySingle *)(((char *)(&(SphP[q].Grad))) + grad_elements[k].offset_grad);
 
                           if(grad_elements[k].type != GRADIENT_TYPE_RTF)
                             limit_gradient(d, value, minvalues[q * N_Grad + k], maxvalues[q * N_Grad + k], data);
@@ -777,9 +768,9 @@ void limit_gradients(void)
                   if(VF[i].area > 1.0e-10 * SphP[q].SurfaceArea)
                     {
                       /* let's now limit the overall size of the velocity gradient */
-                      MySingle *grad_vx = (MySingle *) (((char *) (&(SphP[q].Grad))) + GVelx->offset_grad);
-                      MySingle *grad_vy = (MySingle *) (((char *) (&(SphP[q].Grad))) + GVely->offset_grad);
-                      MySingle *grad_vz = (MySingle *) (((char *) (&(SphP[q].Grad))) + GVelz->offset_grad);
+                      MySingle *grad_vx = (MySingle *)(((char *)(&(SphP[q].Grad))) + GVelx->offset_grad);
+                      MySingle *grad_vy = (MySingle *)(((char *)(&(SphP[q].Grad))) + GVely->offset_grad);
+                      MySingle *grad_vz = (MySingle *)(((char *)(&(SphP[q].Grad))) + GVelz->offset_grad);
                       limit_vel_gradient(d, grad_vx, grad_vy, grad_vz, get_sound_speed(q));
                     }
                 }
@@ -788,7 +779,6 @@ void limit_gradients(void)
     }
 #endif /* #ifndef DISABLE_VELOCITY_CSND_SLOPE_LIMITING */
 }
-
 
 /*! \brief Limits velocity gradient.
  *
@@ -802,7 +792,7 @@ void limit_gradients(void)
  *
  *  \return void
  */
-void limit_vel_gradient(double *d, MySingle * grad_vx, MySingle * grad_vy, MySingle * grad_vz, double csnd)
+void limit_vel_gradient(double *d, MySingle *grad_vx, MySingle *grad_vy, MySingle *grad_vz, double csnd)
 {
 #define VEL_GRADIENT_LIMIT_FAC 1.0
   if(All.ComovingIntegrationOn)
@@ -849,7 +839,6 @@ void limit_vel_gradient(double *d, MySingle * grad_vx, MySingle * grad_vy, MySin
     }
 }
 
-
 /*! \brief Limits gradients.
  *
  *  Slope limiter.
@@ -862,7 +851,7 @@ void limit_vel_gradient(double *d, MySingle * grad_vx, MySingle * grad_vy, MySin
  *
  *  \return void
  */
-void limit_gradient(double *d, double phi, double min_phi, double max_phi, MySingle * dphi)
+void limit_gradient(double *d, double phi, double min_phi, double max_phi, MySingle *dphi)
 {
   double dp = dphi[0] * d[0] + dphi[1] * d[1] + dphi[2] * d[2];
 
@@ -902,7 +891,6 @@ void limit_gradient(double *d, double phi, double min_phi, double max_phi, MySin
     }
 }
 
-
 /*! \brief Distance in x direction.
  *
  *  Taking into account periodicity of simulation box, if given.
@@ -922,7 +910,6 @@ double boundaryX(double dx)
 #endif /* #if !defined(REFLECTIVE_X) */
   return dx;
 }
-
 
 /*! \brief Distance in y direction.
  *
@@ -944,7 +931,6 @@ double boundaryY(double dy)
   return dy;
 }
 
-
 /*! \brief Distance in z direction.
  *
  *  Taking into account periodicity of simulation box, if given.
@@ -964,6 +950,5 @@ double boundaryZ(double dz)
 #endif /* #if !defined(REFLECTIVE_Z) */
   return dz;
 }
-
 
 #endif /* #if !defined(ONEDIMS) */

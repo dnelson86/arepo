@@ -26,31 +26,28 @@
  *                void voronoi_update_connectivity(tessellation * T)
  *                void voronoi_remove_connection(int i)
  *                int compare_foreign_connection(const void *a, const void *b)
- * 
- * 
+ *
+ *
  * \par Major modifications and contributions:
- * 
+ *
  * - DD.MM.YYYY Description
  * - 22.05.2018 Prepared file for public release -- Rainer Weinberger
  */
 
-
+#include <math.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <math.h>
 
 #include "../../main/allvars.h"
 #include "../../main/proto.h"
 
 #include "voronoi.h"
 
-
-int Nvc;                        /* number of connections */
-int MaxNvc;                     /* maximum number of connections */
+int Nvc;    /* number of connections */
+int MaxNvc; /* maximum number of connections */
 int Largest_Nvc;
-connection *DC;                 /* Connections */
-
+connection *DC; /* Connections */
 
 /*! Data structure for non-local connection.
  */
@@ -60,20 +57,17 @@ struct foreign_connection
   int origin;
   int index;
   int image_flags;
-} *ForeignDC, *ImportedDC;
+} * ForeignDC, *ImportedDC;
 
-
-#define MASK_X_SHIFT_RIGHT  38347922
-#define MASK_X_SHIFT_LEFT   76695844
-#define MASK_Y_SHIFT_RIGHT  14708792
-#define MASK_Y_SHIFT_LEFT   117670336
-#define MASK_Z_SHIFT_RIGHT  261632
-#define MASK_Z_SHIFT_LEFT   133955584
-#define MASK ((1<<27)-1)
-
+#define MASK_X_SHIFT_RIGHT 38347922
+#define MASK_X_SHIFT_LEFT 76695844
+#define MASK_Y_SHIFT_RIGHT 14708792
+#define MASK_Y_SHIFT_LEFT 117670336
+#define MASK_Z_SHIFT_RIGHT 261632
+#define MASK_Z_SHIFT_LEFT 133955584
+#define MASK ((1 << 27) - 1)
 
 int FirstUnusedConnection;
-
 
 /*! \brief Gets connected active cells from a mesh.
  *
@@ -81,7 +75,7 @@ int FirstUnusedConnection;
  *
  *  \return Number of cells.
  */
-int voronoi_get_connected_particles(tessellation * T)
+int voronoi_get_connected_particles(tessellation *T)
 {
   int idx, i, j, p, q, count = 0, duplicates, image_flags, listp, nexport, nimport, origin;
   int ngrp, recvTask;
@@ -99,9 +93,9 @@ int voronoi_get_connected_particles(tessellation * T)
         {
           Ngb_Marker[p] = Ngb_MarkerValue;
 
-          if(P[p].Mass == 0 && P[p].ID == 0)    /* skip cells that have been swallowed or eliminated */
+          if(P[p].Mass == 0 && P[p].ID == 0) /* skip cells that have been swallowed or eliminated */
             {
-              List_P[p].firstexport = -1;
+              List_P[p].firstexport   = -1;
               List_P[p].currentexport = -1;
               continue;
             }
@@ -111,7 +105,8 @@ int voronoi_get_connected_particles(tessellation * T)
               T->Indi.AllocFacNinlist *= ALLOC_INCREASE_FACTOR;
               MaxNinlist = T->Indi.AllocFacNinlist;
 #ifdef VERBOSE
-              printf("VORONOI: Task=%d: increase memory allocation, MaxNinlist=%d Indi.AllocFacNinlist=%g\n", ThisTask, MaxNinlist, T->Indi.AllocFacNinlist);
+              printf("VORONOI: Task=%d: increase memory allocation, MaxNinlist=%d Indi.AllocFacNinlist=%g\n", ThisTask, MaxNinlist,
+                     T->Indi.AllocFacNinlist);
 #endif /* #ifdef VERBOSE */
               ListExports = myrealloc_movable(ListExports, MaxNinlist * sizeof(struct list_export_data));
 
@@ -124,15 +119,16 @@ int voronoi_get_connected_particles(tessellation * T)
           List_P[p].currentexport = List_P[p].firstexport = Ninlist++;
           ListExports[List_P[p].currentexport].image_bits = 1;
           ListExports[List_P[p].currentexport].nextexport = -1;
-          ListExports[List_P[p].currentexport].origin = ThisTask;
-          ListExports[List_P[p].currentexport].index = p;
+          ListExports[List_P[p].currentexport].origin     = ThisTask;
+          ListExports[List_P[p].currentexport].index      = p;
 
           if(T->Ndp >= T->MaxNdp)
             {
               T->Indi.AllocFacNdp *= ALLOC_INCREASE_FACTOR;
               T->MaxNdp = T->Indi.AllocFacNdp;
 #ifdef VERBOSE
-              printf("VORONOI: Task=%d: increase memory allocation, MaxNdp=%d Indi.AllocFacNdp=%g\n", ThisTask, T->MaxNdp, T->Indi.AllocFacNdp);
+              printf("VORONOI: Task=%d: increase memory allocation, MaxNdp=%d Indi.AllocFacNdp=%g\n", ThisTask, T->MaxNdp,
+                     T->Indi.AllocFacNdp);
 #endif /* #ifdef VERBOSE */
               T->DP -= 5;
               T->DP = myrealloc_movable(T->DP, (T->MaxNdp + 5) * sizeof(point));
@@ -146,19 +142,19 @@ int voronoi_get_connected_particles(tessellation * T)
 
           point *dp = &T->DP[T->Ndp];
 
-          dp->x = P[p].Pos[0];
-          dp->y = P[p].Pos[1];
-          dp->z = P[p].Pos[2];
-          dp->ID = P[p].ID;
-          dp->task = ThisTask;
-          dp->index = p;
+          dp->x             = P[p].Pos[0];
+          dp->y             = P[p].Pos[1];
+          dp->z             = P[p].Pos[2];
+          dp->ID            = P[p].ID;
+          dp->task          = ThisTask;
+          dp->index         = p;
           dp->originalindex = -1;
-          dp->timebin = P[p].TimeBinHydro;
-          dp->image_flags = 1;
+          dp->timebin       = P[p].TimeBinHydro;
+          dp->image_flags   = 1;
 #ifdef DOUBLE_STENCIL
-          dp->Hsml = SphP[p].Hsml;
+          dp->Hsml             = SphP[p].Hsml;
           dp->first_connection = -1;
-          dp->last_connection = -1;
+          dp->last_connection  = -1;
 #endif /* #ifdef DOUBLE_STENCIL */
           T->Ndp++;
           count++;
@@ -187,15 +183,14 @@ int voronoi_get_connected_particles(tessellation * T)
 
           if(DC[q].task >= 0 && DC[q].task < NTask)
             {
-              if(ThisTask == DC[q].task)        /* this one is local */
+              if(ThisTask == DC[q].task) /* this one is local */
                 {
-                  p = DC[q].index;      /* particle index */
+                  p = DC[q].index; /* particle index */
 
                   if(P[p].Type == 0)
                     {
-                      if(!(P[p].Mass == 0 && P[p].ID == 0))     /* skip cells that have been swallowed or dissolved */
+                      if(!(P[p].Mass == 0 && P[p].ID == 0)) /* skip cells that have been swallowed or dissolved */
                         {
-
                           if(P[p].Ti_Current != All.Ti_Current)
                             {
                               drift_particle(p, All.Ti_Current);
@@ -212,8 +207,8 @@ int voronoi_get_connected_particles(tessellation * T)
 
                           if(Ngb_Marker[p] != Ngb_MarkerValue)
                             {
-                              Ngb_Marker[p] = Ngb_MarkerValue;
-                              List_P[p].firstexport = -1;
+                              Ngb_Marker[p]           = Ngb_MarkerValue;
+                              List_P[p].firstexport   = -1;
                               List_P[p].currentexport = -1;
                             }
 
@@ -233,7 +228,8 @@ int voronoi_get_connected_particles(tessellation * T)
                                   T->Indi.AllocFacNinlist *= ALLOC_INCREASE_FACTOR;
                                   MaxNinlist = T->Indi.AllocFacNinlist;
 #ifdef VERBOSE
-                                  printf("Task=%d: increase memory allocation, MaxNinlist=%d Indi.AllocFacNinlist=%g\n", ThisTask, MaxNinlist, T->Indi.AllocFacNinlist);
+                                  printf("Task=%d: increase memory allocation, MaxNinlist=%d Indi.AllocFacNinlist=%g\n", ThisTask,
+                                         MaxNinlist, T->Indi.AllocFacNinlist);
 #endif /* #ifdef VERBOSE */
                                   ListExports = myrealloc_movable(ListExports, MaxNinlist * sizeof(struct list_export_data));
 
@@ -246,12 +242,11 @@ int voronoi_get_connected_particles(tessellation * T)
                               List_P[p].currentexport = List_P[p].firstexport = Ninlist++;
                               ListExports[List_P[p].currentexport].image_bits = 0;
                               ListExports[List_P[p].currentexport].nextexport = -1;
-                              ListExports[List_P[p].currentexport].origin = ThisTask;
-                              ListExports[List_P[p].currentexport].index = p;
+                              ListExports[List_P[p].currentexport].origin     = ThisTask;
+                              ListExports[List_P[p].currentexport].index      = p;
                             }
 
-
-                          if(!(ListExports[List_P[p].currentexport].image_bits & image_flags))  /* already in list */
+                          if(!(ListExports[List_P[p].currentexport].image_bits & image_flags)) /* already in list */
                             {
                               ListExports[List_P[p].currentexport].image_bits |= image_flags;
 
@@ -260,7 +255,8 @@ int voronoi_get_connected_particles(tessellation * T)
                                   T->Indi.AllocFacNdp *= ALLOC_INCREASE_FACTOR;
                                   T->MaxNdp = T->Indi.AllocFacNdp;
 #ifdef VERBOSE
-                                  printf("Task=%d: increase memory allocation, MaxNdp=%d Indi.AllocFacNdp=%g\n", ThisTask, T->MaxNdp, T->Indi.AllocFacNdp);
+                                  printf("Task=%d: increase memory allocation, MaxNdp=%d Indi.AllocFacNdp=%g\n", ThisTask, T->MaxNdp,
+                                         T->Indi.AllocFacNdp);
 #endif /* #ifdef VERBOSE */
                                   T->DP -= 5;
                                   T->DP = myrealloc_movable(T->DP, (T->MaxNdp + 5) * sizeof(point));
@@ -276,14 +272,15 @@ int voronoi_get_connected_particles(tessellation * T)
                               MyDouble y = P[p].Pos[1];
                               MyDouble z = P[p].Pos[2];
 
-                              /* for each coordinates there are three possibilities. They are encoded in image_flag to basis three, i.e. x*3^0 + y*3^1 + z*3^2 */
+                              /* for each coordinates there are three possibilities. They are encoded in image_flag to basis three,
+                               * i.e. x*3^0 + y*3^1 + z*3^2 */
 
 #ifndef REFLECTIVE_X
                               if((image_flags & MASK_X_SHIFT_RIGHT))
                                 x += boxSize_X;
                               else if((image_flags & MASK_X_SHIFT_LEFT))
                                 x -= boxSize_X;
-#else /* #ifndef REFLECTIVE_X */
+#else  /* #ifndef REFLECTIVE_X */
                               if((image_flags & MASK_X_SHIFT_RIGHT))
                                 x = -x;
                               else if((image_flags & MASK_X_SHIFT_LEFT))
@@ -294,7 +291,7 @@ int voronoi_get_connected_particles(tessellation * T)
                                 y += boxSize_Y;
                               else if((image_flags & MASK_Y_SHIFT_LEFT))
                                 y -= boxSize_Y;
-#else /* #ifndef REFLECTIVE_Y */
+#else  /* #ifndef REFLECTIVE_Y */
                               if((image_flags & MASK_Y_SHIFT_RIGHT))
                                 y = -y;
                               else if((image_flags & MASK_Y_SHIFT_LEFT))
@@ -305,7 +302,7 @@ int voronoi_get_connected_particles(tessellation * T)
                                 z += boxSize_Z;
                               else if((image_flags & MASK_Z_SHIFT_LEFT))
                                 z -= boxSize_Z;
-#else /* #ifndef REFLECTIVE_Z */
+#else  /* #ifndef REFLECTIVE_Z */
                               if((image_flags & MASK_Z_SHIFT_RIGHT))
                                 z = -z;
                               else if((image_flags & MASK_Z_SHIFT_LEFT))
@@ -319,19 +316,19 @@ int voronoi_get_connected_particles(tessellation * T)
                               dp->z = z;
 
                               dp->task = ThisTask;
-                              dp->ID = P[p].ID;
+                              dp->ID   = P[p].ID;
                               if(image_flags != 1)
                                 dp->index = p + NumGas; /* this is a replicated/mirrored local point */
                               else
-                                dp->index = p;  /* this is actually a local point that wasn't made part of the mesh yet */
+                                dp->index = p; /* this is actually a local point that wasn't made part of the mesh yet */
                               dp->originalindex = p;
-                              dp->timebin = P[p].TimeBinHydro;
+                              dp->timebin       = P[p].TimeBinHydro;
 
                               dp->image_flags = image_flags;
 #ifdef DOUBLE_STENCIL
-                              dp->Hsml = SphP[p].Hsml;
+                              dp->Hsml             = SphP[p].Hsml;
                               dp->first_connection = -1;
-                              dp->last_connection = -1;
+                              dp->last_connection  = -1;
 #endif /* #ifdef DOUBLE_STENCIL */
                               T->Ndp++;
                               count++;
@@ -373,13 +370,13 @@ int voronoi_get_connected_particles(tessellation * T)
         {
           if(DC[q].task >= 0 && DC[q].task < NTask)
             {
-              if(ThisTask != DC[q].task)        /* this one is not local */
+              if(ThisTask != DC[q].task) /* this one is not local */
                 {
                   p = DC[q].index;
 
-                  ForeignDC[count_foreign].task = DC[q].task;
-                  ForeignDC[count_foreign].origin = ThisTask;
-                  ForeignDC[count_foreign].index = DC[q].index;
+                  ForeignDC[count_foreign].task        = DC[q].task;
+                  ForeignDC[count_foreign].origin      = ThisTask;
+                  ForeignDC[count_foreign].index       = DC[q].index;
                   ForeignDC[count_foreign].image_flags = (DC[q].image_flags & MASK);
 
                   /* here we have a foreign neighbor that we want */
@@ -455,14 +452,15 @@ int voronoi_get_connected_particles(tessellation * T)
         {
           if(Send_count[recvTask] > 0 || Recv_count[recvTask] > 0)
             {
-              MPI_Sendrecv(&ForeignDC[Send_offset[recvTask]],
-                           Send_count[recvTask] * sizeof(struct foreign_connection), MPI_BYTE, recvTask,
-                           TAG_DENS_B, &ImportedDC[Recv_offset[recvTask]], Recv_count[recvTask] * sizeof(struct foreign_connection), MPI_BYTE, recvTask, TAG_DENS_B, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
+              MPI_Sendrecv(&ForeignDC[Send_offset[recvTask]], Send_count[recvTask] * sizeof(struct foreign_connection), MPI_BYTE,
+                           recvTask, TAG_DENS_B, &ImportedDC[Recv_offset[recvTask]],
+                           Recv_count[recvTask] * sizeof(struct foreign_connection), MPI_BYTE, recvTask, TAG_DENS_B, MPI_COMM_WORLD,
+                           MPI_STATUS_IGNORE);
             }
         }
     }
 
-  point *DP_Buffer = (point *) mymalloc_movable(&DP_Buffer, "DP_Buffer", nimport * sizeof(point));
+  point *DP_Buffer = (point *)mymalloc_movable(&DP_Buffer, "DP_Buffer", nimport * sizeof(point));
 
   /* now we prepare the points */
   for(j = 0; j < NTask; j++)
@@ -470,8 +468,8 @@ int voronoi_get_connected_particles(tessellation * T)
 
   for(i = 0; i < nimport; i++)
     {
-      p = ImportedDC[i].index;
-      origin = ImportedDC[i].origin;
+      p           = ImportedDC[i].index;
+      origin      = ImportedDC[i].origin;
       image_flags = ImportedDC[i].image_flags;
 
       /* it could happen that the requested point has been refined or was turned into a star, that's why
@@ -481,7 +479,7 @@ int voronoi_get_connected_particles(tessellation * T)
         continue;
 
       if(P[p].Mass == 0 && P[p].ID == 0)
-        continue;               /* skip cells that have been swallowed or dissolved */
+        continue; /* skip cells that have been swallowed or dissolved */
 
       if(P[p].Ti_Current != All.Ti_Current)
         {
@@ -492,8 +490,8 @@ int voronoi_get_connected_particles(tessellation * T)
 
       if(Ngb_Marker[p] != Ngb_MarkerValue)
         {
-          Ngb_Marker[p] = Ngb_MarkerValue;
-          List_P[p].firstexport = -1;
+          Ngb_Marker[p]           = Ngb_MarkerValue;
+          List_P[p].firstexport   = -1;
           List_P[p].currentexport = -1;
         }
 
@@ -517,7 +515,8 @@ int voronoi_get_connected_particles(tessellation * T)
                           T->Indi.AllocFacNinlist *= ALLOC_INCREASE_FACTOR;
                           MaxNinlist = T->Indi.AllocFacNinlist;
 #ifdef VERBOSE
-                          printf("Task=%d: increase memory allocation, MaxNinlist=%d Indi.AllocFacNinlist=%g\n", ThisTask, MaxNinlist, T->Indi.AllocFacNinlist);
+                          printf("Task=%d: increase memory allocation, MaxNinlist=%d Indi.AllocFacNinlist=%g\n", ThisTask, MaxNinlist,
+                                 T->Indi.AllocFacNinlist);
 #endif /* #ifdef VERBOSE */
                           ListExports = myrealloc_movable(ListExports, MaxNinlist * sizeof(struct list_export_data));
 
@@ -525,12 +524,12 @@ int voronoi_get_connected_particles(tessellation * T)
                             terminate("Ninlist >= MaxNinlist");
                         }
 
-                      List_P[p].currentexport = Ninlist++;
+                      List_P[p].currentexport                         = Ninlist++;
                       ListExports[List_P[p].currentexport].image_bits = 0;
                       ListExports[List_P[p].currentexport].nextexport = -1;
-                      ListExports[List_P[p].currentexport].origin = origin;
-                      ListExports[List_P[p].currentexport].index = p;
-                      ListExports[listp].nextexport = List_P[p].currentexport;
+                      ListExports[List_P[p].currentexport].origin     = origin;
+                      ListExports[List_P[p].currentexport].index      = p;
+                      ListExports[listp].nextexport                   = List_P[p].currentexport;
                       break;
                     }
                   listp = ListExports[listp].nextexport;
@@ -546,7 +545,8 @@ int voronoi_get_connected_particles(tessellation * T)
               T->Indi.AllocFacNinlist *= ALLOC_INCREASE_FACTOR;
               MaxNinlist = T->Indi.AllocFacNinlist;
 #ifdef VERBOSE
-              printf("Task=%d: increase memory allocation, MaxNinlist=%d Indi.AllocFacNinlist=%g\n", ThisTask, MaxNinlist, T->Indi.AllocFacNinlist);
+              printf("Task=%d: increase memory allocation, MaxNinlist=%d Indi.AllocFacNinlist=%g\n", ThisTask, MaxNinlist,
+                     T->Indi.AllocFacNinlist);
 #endif /* #ifdef VERBOSE */
               ListExports = myrealloc_movable(ListExports, MaxNinlist * sizeof(struct list_export_data));
 
@@ -559,8 +559,8 @@ int voronoi_get_connected_particles(tessellation * T)
           List_P[p].currentexport = List_P[p].firstexport = Ninlist++;
           ListExports[List_P[p].currentexport].image_bits = 0;
           ListExports[List_P[p].currentexport].nextexport = -1;
-          ListExports[List_P[p].currentexport].origin = origin;
-          ListExports[List_P[p].currentexport].index = p;
+          ListExports[List_P[p].currentexport].origin     = origin;
+          ListExports[List_P[p].currentexport].index      = p;
         }
 
       ListExports[List_P[p].currentexport].image_bits |= image_flags;
@@ -569,13 +569,14 @@ int voronoi_get_connected_particles(tessellation * T)
       MyDouble y = P[p].Pos[1];
       MyDouble z = P[p].Pos[2];
 
-      /* for each coordinates there are three possibilities. They are encoded in image_flag to basis three, i.e. x*3^0 + y*3^1 + z*3^2 */
+      /* for each coordinates there are three possibilities. They are encoded in image_flag to basis three, i.e. x*3^0 + y*3^1 + z*3^2
+       */
 #ifndef REFLECTIVE_X
       if((image_flags & MASK_X_SHIFT_RIGHT))
         x += boxSize_X;
       else if((image_flags & MASK_X_SHIFT_LEFT))
         x -= boxSize_X;
-#else /* #ifndef REFLECTIVE_X */
+#else  /* #ifndef REFLECTIVE_X */
       if((image_flags & MASK_X_SHIFT_RIGHT))
         x = -x;
       else if((image_flags & MASK_X_SHIFT_LEFT))
@@ -587,7 +588,7 @@ int voronoi_get_connected_particles(tessellation * T)
         y += boxSize_Y;
       else if((image_flags & MASK_Y_SHIFT_LEFT))
         y -= boxSize_Y;
-#else /* #ifndef REFLECTIVE_Y */
+#else  /* #ifndef REFLECTIVE_Y */
       if((image_flags & MASK_Y_SHIFT_RIGHT))
         y = -y;
       else if((image_flags & MASK_Y_SHIFT_LEFT))
@@ -599,7 +600,7 @@ int voronoi_get_connected_particles(tessellation * T)
         z += boxSize_Z;
       else if((image_flags & MASK_Z_SHIFT_LEFT))
         z -= boxSize_Z;
-#else /* #ifndef REFLECTIVE_Z */
+#else  /* #ifndef REFLECTIVE_Z */
       if((image_flags & MASK_Z_SHIFT_RIGHT))
         z = -z;
       else if((image_flags & MASK_Z_SHIFT_LEFT))
@@ -610,20 +611,20 @@ int voronoi_get_connected_particles(tessellation * T)
 
       SphP[p].ActiveArea = 0;
 
-      DP_Buffer[k].x = x;
-      DP_Buffer[k].y = y;
-      DP_Buffer[k].z = z;
-      DP_Buffer[k].ID = P[p].ID;
-      DP_Buffer[k].task = ThisTask;
-      DP_Buffer[k].index = p;
+      DP_Buffer[k].x             = x;
+      DP_Buffer[k].y             = y;
+      DP_Buffer[k].z             = z;
+      DP_Buffer[k].ID            = P[p].ID;
+      DP_Buffer[k].task          = ThisTask;
+      DP_Buffer[k].index         = p;
       DP_Buffer[k].originalindex = p;
-      DP_Buffer[k].timebin = P[p].TimeBinHydro;
+      DP_Buffer[k].timebin       = P[p].TimeBinHydro;
 
       DP_Buffer[k].image_flags = image_flags;
 #ifdef DOUBLE_STENCIL
-      DP_Buffer[k].Hsml = SphP[p].Hsml;
+      DP_Buffer[k].Hsml             = SphP[p].Hsml;
       DP_Buffer[k].first_connection = -1;
-      DP_Buffer[k].last_connection = -1;
+      DP_Buffer[k].last_connection  = -1;
 #endif /* #ifdef DOUBLE_STENCIL */
     }
 
@@ -669,9 +670,9 @@ int voronoi_get_connected_particles(tessellation * T)
             {
               /* get the Delaunay points */
 
-              MPI_Sendrecv(&DP_Buffer[Recv_offset[recvTask]], Recv_count[recvTask] * sizeof(point),
-                           MPI_BYTE, recvTask, TAG_DENS_B,
-                           &T->DP[T->Ndp + Send_offset[recvTask]], Send_count[recvTask] * sizeof(point), MPI_BYTE, recvTask, TAG_DENS_B, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
+              MPI_Sendrecv(&DP_Buffer[Recv_offset[recvTask]], Recv_count[recvTask] * sizeof(point), MPI_BYTE, recvTask, TAG_DENS_B,
+                           &T->DP[T->Ndp + Send_offset[recvTask]], Send_count[recvTask] * sizeof(point), MPI_BYTE, recvTask,
+                           TAG_DENS_B, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
             }
         }
     }
@@ -699,22 +700,20 @@ int voronoi_get_connected_particles(tessellation * T)
   return count;
 }
 
-
-
 /*! \brief Initialises connectivity.
  *
  *  \param[in] T Pointer to tessellation.
  *
  *  \return void
  */
-void voronoi_init_connectivity(tessellation * T)
+void voronoi_init_connectivity(tessellation *T)
 {
   int i;
 
   mpi_printf("VORONOI: init connectivity\n");
 
   MaxNvc = T->Indi.AllocFacNvc;
-  DC = mymalloc_movable(&DC, "DC", MaxNvc * sizeof(connection));
+  DC     = mymalloc_movable(&DC, "DC", MaxNvc * sizeof(connection));
 
   Nvc = 0;
 
@@ -724,7 +723,7 @@ void voronoi_init_connectivity(tessellation * T)
   for(i = 0; i < MaxNvc - 1; i++)
     {
       DC[i].next = i + 1;
-      DC[i].task = -1;          /* mark that this is unused */
+      DC[i].task = -1; /* mark that this is unused */
     }
   DC[MaxNvc - 1].next = -1;
   DC[MaxNvc - 1].task = -1;
@@ -736,14 +735,13 @@ void voronoi_init_connectivity(tessellation * T)
   mpi_printf("VORONOI: done with init of connectivity\n");
 }
 
-
 /*! \brief Updates connectivity.
  *
  *  \param[in] T Pointer to tessellation.
  *
  *  \return void
  */
-void voronoi_update_connectivity(tessellation * T)
+void voronoi_update_connectivity(tessellation *T)
 {
   int idx, i, k, q, p_task, p_index, q_task, q_index, q_dp_index, q_image_flags;
   MyIDType p_ID;
@@ -762,12 +760,12 @@ void voronoi_update_connectivity(tessellation * T)
 
       q = SphP[i].first_connection;
 
-      if(q >= 0)                /* we have connections, let's add them to the free list */
+      if(q >= 0) /* we have connections, let's add them to the free list */
         {
           while(q >= 0)
             {
               Nvc--;
-              DC[q].task = -1;  /* mark that this is unused */
+              DC[q].task = -1; /* mark that this is unused */
 
               if(q == SphP[i].last_connection)
                 break;
@@ -777,10 +775,10 @@ void voronoi_update_connectivity(tessellation * T)
 
           /* we add the new free spots at the beginning of the free list */
           DC[SphP[i].last_connection].next = FirstUnusedConnection;
-          FirstUnusedConnection = SphP[i].first_connection;
+          FirstUnusedConnection            = SphP[i].first_connection;
 
           SphP[i].first_connection = -1;
-          SphP[i].last_connection = -1;
+          SphP[i].last_connection  = -1;
         }
     }
 
@@ -789,26 +787,26 @@ void voronoi_update_connectivity(tessellation * T)
       for(k = 0; k < 2; k++)
         {
           point *DP = T->DP;
-          face *VF = T->VF;
+          face *VF  = T->VF;
 
           if(k == 0)
             {
-              p_task = DP[VF[i].p1].task;
-              p_index = DP[VF[i].p1].index;
-              p_ID = DP[VF[i].p1].ID;
-              q_task = DP[VF[i].p2].task;
-              q_index = DP[VF[i].p2].index;
-              q_dp_index = VF[i].p2;
+              p_task        = DP[VF[i].p1].task;
+              p_index       = DP[VF[i].p1].index;
+              p_ID          = DP[VF[i].p1].ID;
+              q_task        = DP[VF[i].p2].task;
+              q_index       = DP[VF[i].p2].index;
+              q_dp_index    = VF[i].p2;
               q_image_flags = (DP[VF[i].p2].image_flags & MASK);
             }
           else
             {
-              p_task = DP[VF[i].p2].task;
-              p_index = DP[VF[i].p2].index;
-              p_ID = DP[VF[i].p2].ID;
-              q_task = DP[VF[i].p1].task;
-              q_index = DP[VF[i].p1].index;
-              q_dp_index = VF[i].p1;
+              p_task        = DP[VF[i].p2].task;
+              p_index       = DP[VF[i].p2].index;
+              p_ID          = DP[VF[i].p2].ID;
+              q_task        = DP[VF[i].p1].task;
+              q_index       = DP[VF[i].p1].index;
+              q_dp_index    = VF[i].p1;
               q_image_flags = (DP[VF[i].p1].image_flags & MASK);
             }
 
@@ -820,7 +818,7 @@ void voronoi_update_connectivity(tessellation * T)
                     continue;
 
                   if(P[p_index].Mass == 0 && P[p_index].ID == 0)
-                    continue;   /* skip cells that have been swallowed or dissolved */
+                    continue; /* skip cells that have been swallowed or dissolved */
 
                   /* need to add the connection to the other point to this particle */
 
@@ -837,7 +835,8 @@ void voronoi_update_connectivity(tessellation * T)
                       T->Indi.AllocFacNvc *= ALLOC_INCREASE_FACTOR;
                       MaxNvc = T->Indi.AllocFacNvc;
 #ifdef VERBOSE
-                      printf("Task=%d: increase memory allocation, MaxNvc=%d Indi.AllocFacNvc=%g\n", ThisTask, MaxNvc, T->Indi.AllocFacNvc);
+                      printf("Task=%d: increase memory allocation, MaxNvc=%d Indi.AllocFacNvc=%g\n", ThisTask, MaxNvc,
+                             T->Indi.AllocFacNvc);
 #endif /* #ifdef VERBOSE */
                       DC = myrealloc_movable(DC, MaxNvc * sizeof(connection));
                       DP = T->DP;
@@ -856,20 +855,20 @@ void voronoi_update_connectivity(tessellation * T)
                   if(SphP[p_index].last_connection >= 0)
                     {
                       DC[SphP[p_index].last_connection].next = FirstUnusedConnection;
-                      SphP[p_index].last_connection = FirstUnusedConnection;
+                      SphP[p_index].last_connection          = FirstUnusedConnection;
                     }
                   else
                     {
-                      SphP[p_index].last_connection = FirstUnusedConnection;
+                      SphP[p_index].last_connection  = FirstUnusedConnection;
                       SphP[p_index].first_connection = FirstUnusedConnection;
                     }
 
                   FirstUnusedConnection = DC[FirstUnusedConnection].next;
                   Nvc++;
 
-                  DC[SphP[p_index].last_connection].task = q_task;
+                  DC[SphP[p_index].last_connection].task        = q_task;
                   DC[SphP[p_index].last_connection].image_flags = q_image_flags;
-                  DC[SphP[p_index].last_connection].ID = p_ID;
+                  DC[SphP[p_index].last_connection].ID          = p_ID;
 
                   if(q_task == ThisTask && q_index >= NumGas)
                     DC[SphP[p_index].last_connection].index = q_index - NumGas;
@@ -879,8 +878,8 @@ void voronoi_update_connectivity(tessellation * T)
                   DC[SphP[p_index].last_connection].dp_index = q_dp_index;
 #ifdef TETRA_INDEX_IN_FACE
                   DC[SphP[p_index].last_connection].dt_index = VF[i].dt_index;
-#endif /* #ifdef TETRA_INDEX_IN_FACE */
-                  DC[SphP[p_index].last_connection].vf_index = i;       /* index to the corresponding face */
+#endif                                                            /* #ifdef TETRA_INDEX_IN_FACE */
+                  DC[SphP[p_index].last_connection].vf_index = i; /* index to the corresponding face */
 
                   if(SphP[p_index].last_connection >= MaxNvc)
                     {
@@ -913,7 +912,8 @@ void voronoi_update_connectivity(tessellation * T)
                   T->Indi.AllocFacNvc *= ALLOC_INCREASE_FACTOR;
                   MaxNvc = T->Indi.AllocFacNvc;
 #ifdef VERBOSE
-                  printf("Task=%d: increase memory allocation, MaxNvc=%d Indi.AllocFacNvc=%g\n", ThisTask, MaxNvc, T->Indi.AllocFacNvc);
+                  printf("Task=%d: increase memory allocation, MaxNvc=%d Indi.AllocFacNvc=%g\n", ThisTask, MaxNvc,
+                         T->Indi.AllocFacNvc);
 #endif /* #ifdef VERBOSE */
                   DC = myrealloc_movable(DC, MaxNvc * sizeof(connection));
                   DP = T->DP;
@@ -932,20 +932,20 @@ void voronoi_update_connectivity(tessellation * T)
               if(DP[index].last_connection >= 0)
                 {
                   DC[DP[index].last_connection].next = FirstUnusedConnection;
-                  DP[index].last_connection = FirstUnusedConnection;
+                  DP[index].last_connection          = FirstUnusedConnection;
                 }
               else
                 {
-                  DP[index].last_connection = FirstUnusedConnection;
+                  DP[index].last_connection  = FirstUnusedConnection;
                   DP[index].first_connection = FirstUnusedConnection;
                 }
 
               FirstUnusedConnection = DC[FirstUnusedConnection].next;
               Nvc++;
 
-              DC[DP[index].last_connection].task = q_task;
+              DC[DP[index].last_connection].task        = q_task;
               DC[DP[index].last_connection].image_flags = q_image_flags;
-              DC[DP[index].last_connection].ID = p_ID;
+              DC[DP[index].last_connection].ID          = p_ID;
 
               if(q_task == ThisTask && q_index >= NumGas)
                 DC[DP[index].last_connection].index = q_index - NumGas;
@@ -954,7 +954,7 @@ void voronoi_update_connectivity(tessellation * T)
 
               DC[DP[index].last_connection].dp_index = q_dp_index;
 
-              DC[DP[index].last_connection].vf_index = i;       /* index to the corresponding face */
+              DC[DP[index].last_connection].vf_index = i; /* index to the corresponding face */
 
               if(DP[index].last_connection >= MaxNvc)
                 {
@@ -970,7 +970,6 @@ void voronoi_update_connectivity(tessellation * T)
   CPU_Step[CPU_MESH_DYNAMIC] += measure_time();
 }
 
-
 /*! \brief Remove connection from cell.
  *
  *  \param[in] i Index of cell.
@@ -980,12 +979,12 @@ void voronoi_update_connectivity(tessellation * T)
 void voronoi_remove_connection(int i)
 {
   int q;
-  if((q = SphP[i].first_connection) >= 0)       /* we have connections, let's add them to the free list */
+  if((q = SphP[i].first_connection) >= 0) /* we have connections, let's add them to the free list */
     {
       while(q >= 0)
         {
           Nvc--;
-          DC[q].task = -1;      /* mark that this is unused */
+          DC[q].task = -1; /* mark that this is unused */
 
           if(q == SphP[i].last_connection)
             break;
@@ -995,13 +994,12 @@ void voronoi_remove_connection(int i)
 
       /* we add the new free spots at the beginning of the free list */
       DC[SphP[i].last_connection].next = FirstUnusedConnection;
-      FirstUnusedConnection = SphP[i].first_connection;
+      FirstUnusedConnection            = SphP[i].first_connection;
 
       SphP[i].first_connection = -1;
-      SphP[i].last_connection = -1;
+      SphP[i].last_connection  = -1;
     }
 }
-
 
 /*! \brief Compares two foreign connection objects.
  *
@@ -1017,22 +1015,22 @@ void voronoi_remove_connection(int i)
  */
 int compare_foreign_connection(const void *a, const void *b)
 {
-  if(((struct foreign_connection *) a)->task < (((struct foreign_connection *) b)->task))
+  if(((struct foreign_connection *)a)->task < (((struct foreign_connection *)b)->task))
     return -1;
 
-  if(((struct foreign_connection *) a)->task > (((struct foreign_connection *) b)->task))
+  if(((struct foreign_connection *)a)->task > (((struct foreign_connection *)b)->task))
     return +1;
 
-  if(((struct foreign_connection *) a)->index < (((struct foreign_connection *) b)->index))
+  if(((struct foreign_connection *)a)->index < (((struct foreign_connection *)b)->index))
     return -1;
 
-  if(((struct foreign_connection *) a)->index > (((struct foreign_connection *) b)->index))
+  if(((struct foreign_connection *)a)->index > (((struct foreign_connection *)b)->index))
     return +1;
 
-  if(((struct foreign_connection *) a)->image_flags < (((struct foreign_connection *) b)->image_flags))
+  if(((struct foreign_connection *)a)->image_flags < (((struct foreign_connection *)b)->image_flags))
     return -1;
 
-  if(((struct foreign_connection *) a)->image_flags > (((struct foreign_connection *) b)->image_flags))
+  if(((struct foreign_connection *)a)->image_flags > (((struct foreign_connection *)b)->image_flags))
     return +1;
 
   return 0;
