@@ -11,7 +11,7 @@ gravitationally interacting.
 
 **NTYPES=6**
 
-The number of particle types used. Minimum: 2.
+The number of particle types used. Minimum: 6.
 
 -----
 

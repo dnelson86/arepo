@@ -19,8 +19,8 @@ main repository to include latest bugfixes. For this workflow to work
 properly, it is helpful to keep the code-base relatively static. For
 this reason
 
-**the base version of the code is not meant to be extended in
-  functionality.**
+**the base version of the code is not meant to be extended in**
+  **functionality.**
 
 This means that only bugfixes as well as updates in the documentation
 and examples will be included in revisions of this public release.
@@ -51,11 +51,11 @@ problem occurs, the first thing to check is whether there already
 exists an open issue, i.e. whether this is a known and confirmed
 problem.
 
-**Please whenever possible use the support forum instead of contacting
-  the authors by email.**
+**Please whenever possible use the support forum instead of**
+  **contacting the authors by email.**
 
-**We encourage experienced users to provide help and answer some of
-  the open questions on this forum.**
+**We encourage experienced users to provide help and answer some**
+  **of the open questions on this forum.**
 
 
 Code extensions 
