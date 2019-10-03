@@ -240,6 +240,8 @@ Most of the one-dimensional simulations are test problems for
 particular solvers or numerical methods. Note that Arepo for the case
 of 1d problems is **NOT** MPI parallel, i.e. all the following
 examples can only be calculated using one MPI rank, i.e. in serial.
+Furthermore, refinement and derefinement is not supported in this 
+case.
 
 One of the most basic one-dimensional examples is a simple linear wave
 propagation test as in the example ``wave_1d``. Such a test is

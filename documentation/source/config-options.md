@@ -25,7 +25,9 @@ reading in initial conditions.
 **ONEDIMS**
 
 Simulation in 1d. Y and Z coordinates and velocities are set to zero
-after reading in initial conditions.
+after reading in initial conditions. For one dimensional
+simulations, refinement and derefinement is not supported.
+If this flag is active, the code is not MPI parallel.
 
 -----
 
