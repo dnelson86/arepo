@@ -297,7 +297,7 @@ void find_gravity_timesteps_and_do_gravity_step_first_half(void)
 
       if(P[i].Type == 0)
         {
-          int bin_hydro = P[i].TimeBinHydro + MAX_TIMEBIN_DIFFERENCE;
+          int bin_hydro = P[i].TimeBinHydro;
           if(bin_hydro < bin)
             bin = bin_hydro;
         }
