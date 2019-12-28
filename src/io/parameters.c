@@ -509,12 +509,14 @@ void read_parameter_file(char *fname)
       if((fd = fopen(fname, "r")))
         {
           sprintf(buf, "%s%s", fname, "-usedvalues");
+#ifndef AREPOVTK
           if(!(fdout = fopen(buf, "w")))
             {
               printf("error opening file '%s' \n", buf);
               errorFlag = 1;
             }
           else
+#endif
             {
               printf("Obtaining parameters from file '%s':\n\n", fname);
               while(!feof(fd))
@@ -550,21 +552,27 @@ void read_parameter_file(char *fname)
                           case REAL:
                             *((double *)addr[j]) = atof(buf2);
                             sprintf(buf3, "%%-%ds%%g\n", MAXLEN_PARAM_TAG);
+#ifndef AREPOVTK
                             fprintf(fdout, buf3, buf1, *((double *)addr[j]));
+#endif
                             fprintf(stdout, "        ");
                             fprintf(stdout, buf3, buf1, *((double *)addr[j]));
                             break;
                           case STRING:
                             strcpy((char *)addr[j], buf2);
                             sprintf(buf3, "%%-%ds%%s\n", MAXLEN_PARAM_TAG);
+#ifndef AREPOVTK
                             fprintf(fdout, buf3, buf1, buf2);
+#endif
                             fprintf(stdout, "        ");
                             fprintf(stdout, buf3, buf1, buf2);
                             break;
                           case INT:
                             *((int *)addr[j]) = atoi(buf2);
                             sprintf(buf3, "%%-%ds%%d\n", MAXLEN_PARAM_TAG);
+#ifndef AREPOVTK
                             fprintf(fdout, buf3, buf1, *((int *)addr[j]));
+#endif
                             fprintf(stdout, "        ");
                             fprintf(stdout, buf3, buf1, *((int *)addr[j]));
                             break;
@@ -590,7 +598,9 @@ void read_parameter_file(char *fname)
                     }
                 }
               fclose(fd);
+#ifndef AREPOVTK
               fclose(fdout);
+#endif
               printf("\n");
 
               i = strlen(All.OutputDir);
@@ -598,6 +608,7 @@ void read_parameter_file(char *fname)
                 if(All.OutputDir[i - 1] != '/')
                   strcat(All.OutputDir, "/");
 
+#ifndef AREPOVTK
               mkdir(All.OutputDir, 02755);
               sprintf(buf1, "%s%s", fname, "-usedvalues");
               sprintf(buf2, "%s%s", All.OutputDir, "parameters-usedvalues");
@@ -606,6 +617,8 @@ void read_parameter_file(char *fname)
               if(errorFlag == 0)
                 system(buf3);
 #endif /* #ifndef NOCALLSOFSYSTEM */
+#endif
+
             }
         }
       else

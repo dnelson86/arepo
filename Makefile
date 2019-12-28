@@ -66,6 +66,19 @@ endif
 
 # insert the library paths for your system here, similar to SYSTYPE "Darwin" above
 
+# AREPOVTK
+CC        = mpicc
+OPTIMIZE  = -std=c11 -g -O3
+MPICH_LIB = -lmpi
+
+GSL_INCL  = -I${GSL_HOME}/include
+GSL_LIB   = -L${GSL_HOME}/lib -lgsl
+FFTW_INCL = -I${FFTW_HOME}/include
+FFTW_LIB  = -L${FFTW_HOME}/lib
+HDF5_INCL = -I${HDF5_HOME}/include -DH5_USE_16_API
+HDF5_LIB  = -L${HDF5_HOME}/lib -lhdf5
+
+# END AREPOVTK
 
 ifndef LINKER
 LINKER = $(CC)

@@ -544,6 +544,10 @@ int init(void)
   double xmin, xmax, ymin, ymax, zmin, zmax;
 #endif /* #if !defined(ONEDIMS) && !defined(TWODIMS) */
 
+#ifdef AREPOVTK
+  return -2; // keep mesh
+#endif
+
   free_mesh();
 
   return -1;  // return -1 means we ran to completion, i.e. not an endrun code

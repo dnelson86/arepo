@@ -208,6 +208,7 @@ void begrun1(void)
  */
 void begrun2(void)
 {
+#ifndef AREPOVTK
   char contfname[1000];
   sprintf(contfname, "%scont", All.OutputDir);
   unlink(contfname);
@@ -216,6 +217,7 @@ void begrun2(void)
 
   if(RestartFlag > 2)
     open_logfiles();
+#endif
 
 #if defined(USE_SFR)
   sfr_init();

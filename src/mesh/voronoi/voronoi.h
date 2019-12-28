@@ -366,8 +366,9 @@ int FindTriangle(tessellation *T, int tt, int pp, int *degnerate_flag, int *next
 int InSphere_Exact(point *p0, point *p1, point *p2, point *p3, point *p);
 int InSphere_Quick(point *p0, point *p1, point *p2, point *p3, point *p);
 int InSphere_Errorbound(point *p0, point *p1, point *p2, point *p3, point *p);
-int Orient3d_Quick(point *p0, point *p1, point *p2, point *p3);
 int Orient3d(point *p0, point *p1, point *p2, point *p3);
+int Orient3d_Quick(point *p0, point *p1, point *p2, point *p3);
+int Orient3d_Exact(point *p0, point *p1, point *p2, point *p3);
 int count_undecided_tetras(tessellation *T);
 int ngb_treefind_ghost_search(tessellation *T, MyDouble searchcenter[3], MyDouble refpos[3], MyFloat hsml, MyFloat maxdist, int target,
                               int origin, int mode, int thread_id, int numnodes, int *firstnode);

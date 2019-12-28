@@ -217,11 +217,13 @@ void report_memory_usage(int rank, char *tabbuf)
       cc += sprintf(buf + cc, "%s", tabbuf);
       if(ThisTask == 0)
         {
+#ifndef AREPOVTK
           if(RestartFlag <= 2)
             {
               fprintf(FdMemory, "%s", buf);
               fflush(FdMemory);
             }
+#endif
         }
       else
         {
@@ -237,11 +239,13 @@ void report_memory_usage(int rank, char *tabbuf)
       MPI_Recv(&cc, 1, MPI_INT, rank, TAG_N, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
       char *buf = mymalloc("buf", cc + 1);
       MPI_Recv(buf, cc + 1, MPI_BYTE, rank, TAG_PDATA, MPI_COMM_WORLD, MPI_STATUS_IGNORE);
+#ifndef AREPOVTK
       if(RestartFlag <= 2)
         {
           fprintf(FdMemory, "%s", buf);
           fflush(FdMemory);
         }
+#endif
       myfree(buf);
     }
 }

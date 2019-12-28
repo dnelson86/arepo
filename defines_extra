@@ -3,6 +3,8 @@
 # listed here to ensure that the check.py script does not 
 # raise an error due to these
 
+AREPOVTK
+
 # headers
 ADD_BGGRID_H
 ALLVARS_H

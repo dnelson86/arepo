@@ -164,7 +164,7 @@ static data_out *DataResult, *DataOut;
 static void out2particle(data_out *out, int i, int mode)
 {
   if(mode == MODE_LOCAL_PARTICLES || mode == MODE_IMPORTED_PARTICLES)
-    if(out->Count)
+    if(out->Count) 
       T->DTF[i] -= (T->DTF[i] & 2);
 }
 
@@ -530,7 +530,7 @@ int voronoi_ghost_search_evaluate(tessellation *T, int target, int mode, int q, 
   h = 1.0001 * sqrt(dx * dx + dy * dy + dz * dz);
 
   if(mode == MODE_LOCAL_PARTICLES)
-    if(maxdist < 2 * h)
+    if(maxdist < 2 * h) 
       T->DTF[target] -=
           (T->DTF[target] &
            2); /* since we restrict the search radius, we are not guaranteed to search the full circumcircle of the triangle */
@@ -1764,8 +1764,10 @@ int count_undecided_tetras(tessellation *T)
   int i, count;
 
   for(i = 0, count = 0; i < T->Ndt; i++)
+  {
     if((T->DTF[i] & 2) == 0)
       count++;
+  }
 
   return count;
 }

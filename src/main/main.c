@@ -58,7 +58,11 @@
  *
  *  \return status of exit; 0 for normal exit.
  */
+#ifdef AREPOVTK
+int main_dummy(int argc, char **argv)
+#else
 int main(int argc, char **argv)
+#endif
 {
 #ifdef IMPOSE_PINNING
   detect_topology();
