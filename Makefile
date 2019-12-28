@@ -72,9 +72,9 @@ OPTIMIZE  = -std=c11 -g -O3
 MPICH_LIB = -lmpi
 
 GSL_INCL  = -I${GSL_HOME}/include
-GSL_LIB   = -L${GSL_HOME}/lib -lgsl
+GSL_LIB   = -L${GSL_HOME}/lib -lgsl -lgslcblas
 FFTW_INCL = -I${FFTW_HOME}/include
-FFTW_LIB  = -L${FFTW_HOME}/lib
+FFTW_LIBS = -L${FFTW_HOME}/lib
 HDF5_INCL = -I${HDF5_HOME}/include -DH5_USE_16_API
 HDF5_LIB  = -L${HDF5_HOME}/lib -lhdf5
 

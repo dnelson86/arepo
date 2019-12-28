@@ -1137,7 +1137,7 @@ void check_maxmemsize_setting(void)
     }
 
   MPI_Allreduce(&errflag, &errflag_tot, 1, MPI_INT, MPI_MAX, MPI_COMM_WORLD);
-#ifndef __OSX
+#ifndef __OSX__
 #ifndef AREPOVTK
   if(errflag_tot)
     mpi_terminate("Not enough memory error!");

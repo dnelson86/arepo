@@ -12,7 +12,6 @@ import h5py    # hdf5 format
 import os    # operating system interface
 from subprocess import call   # execute bash commands
 
-
 ## create new ics with 'music' or 'ngenic' or just 'copy' existing 
 ## ones to the run directory
 ic_creation='copy'
