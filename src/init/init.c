@@ -489,8 +489,11 @@ int init(void)
                         SphP[i].Volume * All.cf_atime;
 #endif /* #ifdef MHD */
 
+#ifndef AREPOVTK
+      // we use this to store other quantities
       for(j = 0; j < 3; j++)
         SphP[i].VelVertex[j] = P[i].Vel[j];
+#endif
 
       mass += P[i].Mass;
     }

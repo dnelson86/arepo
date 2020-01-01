@@ -22,7 +22,6 @@ libarepo.a
 
 # param, Config, Makefile.systype
 param.txt
-Config.sh
 Makefile.systype
 run.sh
 
